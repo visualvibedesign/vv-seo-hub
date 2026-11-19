@@ -1,0 +1,204 @@
+# SEO Hub: Project Context
+
+> Read this first. It explains what we're building, why, for whom, and the decisions made so far. Update it at the end of every build step.
+
+## 0. Start here (for Claude in any account)
+
+- **What:** SEO Hub (`vv-seo-hub`), the SEO-only sister app of Visual Vibe HQ (`../visual-vibe-dashboard`). One place for every SEO client's strategy, data and (later) automation.
+- **Rules + process:** `CLAUDE.md` (hard rules), `docs/seo-hub-context-pack.md`, `docs/seo-hub-phases.md`, `docs/local-seo-playbook.md` (Sam's 10-Day Rank Yourself process), `docs/vibe-seo-handoff-notes.md` (plugin connection).
+- **Current phase plan:** `docs/phase-1-plan.md` (steps ticked as they're done).
+- **No design mockups.** Built directly in the HQ style; styles/components are **copied** from HQ (HQ is read only).
+- **Where we are (Nov 20, 2026):** setup done and pushed (`main`). Phase 1 approved; building on local branch `phase-1`. Step 1 (database) done: migration run in Supabase, `/api/health` all `ok`. Next: step 2 (sign-in).
+- **Repo:** https://github.com/visualvibedesign/vv-seo-hub (agency account, keep **private**). Never push, merge or deploy until Angel says so; build on local branches.
+
+## 1. Overview
+
+An internal SEO dashboard for **Visual Vibe Design** (Rogers, AR; remote team incl. Cebu). It follows Sam's local SEO process per client: keywords → baseline → GBP → sitemap + hotspots → page briefs → GBP care → links → results. Over time it replaces the SEO pieces that run on the agency hub (app.alexialynn.co) through the Vibe SEO plugin.
+
+- **Owner / builder:** Angel (Web Developer & SEO Support; also owns the Vibe SEO plugin)
+- **Stakeholder:** Alexia (agency lead; owns HQ and the Vibe Admin plugin)
+- **Test client:** Anassa Wax & Beauty (Staten Island, NY)
+
+## 2. Goals
+
+1. Keywords live in SEO Hub instead of Google Sheets (Alexia, Nov 19).
+2. One flow per client following Sam's Days 1–10.
+3. Baseline vs results reporting (phase 2), later a client report view (phase 6).
+4. Connect to client sites through the Vibe SEO plugin (phase 5) and replace the hub's SEO workspace.
+5. Don't rebuild what other tools do (Yoast, ClickUp tasks, rank tracking).
+
+## 3. Users
+
+| User | Needs |
+|---|---|
+| Angel | Builds and runs keyword research, baselines, reports |
+| Alexia | Reviews strategy, approves |
+
+**Team-only.** One shared team password (same as HQ). No per-person accounts, no Supabase Auth.
+
+**Login (phase 1 plan):** own Sign in page, same password (reads HQ's `settings.team_password_hash`, fallback `TEAM_PASSWORD_HASH`), same `vv_session` cookie + `SESSION_SECRET` as HQ, so an HQ cookie works here too (on localhost both apps share it since cookies ignore ports). **Later:** custom domains + `SESSION_COOKIE_DOMAIN=.visualvibedesign.com`; with `HQ_LOGIN_URL` set, signed-out people go to HQ's sign-in and come back.
+
+## 4. Features
+
+### Phase 1 (planned, see `docs/phase-1-plan.md`)
+Clients (site URL + plugin site id, Home/S1–S3, A1–A3, account checklist), CSV import (Keyword Planner, Semrush; Sheet source only for testing), master keyword database with an editable KP range column + bulk-set, 3×3 matrix (+ Home row), clusters, Export tracked list for Semrush. Built for every client, not just Anassa.
+
+### Routes
+
+| Route | Page | Phase |
+|---|---|---|
+| `/login` | Sign in | 1 |
+| `/` | Clients list | 1 |
+| `/clients/{site id}` | Overview tab | 1 |
+| `/clients/{site id}/keywords` (+ `/clusters`, `/import`) | Keywords tab: Matrix, Database, Clusters, Import | 1 |
+| `/clients/{site id}/pages` | Pages | 3 |
+| `/clients/{site id}/plan` | Site plan | 3 |
+| `/clients/{site id}/reports` | Reports | 2 |
+| `/clients/{site id}/log` | Work log | 5 |
+| `/clients/{site id}/notes` | Notes & links | 5 |
+| `/clients/{site id}/conversions` | Conversions (hub `cro` tab) | later |
+| `POST /api/vibe/checkin` | Plugin check-in (HMAC, not team login) | 5 |
+| `GET /api/health` | Setup check | done |
+
+Tabs match the hub workspace SEO Hub replaces (`VVDA_SEO_Workspace`); unbuilt ones show "coming in phase X".
+
+### Later phases
+2 Baseline + results · 3 Sitemap + hotspots + page briefs · 4 GBP check/care + link database · 5 Vibe SEO check-in + automation · 6 Client report view. Details: `docs/seo-hub-phases.md`.
+
+## 5. Tech Stack
+
+| Layer | Choice | Role |
+|---|---|---|
+| Frontend | React 19 + Vite 8 + TypeScript | Same setup as HQ |
+| Styling | Tailwind CSS v3 + HQ brand tokens | v3 like HQ (v4's native scanner is blocked on Angel's PC) |
+| Routing & data | React Router 7 + TanStack Query | |
+| Backend | Vercel functions (`/api`) | All keys server-side |
+| Database | Supabase, **same project as HQ** | Tables prefixed `seo_`, RLS on, server-only access |
+| Files | Supabase Storage (bucket `seo-imports`, private) | Raw CSVs, untouched |
+| CSV | Papa Parse | Phase 1 |
+| Access | HQ's shared team password + signed `vv_session` cookie | |
+| Hosting / code | Vercel + GitHub | |
+
+Not used: Semrush API (CSV only), GBP API (typed in), Whitespark API (CSV/screenshot).
+
+## 6. Architecture
+
+- Browser → `/api/*` (Vercel functions) → services → Supabase. The browser never talks to Supabase, Google or Claude directly.
+- Code pattern (same as HQ): pages → components, data in hooks; api routes → services → clients.
+- `npm run dev` runs `/api` through `server/dev/apiDevPlugin.ts` (copied from HQ).
+
+### Plugin connection (Vibe SEO, phase 5; prepared in phase 1)
+- Every client has a **site URL** and **site id** = `md5` of the home URL with `http(s)://` and `www.` removed, lowercased, trailing `/` removed (path kept). Same id the plugin (`class-seo-link.php`) and the agency hub use. Anassa: `anassabeauty.com` → `c6e74adc272c98005f3086f85c88b9da`.
+- The agency hub links to `{seo_hub_url}/clients/{site id}`; that's our client route.
+- Phase 5: sites `POST /api/vibe/checkin` daily (headers `X-Vibe-Site`, `X-Vibe-Time`, `X-Vibe-Signature` = HMAC-SHA256 of `"<time>.<raw body>"` with the site's connection key; verify on the raw body, constant-time, ±10 minutes). Matched to a client on `site.id`. Connection keys never leave the server.
+- Vibe SEO is Angel's (can change); Vibe Admin is Alexia's (never change).
+
+## 7. Data Model (planned, phase 1)
+
+```
+seo_clients          id, site_id (unique), site_url, name, city, state, ideal_client, usp, success_12mo, status, notes   (NO address)
+seo_client_categories client_id, code (Home|S1|S2|S3|FAQ), name, in_matrix, sort
+seo_client_services  client_id, category_id, name, sort          (e.g. S2 → Eyebrow lamination, Eyebrow tint, …)
+seo_client_areas     client_id, code (A1|A2|A3), name, state, status (active|n_a)
+seo_client_accounts  client_id, kind, status (ready|pending|n_a), next_action, note   (never passwords)
+seo_imports          client_id, source (kp|semrush|sheet), report, file_name, storage_path, location, filter, column_map, counts
+seo_keywords         client_id, keyword, keyword_key, role (primary|secondary|faq|near_me), service_id, area_id, suggested, intent,
+                     kp_volume TEXT (typed in the app), kp_volume_by, kp_volume_at,
+                     semrush_volume, kd, cpc, track, status (keep|later|rejected), notes
+seo_keyword_sources  keyword_id, import_id, source, segment, volume_raw TEXT, kd, cpc, intent, raw jsonb
+seo_matrix_cells     client_id, category_id, area_id, state (target|n_a|pending), note
+seo_matrix_keywords  cell_id, keyword_id, kind (primary|backup), sort          (max one primary per cell)
+seo_pages            client_id, category_id, name, url, priority, status (live|scheduled|planned), why, content_ideas[]
+seo_page_keywords    keyword_id (primary key = one page per keyword), page_id, role (primary|secondary|faq)
+```
+
+Migration: `supabase/migrations/0001_seo_phase1.sql` (12 tables, 1 function `seo_touch_updated_at`, private bucket `seo-imports` 20 MB/file). One transaction; only creates `seo_*` things, never touches HQ's tables. **Run in Supabase on Nov 20, 2026** (all 12 tables + bucket confirmed by `/api/health`).
+
+Data rules: KP range is text (`10–100`, `No data`, `Not checked`); Semrush `0` stays 0, blank = null ("no data"); Track is its own toggle (not tied to role); missing-data flags are worked out when read (not stored). KP segments: Richmond County shown, "All" stored but hidden (`segment`). Exact duplicate = same text ignoring case + extra spaces, same source; close variants kept.
+
+RLS on all, no policies (server-only). Read-only from HQ: `settings.team_password_hash`. Storage bucket `seo-imports` (`<site id>/<import id>/<file>`).
+
+## 8. Brand & Styling
+
+Same as HQ (`src/styles/tokens.css`, copied): Fraunces headings with a purple italic word (#7C5CE6), Inter body, bg #F7F5FF, text #131314, sidebar #EEEAFF, active pill #BFAFFF, white 22px cards with #ECE8FB border and soft purple shadow, lime #BAD657 pill buttons, light + dark mode, phone layout (≤900px). SEO extras: role tags Primary teal, Secondary light blue, FAQ orange, Near me gray; status good #2e8b57 / ok #d39b16 / bad #c9483c; grey table header rows. Change colors in `tokens.css`, not in components.
+
+## 9. Apps & Accounts
+
+| What | Status |
+|---|---|
+| GitHub repo `visualvibedesign/vv-seo-hub` | Done (keep private) |
+| Supabase (HQ's project) | Keys in `.env.local`; 12 `seo_` tables + `seo-imports` bucket created Nov 20 |
+| Vercel project | Not yet (only when Angel says) |
+| Custom domain `seo.visualvibedesign.com` | Waiting on Alexia |
+| Vibe SEO plugin `seo_hub_url` setting | Phase 5 |
+| Google Cloud (GSC + GA4 APIs) | Phase 2 |
+
+## 10. Open Questions
+
+- [x] KP CSV stand-ins (`50.0`): kept as raw only; the KP range is typed in the app (editable column + bulk-set for selected rows). Decided Nov 20. Built for every client; the Sheet import is only for testing Anassa.
+- [x] KP segments: Richmond County (= Staten Island) shown; "All" stored, not shown (Nov 20)
+- [x] Exact duplicate = same text ignoring case + extra spaces, same source; close variants kept (Nov 20)
+- [x] Conversions (CRO): 8th tab, "coming later" (Nov 20)
+- [x] Anassa "Full butt": S1 Brazilian & Bikini (on anassabeauty.com/services) (Nov 20)
+- [ ] Alexia OK with the same Supabase project as HQ?
+- [ ] Custom domains + who manages DNS (needed for the shared cookie, `SESSION_COOKIE_DOMAIN`, and the plugin's `seo_hub_url`)
+- [ ] HQ's "SEO & GBP helpers" page (/seo): keep, or replaced by SEO Hub later?
+
+## 11. Folder Structure
+
+```
+vv-seo-hub/
+├─ api/health.ts                # GET /api/health: api running + which seo_ tables/bucket exist (no data)
+├─ server/
+│  ├─ clients/supabase.ts       # db(), must(): server-only Supabase client (from HQ)
+│  ├─ utils/siteId.ts           # plugin-compatible site id + URL cleanup
+│  └─ dev/apiDevPlugin.ts       # runs /api in npm run dev (from HQ)
+├─ scripts/check-site-id.ts     # npm run check:site-id (Anassa → c6e74adc…)
+├─ supabase/migrations/         # 0001_seo_phase1.sql
+├─ src/
+│  ├─ main.tsx, App.tsx         # entry + routes
+│  ├─ pages/HomePage.tsx        # placeholder overview
+│  ├─ components/layout/        # AppLayout, Sidebar
+│  ├─ components/ui/            # Logo, ThemeToggle, NavIcon, Loading (from HQ)
+│  ├─ lib/theme.ts              # light/dark (from HQ)
+│  └─ styles/                   # tokens.css, index.css (from HQ)
+├─ public/brand/                # logos + icons (from HQ)
+├─ docs/                        # context pack, phases, playbook, handoff notes, phase-1-plan
+├─ test-data/anassa/            # git-ignored, local only: Sheet exports + Semrush tracking export for testing
+├─ CLAUDE.md, CONTEXT.md, START-HERE.md
+└─ .env.example                 # .env.local is git-ignored
+```
+
+Planned phase 1 layout: `docs/phase-1-plan.md` §6.
+
+## 12. Conventions
+
+- **Env vars** (`.env.example` lists names only; values in `.env.local` + Vercel):
+
+  | Name | What | Set |
+  |---|---|---|
+  | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | HQ's Supabase project, server only | ✅ local |
+  | `SESSION_SECRET` | Same as HQ (shared cookie) | ✅ local |
+  | `TEAM_PASSWORD_HASH` | Fallback password hash (same as HQ) | ✅ local |
+  | `SESSION_COOKIE_DOMAIN` | `.visualvibedesign.com` once domains exist | empty |
+  | `HQ_LOGIN_URL` | Send sign-in to HQ (planned) | — |
+
+- **Run it:** `npm install`, then `npm run dev -- --port 5180` → http://localhost:5180 (HQ uses 5173). Restart after editing `.env.local`. Checks: `npm run typecheck`, `npm run lint`, `npm run build`, `npm run check:site-id`. Database check: http://localhost:5180/api/health.
+- **Database changes:** new migration file in `supabase/migrations/`; Angel reviews the SQL, then runs it in Supabase → SQL Editor (it's HQ's live project). Only create/alter `seo_*` objects.
+- Never commit secrets. HQ and Vibe Admin are read only: copy what we need, never edit them.
+- Volumes exactly as exported; skip exact duplicates only; flag missing data; never store or show a private address.
+- Claude drafts are never published without review.
+- One step per message; Angel tests on localhost; update this file and tick `docs/phase-1-plan.md` after each step.
+- Never push, merge or deploy until Angel says so.
+
+## 13. Milestones
+
+0. **Done.** Project setup (Nov 20, 2026): Vite + React + Tailwind like HQ, HQ styles copied, placeholder page, `.env.example`, git + remote, pushed to `main`.
+1. **In progress (branch `phase-1`).** Phase 1: clients + keywords + import + matrix + clusters, plugin-ready (site id, `/clients/{site id}`, 8 hub tabs). Plan + ticked steps: `docs/phase-1-plan.md`.
+   - [x] Step 1 (database): migration run Nov 20, health check all `ok`.
+   - [ ] Step 2 (sign-in): next.
+2. Phase 2: baseline + results.
+3. Phase 3: sitemap + hotspots + page briefs.
+4. Phase 4: GBP + link database.
+5. Phase 5: plugin connection + automation.
+6. Phase 6 (later): client report view.

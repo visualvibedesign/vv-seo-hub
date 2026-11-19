@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc -b && tsc -p tsconfig.server.json --noEmit"
+    "typecheck": "tsc -b && tsc -p tsconfig.server.json --noEmit",
+    "check:site-id": "node scripts/check-site-id.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",
