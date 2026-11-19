@@ -184,7 +184,7 @@ One step per message, on local branch **`phase-1`**. After each step: what to te
   - [x] branch `phase-1`, `supabase/migrations/0001_seo_phase1.sql` written (12 tables + bucket), `server/utils/siteId.ts` + `npm run check:site-id` (passes), `server/clients/supabase.ts`, `/api/health` table check
   - [x] Angel reviewed the SQL and ran it in Supabase (Nov 20)
   - [x] `/api/health` shows all 12 tables + the bucket as `ok` (Nov 20)
-- [ ] **2. Sign-in:** auth + `/api/auth`, Sign in page, RequireSession, Log out in the sidebar
+- [x] **2. Sign-in:** auth + `/api/auth`, Sign in page, RequireSession, Log out in the sidebar (Nov 20; hash read only from HQ's `settings`, `/api/health` now signed-in only)
 - [ ] **3. Clients:** list, Add/edit client (site URL → site id, Home + S1–S3, A1–A3, ideal client, kickoff answers), account checklist, `/clients/{id}` layout with all 8 tabs (unbuilt ones show "coming in phase X" / "coming later"), Overview with Sam's 9 steps. Anassa entered
 - [ ] **4. CSV import wizard:** KP + Semrush parsers (+ Sheet source for testing), column match, preview with duplicates/flags, raw file to Storage, import history. Anassa's real KP + Semrush files imported
 - [ ] **5. Keyword database:** filters, role/intent tags, both volumes, missing-data flags, **editable KP range + bulk bar** (KP range, role, service, track, status), Track toggle

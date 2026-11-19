@@ -8,7 +8,7 @@
 - **Rules + process:** `CLAUDE.md` (hard rules), `docs/seo-hub-context-pack.md`, `docs/seo-hub-phases.md`, `docs/local-seo-playbook.md` (Sam's 10-Day Rank Yourself process), `docs/vibe-seo-handoff-notes.md` (plugin connection).
 - **Current phase plan:** `docs/phase-1-plan.md` (steps ticked as they're done).
 - **No design mockups.** Built directly in the HQ style; styles/components are **copied** from HQ (HQ is read only).
-- **Where we are (Nov 20, 2026):** setup done and pushed (`main`). Phase 1 approved; building on local branch `phase-1`. Step 1 (database) done: migration run in Supabase, `/api/health` all `ok`. Next: step 2 (sign-in).
+- **Where we are (Nov 20, 2026):** setup done and pushed (`main`). Phase 1 approved; building on local branch `phase-1`. Steps 1 (database) and 2 (sign-in) done; next: step 3 (clients).
 - **Repo:** https://github.com/visualvibedesign/vv-seo-hub (agency account, keep **private**). Never push, merge or deploy until Angel says so; build on local branches.
 
 ## 1. Overview
@@ -36,7 +36,7 @@ An internal SEO dashboard for **Visual Vibe Design** (Rogers, AR; remote team in
 
 **Team-only.** One shared team password (same as HQ). No per-person accounts, no Supabase Auth.
 
-**Login (phase 1 plan):** own Sign in page, same password (reads HQ's `settings.team_password_hash`, fallback `TEAM_PASSWORD_HASH`), same `vv_session` cookie + `SESSION_SECRET` as HQ, so an HQ cookie works here too (on localhost both apps share it since cookies ignore ports). **Later:** custom domains + `SESSION_COOKIE_DOMAIN=.visualvibedesign.com`; with `HQ_LOGIN_URL` set, signed-out people go to HQ's sign-in and come back.
+**Login (built, step 2):** own Sign in page (`/login`), same password (reads HQ's `settings.team_password_hash`, fallback `TEAM_PASSWORD_HASH`), same `vv_session` cookie + `SESSION_SECRET` as HQ, so an HQ cookie works here too (on localhost both apps share it since cookies ignore ports). **Later:** custom domains + `SESSION_COOKIE_DOMAIN=.visualvibedesign.com`; with `HQ_LOGIN_URL` set, signed-out people go to HQ's sign-in and come back. The hash is **read only**: SEO Hub never writes it (no change-password code here; that stays in HQ › Settings). Log out clears the shared cookie, so it also signs this browser out of HQ.
 
 ## 4. Features
 
@@ -47,7 +47,8 @@ Clients (site URL + plugin site id, Home/S1–S3, A1–A3, account checklist), C
 
 | Route | Page | Phase |
 |---|---|---|
-| `/login` | Sign in | 1 |
+| `/login` | Sign in | 1 ✅ |
+| `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` | Sign-in API | 1 ✅ |
 | `/` | Clients list | 1 |
 | `/clients/{site id}` | Overview tab | 1 |
 | `/clients/{site id}/keywords` (+ `/clusters`, `/import`) | Keywords tab: Matrix, Database, Clusters, Import | 1 |
@@ -58,7 +59,7 @@ Clients (site URL + plugin site id, Home/S1–S3, A1–A3, account checklist), C
 | `/clients/{site id}/notes` | Notes & links | 5 |
 | `/clients/{site id}/conversions` | Conversions (hub `cro` tab) | later |
 | `POST /api/vibe/checkin` | Plugin check-in (HMAC, not team login) | 5 |
-| `GET /api/health` | Setup check | done |
+| `GET /api/health` | Setup check (signed-in only) | done |
 
 Tabs match the hub workspace SEO Hub replaces (`VVDA_SEO_Workspace`); unbuilt ones show "coming in phase X".
 
@@ -148,17 +149,20 @@ Same as HQ (`src/styles/tokens.css`, copied): Fraunces headings with a purple it
 
 ```
 vv-seo-hub/
-├─ api/health.ts                # GET /api/health: api running + which seo_ tables/bucket exist (no data)
+├─ api/health.ts                # GET /api/health (signed in): which seo_ tables/bucket exist (no data)
+├─ api/auth/[action].ts        # login, logout, me
 ├─ server/
 │  ├─ clients/supabase.ts       # db(), must(): server-only Supabase client (from HQ)
+│  ├─ utils/auth.ts             # password check (reads HQ's hash, read only) + vv_session cookie (from HQ)
 │  ├─ utils/siteId.ts           # plugin-compatible site id + URL cleanup
 │  └─ dev/apiDevPlugin.ts       # runs /api in npm run dev (from HQ)
 ├─ scripts/check-site-id.ts     # npm run check:site-id (Anassa → c6e74adc…)
 ├─ supabase/migrations/         # 0001_seo_phase1.sql
 ├─ src/
 │  ├─ main.tsx, App.tsx         # entry + routes
-│  ├─ pages/HomePage.tsx        # placeholder overview
-│  ├─ components/layout/        # AppLayout, Sidebar
+│  ├─ pages/                    # HomePage (placeholder), LoginPage
+│  ├─ lib/api.ts                # call(), ApiError, getSession, login, logout, safeNext
+│  ├─ components/layout/        # AppLayout, Sidebar (Log out), RequireSession
 │  ├─ components/ui/            # Logo, ThemeToggle, NavIcon, Loading (from HQ)
 │  ├─ lib/theme.ts              # light/dark (from HQ)
 │  └─ styles/                   # tokens.css, index.css (from HQ)
@@ -196,7 +200,8 @@ Planned phase 1 layout: `docs/phase-1-plan.md` §6.
 0. **Done.** Project setup (Nov 20, 2026): Vite + React + Tailwind like HQ, HQ styles copied, placeholder page, `.env.example`, git + remote, pushed to `main`.
 1. **In progress (branch `phase-1`).** Phase 1: clients + keywords + import + matrix + clusters, plugin-ready (site id, `/clients/{site id}`, 8 hub tabs). Plan + ticked steps: `docs/phase-1-plan.md`.
    - [x] Step 1 (database): migration run Nov 20, health check all `ok`.
-   - [ ] Step 2 (sign-in): next.
+   - [x] Step 2 (sign-in): team password (read only from HQ), `vv_session` cookie shared with HQ, Sign in page, Log out.
+   - [ ] Step 3 (clients): next.
 2. Phase 2: baseline + results.
 3. Phase 3: sitemap + hotspots + page briefs.
 4. Phase 4: GBP + link database.

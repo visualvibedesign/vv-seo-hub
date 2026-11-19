@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink } from 'react-router'
+import { Link, NavLink, useNavigate } from 'react-router'
+import { useQueryClient } from '@tanstack/react-query'
+import { logout } from '../../lib/api'
 import Logo from '../ui/Logo'
 import NavIcon, { type NavIconName } from '../ui/NavIcon'
 import ThemeToggle from '../ui/ThemeToggle'
@@ -56,6 +58,22 @@ export default function Sidebar() {
       }
       return !c
     })
+  }
+
+  // Log out (same as HQ): drop the session cookie and everything cached, then go to Sign in.
+  // It's the shared cookie, so this also signs this browser out of HQ.
+  const navigate = useNavigate()
+  const qc = useQueryClient()
+  const [signingOut, setSigningOut] = useState(false)
+  const signOut = async () => {
+    setSigningOut(true)
+    try {
+      await logout()
+    } finally {
+      qc.clear()
+      setMenuOpen(false)
+      navigate('/login', { replace: true })
+    }
   }
 
   useEffect(() => {
@@ -157,6 +175,20 @@ export default function Sidebar() {
             </span>
             <span className={mini ? 'sr-only' : 'whitespace-nowrap'}>All apps</span>
           </a>
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            disabled={signingOut}
+            title={mini ? 'Log out' : undefined}
+            className={`box-border flex min-h-[46px] w-full items-center gap-3 rounded-[14px] border border-solid border-vv-field-line bg-vv-surface text-left text-[15px] font-semibold text-vv-ink hover:bg-vv-lavender disabled:opacity-60 ${
+              mini ? 'justify-center px-0' : 'px-3'
+            }`}
+          >
+            <span className="inline-flex h-[26px] w-[26px] flex-none items-center justify-center rounded-lg text-vv-purple-deep">
+              <NavIcon name="logout" />
+            </span>
+            <span className={mini ? 'sr-only' : 'whitespace-nowrap'}>{signingOut ? 'Logging out…' : 'Log out'}</span>
+          </button>
         </div>
       </div>
     </nav>

@@ -1,9 +1,9 @@
 // API route: GET /api/health
 //   -> { ok, app, database: { configured, tables: { seo_clients: 'ok' | 'missing' | 'error', … }, bucket } }
 // Setup check: is the api/ folder running, and can the server reach the SEO tables in Supabase?
-// Shows only table names and whether they exist: no client data, no counts.
-// (Becomes signed-in only in phase 1 step 2.)
+// Shows only table names and whether they exist: no client data, no counts. Signed-in only.
 import { db } from '../server/clients/supabase.js'
+import { requireSession } from '../server/utils/auth.js'
 
 const TABLES = [
   'seo_clients',
@@ -22,7 +22,9 @@ const TABLES = [
 
 type TableState = 'ok' | 'missing' | 'error'
 
-export async function GET() {
+export async function GET(request: Request) {
+  const denied = await requireSession(request)
+  if (denied) return denied
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return Response.json({ ok: false, app: 'seo-hub', database: { configured: false } })
   }
