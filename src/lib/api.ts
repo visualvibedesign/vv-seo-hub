@@ -1,5 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
+import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, SiteIdCheck } from '../types/seo'
 
 export class ApiError extends Error {
   status: number
@@ -54,6 +55,37 @@ export async function login(password: string, remember: boolean): Promise<LoginR
 /** Signs this browser out. */
 export async function logout(): Promise<void> {
   await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
+}
+
+// ---- Clients (phase 1, step 3) --------------------------------------------------
+
+const json = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+
+export function getClients(): Promise<{ clients: ClientSummary[] }> {
+  return call('/api/clients/list')
+}
+
+export function getClient(siteId: string): Promise<{ client: ClientDetail }> {
+  return call(`/api/clients/get?site=${encodeURIComponent(siteId)}`)
+}
+
+/** Cleaned site URL + its Vibe SEO site id, and whether another client already uses it. */
+export function checkSiteId(url: string, current?: string): Promise<SiteIdCheck> {
+  const q = new URLSearchParams({ url })
+  if (current) q.set('current', current)
+  return call(`/api/clients/site-id?${q}`)
+}
+
+/** Adds a client (no siteId) or saves an existing one. Returns the site id (new if the URL changed). */
+export function saveClient(client: ClientInput, siteId?: string): Promise<{ siteId: string }> {
+  return call('/api/clients/save', json({ siteId, client }))
+}
+
+export function saveAccount(
+  siteId: string,
+  account: { kind: AccountKind; status: AccountStatus; nextAction: string; note: string },
+): Promise<{ account: ClientAccount }> {
+  return call('/api/clients/account', json({ siteId, account }))
 }
 
 /** Where to go after signing in: a page of this app only ("/clients/…"); anything else goes home. */

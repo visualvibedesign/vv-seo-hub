@@ -1,38 +1,41 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router'
-import { useQueryClient } from '@tanstack/react-query'
-import { logout } from '../../lib/api'
+import { Link, NavLink } from 'react-router'
+import { useClients } from '../../hooks/useClients'
+import type { ClientSummary } from '../../types/seo'
 import Logo from '../ui/Logo'
 import NavIcon, { type NavIconName } from '../ui/NavIcon'
 import ThemeToggle from '../ui/ThemeToggle'
 
 // Left navigation, built from HQ's Sidebar (same sizes, colors, collapse button and phone Menu).
-// Setup only: Overview is the one live page; the rest show which phase builds them.
-type NavItem = { label: string; icon: NavIconName; to?: string; phase?: string }
+// "SEO Hub": all clients + add. "Clients": a shortcut to each active client's workspace
+// (/clients/{site id}); the client's tabs live on its page, not here.
+type NavItem = { label: string; icon: NavIconName; to?: string; phase?: string; end?: boolean }
 type NavGroup = { label: string; items: NavItem[] }
 
-const NAV_GROUPS: NavGroup[] = [
-  { label: 'SEO Hub', items: [{ label: 'Overview', icon: 'overview', to: '/' }] },
-  {
-    label: 'Clients',
-    items: [
-      { label: 'Clients', icon: 'projects', phase: 'Phase 1' },
-      { label: 'Keywords & matrix', icon: 'seo', phase: 'Phase 1' },
-      { label: 'Baseline & results', icon: 'reports', phase: 'Phase 2' },
-      { label: 'Sitemap & hotspots', icon: 'builds', phase: 'Phase 3' },
-      { label: 'GBP & links', icon: 'review', phase: 'Phase 4' },
-      { label: 'Sites & automation', icon: 'automations', phase: 'Phase 5' },
-    ],
-  },
-]
+function navGroups(clients: ClientSummary[]): NavGroup[] {
+  const active = clients.filter((c) => c.status !== 'archived')
+  return [
+    {
+      label: 'SEO Hub',
+      items: [
+        { label: 'All clients', icon: 'projects', to: '/', end: true },
+        { label: 'Add client', icon: 'ideas', to: '/clients/new', end: true },
+      ],
+    },
+    ...(active.length ? [{ label: 'Clients', items: active.map((c) => ({ label: c.name, icon: 'seo' as NavIconName, to: `/clients/${c.siteId}` })) }] : []),
+  ]
+}
 
-// HQ's Apps page (the one-login portal). Opens in HQ.
-const HQ_APPS_URL = 'https://visual-vibe-dashboard.vercel.app/apps'
+// HQ's Apps page (the one-login portal). On localhost: HQ's dev server (cookies ignore ports, so you
+// stay signed in). Override with VITE_HQ_URL (public address, not a secret).
+const HQ_URL = import.meta.env.VITE_HQ_URL || (import.meta.env.DEV ? 'http://localhost:5173' : 'https://visual-vibe-dashboard.vercel.app')
+const HQ_APPS_URL = `${HQ_URL.endsWith('/') ? HQ_URL.slice(0, -1) : HQ_URL}/apps`
 
 const COLLAPSE_KEY = 'vv-seo-sidebar-collapsed'
 const PHONE = '(max-width: 900px)'
 
 export default function Sidebar() {
+  const groups = navGroups(useClients().data ?? [])
   const [menuOpen, setMenuOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -58,22 +61,6 @@ export default function Sidebar() {
       }
       return !c
     })
-  }
-
-  // Log out (same as HQ): drop the session cookie and everything cached, then go to Sign in.
-  // It's the shared cookie, so this also signs this browser out of HQ.
-  const navigate = useNavigate()
-  const qc = useQueryClient()
-  const [signingOut, setSigningOut] = useState(false)
-  const signOut = async () => {
-    setSigningOut(true)
-    try {
-      await logout()
-    } finally {
-      qc.clear()
-      setMenuOpen(false)
-      navigate('/login', { replace: true })
-    }
   }
 
   useEffect(() => {
@@ -137,7 +124,7 @@ export default function Sidebar() {
           menuOpen ? 'phone:flex phone:max-h-[calc(100vh-72px)] phone:w-full phone:flex-col phone:gap-4 phone:overflow-y-auto phone:pb-1.5 phone:pt-3.5' : 'phone:hidden'
         }`}
       >
-        {NAV_GROUPS.map((group) => (
+        {groups.map((group) => (
           <div key={group.label} className="flex flex-col gap-[3px]">
             {mini ? (
               <span className="mx-2 mb-1.5 border-t border-vv-field-line" aria-hidden="true" />
@@ -149,7 +136,7 @@ export default function Sidebar() {
                 <NavLink
                   key={item.label}
                   to={item.to}
-                  end
+                  end={item.end}
                   onClick={() => setMenuOpen(false)}
                   title={mini ? item.label : undefined}
                   className={({ isActive }) => `${row} ${isActive ? 'bg-vv-lavender font-bold' : 'bg-transparent font-medium'}`}
@@ -166,29 +153,23 @@ export default function Sidebar() {
           </div>
         ))}
 
-        {/* Bottom: dark mode (desktop) + back to HQ's Apps page */}
-        <div className="sticky -bottom-7 z-[1] -mx-1 mt-auto flex flex-col gap-1.5 bg-vv-lavender-100 px-1 pb-7 pt-2 phone:static phone:m-0 phone:p-0">
-          <ThemeToggle iconOnly={mini} className={`justify-center border border-solid border-vv-toggle-line phone:hidden ${mini ? 'px-0' : ''}`} />
-          <a href={HQ_APPS_URL} title={mini ? 'All apps' : undefined} className={`${row} font-semibold hover:bg-vv-lavender hover:text-vv-ink ${mini ? '' : '!justify-start gap-3'}`}>
-            <span className="inline-flex h-[26px] w-[26px] flex-none items-center justify-center rounded-lg text-vv-purple-deep">
-              <NavIcon name="apps" />
-            </span>
-            <span className={mini ? 'sr-only' : 'whitespace-nowrap'}>All apps</span>
-          </a>
-          <button
-            type="button"
-            onClick={() => void signOut()}
-            disabled={signingOut}
-            title={mini ? 'Log out' : undefined}
-            className={`box-border flex min-h-[46px] w-full items-center gap-3 rounded-[14px] border border-solid border-vv-field-line bg-vv-surface text-left text-[15px] font-semibold text-vv-ink hover:bg-vv-lavender disabled:opacity-60 ${
+        {/* Switch app: same as HQ's sidebar (HQ commit caeac2f, 2026-11-20): one button pinned to the
+            bottom (in the Menu on phones) that opens HQ's Apps page and stays signed in. Log out lives
+            on HQ's Apps page, like in HQ. Dark mode is in the page header (HeaderTools), like HQ. */}
+        <div className="sticky -bottom-7 z-[1] -mx-1 mt-auto bg-vv-lavender-100 px-1 pb-7 pt-2 phone:static phone:m-0 phone:p-0">
+          <a
+            href={HQ_APPS_URL}
+            onClick={() => setMenuOpen(false)}
+            title={mini ? 'Switch app' : undefined}
+            className={`box-border flex min-h-[46px] w-full items-center gap-3 rounded-[14px] border border-solid border-vv-field-line bg-vv-surface text-left text-[15px] font-semibold text-vv-ink no-underline hover:bg-vv-lavender hover:text-vv-ink ${
               mini ? 'justify-center px-0' : 'px-3'
             }`}
           >
             <span className="inline-flex h-[26px] w-[26px] flex-none items-center justify-center rounded-lg text-vv-purple-deep">
-              <NavIcon name="logout" />
+              <NavIcon name="apps" />
             </span>
-            <span className={mini ? 'sr-only' : 'whitespace-nowrap'}>{signingOut ? 'Logging out…' : 'Log out'}</span>
-          </button>
+            <span className={mini ? 'sr-only' : 'whitespace-nowrap'}>Switch app</span>
+          </a>
         </div>
       </div>
     </nav>
@@ -197,11 +178,11 @@ export default function Sidebar() {
 
 function ItemLabel({ item, mini, active }: { item: NavItem; mini: boolean; active: boolean }) {
   return (
-    <span className="flex items-center gap-3">
+    <span className="flex min-w-0 items-center gap-3">
       <span className={`inline-flex h-[26px] w-[26px] flex-none items-center justify-center rounded-lg text-vv-purple-deep ${active ? 'bg-vv-surface' : 'bg-transparent'}`}>
         <NavIcon name={item.icon} />
       </span>
-      <span className={mini ? 'sr-only' : 'whitespace-nowrap'}>{item.label}</span>
+      <span className={mini ? 'sr-only' : 'truncate'} title={item.label}>{item.label}</span>
     </span>
   )
 }

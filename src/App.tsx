@@ -18,7 +18,20 @@ const router = createBrowserRouter([
     children: [
       {
         element: <AppLayout />,
-        children: [{ path: '/', lazy: page(() => import('./pages/HomePage')) }],
+        children: [
+          { path: '/', lazy: page(() => import('./pages/ClientsPage')) },
+          { path: '/clients/new', lazy: page(() => import('./pages/ClientFormPage')) },
+          { path: '/clients/:siteId/edit', lazy: page(() => import('./pages/ClientFormPage')) },
+          // Client workspace: /clients/{site id} is the address the agency hub + Vibe SEO plugin link to.
+          {
+            path: '/clients/:siteId',
+            lazy: page(() => import('./components/layout/ClientLayout')),
+            children: [
+              { index: true, lazy: page(() => import('./pages/client/OverviewPage')) },
+              { path: ':tab', lazy: page(() => import('./pages/client/ComingSoonPage')) },
+            ],
+          },
+        ],
       },
     ],
   },

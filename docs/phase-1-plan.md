@@ -185,7 +185,9 @@ One step per message, on local branch **`phase-1`**. After each step: what to te
   - [x] Angel reviewed the SQL and ran it in Supabase (Nov 20)
   - [x] `/api/health` shows all 12 tables + the bucket as `ok` (Nov 20)
 - [x] **2. Sign-in:** auth + `/api/auth`, Sign in page, RequireSession, Log out in the sidebar (Nov 20; hash read only from HQ's `settings`, `/api/health` now signed-in only)
-- [ ] **3. Clients:** list, Add/edit client (site URL → site id, Home + S1–S3, A1–A3, ideal client, kickoff answers), account checklist, `/clients/{id}` layout with all 8 tabs (unbuilt ones show "coming in phase X" / "coming later"), Overview with Sam's 9 steps. Anassa entered
+- [x] **3. Clients:** list, Add/edit client (site URL → site id, Home + S1–S3, A1–A3, ideal client, kickoff answers), account checklist, `/clients/{id}` layout with all 8 tabs (unbuilt ones show "coming in phase X" / "coming later"), Overview with Sam's 9 steps. Anassa entered
+  - [x] built (Nov 20): Clients list, Add/Edit client (live plugin site id check, services with paste + move, A1–A3 with N/A, kickoff answers, status), `/clients/{site id}` header + 8 tabs, Overview (Sam's 9 steps, services & areas, kickoff, account checklist saved per row), sidebar client shortcuts, `/api/clients`
+  - [x] Angel entered Anassa (Nov 20): site id c6e74adc…, 22 services (Home 1, S1 4, S2 10, S3 7), A1 Staten Island, A2/A3 N/A, 12 account rows (checked read-only in Supabase)
 - [ ] **4. CSV import wizard:** KP + Semrush parsers (+ Sheet source for testing), column match, preview with duplicates/flags, raw file to Storage, import history. Anassa's real KP + Semrush files imported
 - [ ] **5. Keyword database:** filters, role/intent tags, both volumes, missing-data flags, **editable KP range + bulk bar** (KP range, role, service, track, status), Track toggle
 - [ ] **6. 3×3 matrix:** Home row + S1–S3 × A1–A3, N/A / Pending, primary + backups with volumes, pick from the table

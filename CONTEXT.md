@@ -8,7 +8,7 @@
 - **Rules + process:** `CLAUDE.md` (hard rules), `docs/seo-hub-context-pack.md`, `docs/seo-hub-phases.md`, `docs/local-seo-playbook.md` (Sam's 10-Day Rank Yourself process), `docs/vibe-seo-handoff-notes.md` (plugin connection).
 - **Current phase plan:** `docs/phase-1-plan.md` (steps ticked as they're done).
 - **No design mockups.** Built directly in the HQ style; styles/components are **copied** from HQ (HQ is read only).
-- **Where we are (Nov 20, 2026):** setup done and pushed (`main`). Phase 1 approved; building on local branch `phase-1`. Steps 1 (database) and 2 (sign-in) done; next: step 3 (clients).
+- **Where we are (Nov 20, 2026):** setup done and pushed (`main`). Phase 1 approved; building on local branch `phase-1`. Steps 1–3 (database, sign-in, clients) done and committed; Anassa is entered. Next: step 4 (CSV import wizard).
 - **Repo:** https://github.com/visualvibedesign/vv-seo-hub (agency account, keep **private**). Never push, merge or deploy until Angel says so; build on local branches.
 
 ## 1. Overview
@@ -38,6 +38,8 @@ An internal SEO dashboard for **Visual Vibe Design** (Rogers, AR; remote team in
 
 **Login (built, step 2):** own Sign in page (`/login`), same password (reads HQ's `settings.team_password_hash`, fallback `TEAM_PASSWORD_HASH`), same `vv_session` cookie + `SESSION_SECRET` as HQ, so an HQ cookie works here too (on localhost both apps share it since cookies ignore ports). **Later:** custom domains + `SESSION_COOKIE_DOMAIN=.visualvibedesign.com`; with `HQ_LOGIN_URL` set, signed-out people go to HQ's sign-in and come back. The hash is **read only**: SEO Hub never writes it (no change-password code here; that stays in HQ › Settings). Log out clears the shared cookie, so it also signs this browser out of HQ.
 
+**Sidebar bottom = HQ's (Nov 20, matches HQ commit caeac2f):** one **Switch app** button (apps icon, white bordered pill, pinned to the bottom) that opens HQ's `/apps` and stays signed in. **Log out is on HQ's Apps page**, like in HQ (SEO Hub's own `/login` "You're in" screen still has Sign out as a fallback while the apps are on different domains). Dark mode is the icon button in the page header (`HeaderTools`), like HQ's next to Refresh; on phones it's in the sidebar top bar.
+
 ## 4. Features
 
 ### Phase 1 (planned, see `docs/phase-1-plan.md`)
@@ -49,8 +51,10 @@ Clients (site URL + plugin site id, Home/S1–S3, A1–A3, account checklist), C
 |---|---|---|
 | `/login` | Sign in | 1 ✅ |
 | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` | Sign-in API | 1 ✅ |
-| `/` | Clients list | 1 |
-| `/clients/{site id}` | Overview tab | 1 |
+| `GET /api/clients/list`, `get?site=`, `site-id?url=`, `POST save`, `POST account` | Clients API (signed in) | 1 ✅ |
+| `/` | Clients list | 1 ✅ |
+| `/clients/new`, `/clients/{site id}/edit` | Add / Edit client | 1 ✅ |
+| `/clients/{site id}` | Overview tab (unknown id → "not an SEO Hub client yet" + Add client) | 1 ✅ |
 | `/clients/{site id}/keywords` (+ `/clusters`, `/import`) | Keywords tab: Matrix, Database, Clusters, Import | 1 |
 | `/clients/{site id}/pages` | Pages | 3 |
 | `/clients/{site id}/plan` | Site plan | 3 |
@@ -143,6 +147,7 @@ Same as HQ (`src/styles/tokens.css`, copied): Fraunces headings with a purple it
 - [x] Anassa "Full butt": S1 Brazilian & Bikini (on anassabeauty.com/services) (Nov 20)
 - [ ] Alexia OK with the same Supabase project as HQ?
 - [ ] Custom domains + who manages DNS (needed for the shared cookie, `SESSION_COOKIE_DOMAIN`, and the plugin's `seo_hub_url`)
+- [ ] **Later (after phase 1, Angel Nov 20; don't build yet):** HQ's /apps portal becomes the ONLY sign-in. The SEO Hub card on /apps gets a handoff link into SEO Hub; SEO Hub's own /login then goes away (or just sends people to HQ). Decide how the handoff works: shared cookie on a custom domain (`SESSION_COOKIE_DOMAIN`) vs a short-lived signed handoff token while on different domains.
 - [ ] HQ's "SEO & GBP helpers" page (/seo): keep, or replaced by SEO Hub later?
 
 ## 11. Folder Structure
@@ -151,18 +156,24 @@ Same as HQ (`src/styles/tokens.css`, copied): Fraunces headings with a purple it
 vv-seo-hub/
 ├─ api/health.ts                # GET /api/health (signed in): which seo_ tables/bucket exist (no data)
 ├─ api/auth/[action].ts        # login, logout, me
+├─ api/clients/[action].ts     # list, get, site-id, save, account
 ├─ server/
 │  ├─ clients/supabase.ts       # db(), must(): server-only Supabase client (from HQ)
 │  ├─ utils/auth.ts             # password check (reads HQ's hash, read only) + vv_session cookie (from HQ)
 │  ├─ utils/siteId.ts           # plugin-compatible site id + URL cleanup
+│  ├─ services/clientService.ts # clients: read, save (services keep ids), site id check, accounts
 │  └─ dev/apiDevPlugin.ts       # runs /api in npm run dev (from HQ)
 ├─ scripts/check-site-id.ts     # npm run check:site-id (Anassa → c6e74adc…)
 ├─ supabase/migrations/         # 0001_seo_phase1.sql
 ├─ src/
 │  ├─ main.tsx, App.tsx         # entry + routes
-│  ├─ pages/                    # HomePage (placeholder), LoginPage
+│  ├─ pages/                    # LoginPage, ClientsPage, ClientFormPage, client/OverviewPage, client/ComingSoonPage
+│  ├─ hooks/useClients.ts       # TanStack Query: clients, client, save, account
+│  ├─ lib/clientSetup.ts        # shared lists: categories, areas, accounts, 8 tabs, Sam's 9 steps
+│  ├─ lib/ui.ts                 # HQ class strings (CARD, BTN_LIME, FIELD, pills)
+│  ├─ types/seo.ts              # shared types (browser + server)
 │  ├─ lib/api.ts                # call(), ApiError, getSession, login, logout, safeNext
-│  ├─ components/layout/        # AppLayout, Sidebar (Log out), RequireSession
+│  ├─ components/layout/        # AppLayout, Sidebar (client shortcuts, Switch app), HeaderTools (dark mode), RequireSession, ClientLayout (header + 8 tabs)
 │  ├─ components/ui/            # Logo, ThemeToggle, NavIcon, Loading (from HQ)
 │  ├─ lib/theme.ts              # light/dark (from HQ)
 │  └─ styles/                   # tokens.css, index.css (from HQ)
@@ -186,6 +197,7 @@ Planned phase 1 layout: `docs/phase-1-plan.md` §6.
   | `TEAM_PASSWORD_HASH` | Fallback password hash (same as HQ) | ✅ local |
   | `SESSION_COOKIE_DOMAIN` | `.visualvibedesign.com` once domains exist | empty |
   | `HQ_LOGIN_URL` | Send sign-in to HQ (planned) | — |
+  | `VITE_HQ_URL` | HQ address for the sidebar's "Switch app" (public). Default: localhost:5173 in dev, visual-vibe-dashboard.vercel.app in builds | empty (default) |
 
 - **Run it:** `npm install`, then `npm run dev -- --port 5180` → http://localhost:5180 (HQ uses 5173). Restart after editing `.env.local`. Checks: `npm run typecheck`, `npm run lint`, `npm run build`, `npm run check:site-id`. Database check: http://localhost:5180/api/health.
 - **Database changes:** new migration file in `supabase/migrations/`; Angel reviews the SQL, then runs it in Supabase → SQL Editor (it's HQ's live project). Only create/alter `seo_*` objects.
@@ -201,7 +213,8 @@ Planned phase 1 layout: `docs/phase-1-plan.md` §6.
 1. **In progress (branch `phase-1`).** Phase 1: clients + keywords + import + matrix + clusters, plugin-ready (site id, `/clients/{site id}`, 8 hub tabs). Plan + ticked steps: `docs/phase-1-plan.md`.
    - [x] Step 1 (database): migration run Nov 20, health check all `ok`.
    - [x] Step 2 (sign-in): team password (read only from HQ), `vv_session` cookie shared with HQ, Sign in page, Log out.
-   - [ ] Step 3 (clients): next.
+   - [x] Step 3 (clients): list, add/edit (category name vs services box, list-in-name catch, pending services saved), `/clients/{site id}` + 8 tabs, Overview, account checklist, HQ's Switch app sidebar. Anassa entered Nov 20.
+   - [ ] Step 4 (CSV import wizard): next.
 2. Phase 2: baseline + results.
 3. Phase 3: sitemap + hotspots + page briefs.
 4. Phase 4: GBP + link database.

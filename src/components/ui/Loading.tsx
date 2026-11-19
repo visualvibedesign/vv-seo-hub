@@ -8,6 +8,16 @@ export function Bone({ className = '' }: { className?: string }) {
   return <span aria-hidden="true" className={`vv-skel block rounded-lg ${className}`} />
 }
 
+/** Small spinning ring for buttons that are working ("Saving…"). From HQ. */
+export function Spinner({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true" className="flex-none animate-spin motion-reduce:animate-none">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity=".25" strokeWidth="3" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 /** Three bouncing dots, like someone typing. */
 export function TypingDots() {
   return (
