@@ -1,0 +1,205 @@
+/* ==========================================================================
+   Visual Vibe brand tokens
+   Source: the design canvas "Visual Vibe Dashboard (Alexia's copy)"
+   and CONTEXT.md §8. Change colors HERE, not in components.
+   ========================================================================== */
+
+/* ---- Light mode (default) ---------------------------------------------- */
+:root {
+  /* From CONTEXT.md §8 */
+  --vv-purple: #7c5ce6; /* main accent, italic emphasis */
+  --vv-purple-deep: #4b33b5; /* links, strong accent text */
+  --vv-purple-ink: #2a1c6e; /* numbers / headings on lavender */
+  --vv-lavender: #bfafff; /* stars, active nav pill */
+  --vv-lavender-100: #eeeaff; /* tinted cards, chips */
+  --vv-cream: #f7f5ff; /* page background */
+  --vv-line: #ece8fb; /* card borders */
+  --vv-green: #bad657; /* Refresh button, positive */
+  --vv-green-100: #f2f8dd; /* "done" cards */
+  --vv-orange-100: #fff1e6; /* overdue cards */
+  --vv-red: #c81e1e; /* overdue text */
+  --vv-red-100: #fde4e4; /* overdue background */
+  --vv-ink: #131314; /* main text */
+  --vv-muted: #5e5a6e; /* secondary text */
+
+  /* Also used on the canvas, not yet listed in §8 */
+  --vv-surface: #ffffff; /* cards, panels */
+  --vv-skel: #ebe6fc; /* skeleton loader blocks */
+  --vv-skel-shine: rgba(255, 255, 255, 0.75); /* the shimmer sweeping over them */
+  --vv-lavender-50: #f4f1ff; /* lighter tinted panels */
+  --vv-green-ink: #4a6310; /* text on green-100 */
+  --vv-orange-ink: #8a3a12; /* text on orange-100 */
+  --vv-on-green: #131314; /* text on the lime button (same in dark mode) */
+  --vv-star: #9c86f5; /* logo star (same in dark mode) */
+  --vv-body: #3e3a4e; /* longer paragraphs */
+  --vv-lavender-200: #dad4ff; /* sign-in side panel */
+  --vv-field: #fbfaff; /* text field background */
+  --vv-field-line: #dcd4ff; /* text field border */
+  --vv-error-line: #f5a3a3; /* text field border when wrong (same in dark mode) */
+  --vv-toggle: #ffffff; /* dark-mode button */
+  --vv-toggle-ink: #2a1c6e;
+  --vv-toggle-line: #e6e0fb;
+
+  /* Status pills (design-ref Main: "status" colors). bg + text pairs */
+  --vv-st-todo: #f1f1f1;
+  --vv-st-todo-ink: #555555;
+  --vv-st-progress: #ffede0;
+  --vv-st-progress-ink: #a8470a;
+  --vv-st-review: #ece8fe;
+  --vv-st-review-ink: #4a2fc4;
+  --vv-st-waiting: #fff4d6;
+  --vv-st-waiting-ink: #7a5300;
+  --vv-st-qa: #fde8f1; /* Mica's QA review (pink, her colour) */
+  --vv-st-qa-ink: #9c1f62;
+  --vv-st-hold: #e1f1ff;
+  --vv-st-hold-ink: #0062ad;
+  --vv-st-ok: #eef6d2; /* on track, done */
+  --vv-st-done: #e3f3e8; /* "Complete" pill, "completed" chip */
+  --vv-st-done-ink: #00632f;
+
+  /* Project types (same in dark mode): Websites, Brand, SEO, Partners & retainers */
+  --vv-cat-web: #7c5ce6;
+  --vv-cat-brand: #bad657;
+  --vv-cat-seo: #f2b68a;
+  --vv-cat-partner: #bfafff;
+  --vv-cat-requests: #ffc53d; /* All projects › Requests (ClickUp's waiting yellow), same in dark mode */
+  --vv-cat-maintenance: #8d8d8d; /* All projects › Maintenance (ClickUp's to-do grey), same in dark mode */
+
+  /* Website builds chart: the client's turn (design-ref/two-week-build), same in dark mode */
+  --vv-bar-client: #ffe08a;
+
+  /* Key-number accent lines */
+  --vv-kpi-red: #e5484d; /* same in dark mode */
+  --vv-kpi-review: #6647f0;
+
+  /* Avatar for "no owner" */
+  --vv-avatar-none: #f1eff7;
+  /* Mica's avatar: pink (Angel's request, 2026-11-11). Angel is green, Alexia purple. */
+  --vv-avatar-pink: #f7b3d2;
+  --vv-pink-100: #fde8f1; /* Mica's card header (Who's on what) */
+
+  /* Weekly queue board columns (design-ref Queue) + the tidy-up note */
+  --vv-col-ready: #e9f7f5;
+  --vv-col-prog: #fff3ea;
+  --vv-col-qa: #fdf0f6;
+  --vv-col-wait: #fff9e6;
+  --vv-col-review: #f1eefe;
+  --vv-tidy: #fff3d1;
+  --vv-tidy-ink: #5c3f00;
+  --vv-dash: #cfc4ff; /* dashed borders */
+  --vv-heavy: #ffe7dc; /* "Heavy week" pill */
+  --vv-heavy-ink: #a43b14;
+
+  /* Labels / pills (2026-11-11). Light mode: the same colors as the matching -100 / ink pairs.
+     Dark mode: solid neon with black text. Cards keep using the -100 backgrounds. */
+  --vv-pill-red: #fde4e4;
+  --vv-pill-red-ink: #c81e1e;
+  --vv-pill-orange: #fff1e6;
+  --vv-pill-orange-ink: #8a3a12;
+  --vv-pill-green: #f2f8dd;
+  --vv-pill-green-ink: #4a6310;
+
+}
+
+/* ---- Dark mode ---------------------------------------------------------
+   Turned on by adding class="dark" to <html> (src/lib/theme.ts).
+   Values copied from the dark-mode rules inside the canvas screens.
+   ------------------------------------------------------------------------ */
+.dark {
+  /* Visual Vibe website dark vibe (visualvibe.alexiac23.sg-host.com, Elementor global colors;
+     Angel, 2026-11-11): warm black #121010, charcoal #1A1A1A, off-white #FDFDFD, brand pastels
+     lavender #BEAFFE, lime #B9D657, peach #FFBC7D, blush. Labels and pills are solid pastel with
+     black text; cards are charcoal with the color in a stripe or the text. Light mode, avatar
+     colors and the ClickUp status chart are unchanged. */
+  --vv-skel: #262323;
+  --vv-skel-shine: rgba(255, 255, 255, 0.07);
+
+  /* Surfaces */
+  --vv-cream: #121010; /* page (site dark sections) */
+  --vv-lavender-100: #121010; /* sidebar and panels: same warm black */
+  --vv-surface: #1a1a1a; /* cards (site charcoal) */
+  --vv-lavender-50: #222020; /* rows inside cards */
+  --vv-lavender-200: #2a2727;
+  --vv-field: #161414;
+  --vv-line: #2a2727;
+  --vv-field-line: #3a3636;
+  --vv-dash: #3a3636;
+  --vv-avatar-none: #2a2727;
+  --vv-toggle: #222020;
+  --vv-toggle-ink: #fdfdfd;
+  --vv-toggle-line: #3a3636;
+
+  /* Text */
+  --vv-ink: #fdfdfd;
+  --vv-body: #d6d3d3;
+  --vv-muted: #a8a4a4;
+
+  /* Lavender (the site's main accent) */
+  --vv-purple: #beaffe; /* accent words ("team.") */
+  --vv-purple-deep: #beaffe; /* links */
+  --vv-purple-ink: #ddd5ff;
+  --vv-lavender: #beaffe; /* selected sidebar item, pressed chips (dark text: index.css) */
+  --vv-kpi-review: #beaffe;
+
+  /* Lime (buttons, done, notes) */
+  --vv-green: #b9d657;
+  --vv-green-100: #222020;
+  --vv-green-ink: #b9d657;
+
+  /* Peach (in progress, SEO) */
+  --vv-orange-100: #222020;
+  --vv-orange-ink: #ffbc7d;
+
+  /* Blush / rose (due, overdue) */
+  --vv-red: #ff9db5;
+  --vv-red-100: #222020;
+  --vv-kpi-red: #ffb3c8; /* due-card stripe, overdue line */
+  --vv-pink-100: #222020;
+  --vv-avatar-pink: #e99bc0; /* Mica's avatar (unchanged) */
+
+  /* Labels: solid pastel, black text */
+  --vv-pill-red: #ffb3c8;
+  --vv-pill-red-ink: #121010;
+  --vv-pill-orange: #ffbc7d;
+  --vv-pill-orange-ink: #121010;
+  --vv-pill-green: #b9d657;
+  --vv-pill-green-ink: #121010;
+  --vv-st-todo: #2e2b2b;
+  --vv-st-todo-ink: #e5e2e2;
+  --vv-st-progress: #ffbc7d;
+  --vv-st-progress-ink: #121010;
+  --vv-st-review: #beaffe;
+  --vv-st-review-ink: #121010;
+  --vv-st-waiting: #ffe08a;
+  --vv-st-waiting-ink: #121010;
+  --vv-st-qa: #f7b3d2;
+  --vv-st-qa-ink: #121010;
+  --vv-st-hold: #a8d4ff;
+  --vv-st-hold-ink: #121010;
+  --vv-st-ok: #b9d657;
+  --vv-st-done: #b9d657;
+  --vv-st-done-ink: #121010;
+  --vv-tidy: #ffe08a;
+  --vv-tidy-ink: #121010;
+  --vv-heavy: #ffbc7d;
+  --vv-heavy-ink: #121010;
+
+  /* Weekly queue columns: charcoal, colored dot in the header */
+  --vv-col-ready: #1a1a1a;
+  --vv-col-prog: #1a1a1a;
+  --vv-col-qa: #1a1a1a;
+  --vv-col-wait: #1a1a1a;
+  --vv-col-review: #1a1a1a;
+  color-scheme: dark;
+}
+
+
+
+/* ---- Fonts (loaded from Google Fonts in index.html) ---------------------
+   tailwind.config.js turns these and the colors above into class names
+   like bg-vv-cream, text-vv-muted, font-display, font-body.
+   ------------------------------------------------------------------------ */
+:root {
+  --font-display: 'Fraunces', Georgia, serif; /* headings, italic emphasis */
+  --font-body: 'Inter', system-ui, sans-serif;
+}

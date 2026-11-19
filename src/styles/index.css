@@ -1,0 +1,83 @@
+/* Main stylesheet: loads our brand tokens, then Tailwind. */
+/* @import must come first; tokens.css only defines --vv-* variables. */
+@import './tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Page-wide defaults */
+@layer base {
+  body {
+    margin: 0;
+    background: var(--vv-cream);
+    color: var(--vv-ink);
+    font-family: var(--font-body);
+  }
+
+  /* Laptops: the design is drawn at 1440px with fixed pixel sizes, which looks too big on
+     laptop screens (often 1280–1536px wide with Windows display scaling). Scale the whole app
+     down a little there, keeping its proportions. Phones (≤900px) and big monitors are unchanged. */
+  @media (min-width: 901px) and (max-width: 1599px) {
+    html {
+      zoom: 0.875;
+    }
+  }
+
+  /* Keyboard focus ring, same as design-ref */
+  :focus-visible {
+    outline: 2px solid var(--vv-purple);
+    outline-offset: 2px;
+  }
+}
+
+/* Full-screen heights shrink with the zoom too; undo that so the sidebar still reaches the bottom. */
+@media (min-width: 901px) and (max-width: 1599px) {
+  .h-screen {
+    height: calc(100vh / 0.875);
+  }
+  .min-h-screen {
+    min-height: calc(100vh / 0.875);
+  }
+}
+
+/* Dark mode: lavender backgrounds (selected sidebar item, pressed chips, "Today") are the light
+   website lavender #BEAFFE, so their text is dark there (2026-11-11). */
+.dark .bg-vv-lavender {
+  color: #121010;
+}
+.dark .hover\:bg-vv-lavender:hover,
+.dark .group:hover .group-hover\:bg-vv-lavender {
+  color: #121010;
+}
+/* Same for white text on the accent purple, which is the light lavender in dark mode (Ask Vibe
+   button, build plan blocks). */
+.dark .bg-vv-purple.text-white,
+.dark .bg-vv-purple .text-white {
+  color: #121010;
+}
+
+/* Loading states (2026-11-11): skeleton blocks with a soft shimmer, shaped like the real cards,
+   so a page is never empty while ClickUp or Claude answers. See src/components/ui/Loading.tsx. */
+.vv-skel {
+  background-color: var(--vv-skel);
+  background-image: linear-gradient(90deg, transparent 0, var(--vv-skel-shine) 50%, transparent 100%);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  animation: vv-shimmer 1.5s ease-in-out infinite;
+}
+@keyframes vv-shimmer {
+  from {
+    background-position: -100% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+/* Reduce motion: plain shapes, nothing moves. */
+@media (prefers-reduced-motion: reduce) {
+  .vv-skel,
+  .vv-motion {
+    animation: none !important;
+  }
+}
