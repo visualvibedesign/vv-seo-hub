@@ -1,10 +1,10 @@
 # Local SEO Playbook (Sam's Rank Yourself method + our agency tools)
 
-Standard local SEO process for every client site. Based on Sam's 10-Day Rank Yourself SEO Challenge (Local SEO Academy) guides, worksheets (samsarsten.com/10day-worksheet1 … worksheet8) and videos, adjusted to how our agency works. First used on Anassa Wax & Beauty, Nov 2026. Days 9–10 will be added when they come.
+Standard local SEO process for every client site. Based on Sam's 10-Day Rank Yourself SEO Challenge (Local SEO Academy) guides, worksheets (samsarsten.com/10day-worksheet1 … worksheet9) and videos, adjusted to how our agency works. First used on Anassa Wax & Beauty, Nov 2026. Day 10 will be added when it comes.
 
-**Videos (Days 1–8):** [Day 1](https://www.youtube.com/watch?v=euNC0aNL_Iw) · [Day 2](https://www.youtube.com/watch?v=P_5S33738yE) · [Day 3](https://www.youtube.com/watch?v=A6sGzviQfiM) · [Day 4](https://www.youtube.com/watch?v=oIAxdwHHYRY) · [Day 5](https://www.youtube.com/watch?v=jv-m3bOy-Ks) · [Day 6](https://www.youtube.com/watch?v=DUMr4S5CIm0) · [Day 7](https://www.youtube.com/watch?v=0YeOuk54oaU) · [Day 8](https://www.youtube.com/watch?v=WIdB0gpFm5I). Transcripts: YouTube "...more" → "Show transcript".
+**Videos (Days 1–9):** [Day 1](https://www.youtube.com/watch?v=euNC0aNL_Iw) · [Day 2](https://www.youtube.com/watch?v=P_5S33738yE) · [Day 3](https://www.youtube.com/watch?v=A6sGzviQfiM) · [Day 4](https://www.youtube.com/watch?v=oIAxdwHHYRY) · [Day 5](https://www.youtube.com/watch?v=jv-m3bOy-Ks) · [Day 6](https://www.youtube.com/watch?v=DUMr4S5CIm0) · [Day 7](https://www.youtube.com/watch?v=0YeOuk54oaU) · [Day 8](https://www.youtube.com/watch?v=WIdB0gpFm5I) · [Day 9](https://www.youtube.com/watch?v=2B2uumZN7ak). Transcripts: YouTube "...more" → "Show transcript".
 
-**Order of work:** Day 1 what matters + kickoff → Day 2 keywords → Day 3 tracking + baseline → Day 4 Google Business Profile → Day 5 ideal sitemap + SEO hotspots → Day 6 build/improve one page → Day 7 GBP care (services/products, reviews, posts) → Day 8 citations (BrightLocal, 3 waves) → (Day 9 backlinks, Day 10 compare to baseline).
+**Order of work:** Day 1 what matters + kickoff → Day 2 keywords → Day 3 tracking + baseline → Day 4 Google Business Profile → Day 5 ideal sitemap + SEO hotspots → Day 6 build/improve one page → Day 7 GBP care (services/products, reviews, posts) → Day 8 citations (BrightLocal, 3 waves) → Day 9 backlinks (opportunity list) → (Day 10 compare to baseline).
 
 **Example deliverable (Anassa, use as the template):** Google Sheet "Anassa – Master Keyword Database": https://docs.google.com/spreadsheets/d/1-2eOHF19IGriVokfAhJ_1Gdh7DHhjjOcBRzfCoxYMxA/edit (tabs: Sam's Guide → Master Keyword Database → Clusters → Competitors → On-page fixes → Baseline Rankings).
 
@@ -268,7 +268,82 @@ Standard local SEO process for every client site. Based on Sam's 10-Day Rank You
 - Each wave takes ~30–40 days. Start wave 1 around **week 6** of the client (after pages are built), then wave 2 after it finishes.
 - Never buy the directories' ads/upsells.
 
-**Worksheet "What's going in Wave 1?":** row #, directory domain, domain authority (from BrightLocal), verification needed · who does it (me / BrightLocal).
+**Worksheet "What's going in Wave 1?":** row #, directory domain, domain authority (from BrightLocal), verification needed · who does it (me / BrightLocal). Bring this list to Day 9.
+
+---
+
+## Day 9 · Backlinks ("Build a natural backlink profile")
+
+**Video guide:** Sam's Day 9 video "Find Backlinks Worth Pursuing": https://www.youtube.com/watch?v=2B2uumZN7ak (1 h 12 min). Worksheet: 3 pages, uses the Day 8 Wave 1 list, brings the opportunity list to Day 10.
+
+**Extra tips from the video** (timestamps to jump to)
+- **Authority today = quality, not count** (5:17). Google no longer publishes it; Semrush / Ahrefs Authority Score is a rough estimate and the best we have.
+- **Bag of marbles** (6:54): premier links = a handful (2–5 per client) · SERP links ≈ 10–20 · citations ≈ 90–100 (BrightLocal) + aggregators · competitor-research links = nearly unlimited, mostly low value. **Space them out over the year**: a bit of high, medium and low each month, never top-down (that looks unnatural). Manual link building happens between citation waves, then continues on its own.
+- **Chamber is a no-brainer** (12:52). If the big-city chamber is pricey, join the next town's (Sam: Bend ~$500/yr AS ~32 vs Redmond ~$275/yr AS 27). Join even if you never go to events. A client who refuses the chamber is holding back their own SEO.
+- **Fill out every profile fully** (14:21), mainly on premier and SERP sites: AI tools pull business info from them (an audit Sam ran pulled everything from a chamber profile).
+- **Quarterly strategy session** (15:05), around the end of the client's first quarter, 1 hour: show wins + misses + plan; ask about trade associations, certifications and profiles they already have (e.g. a half-filled Zillow profile on an AS-90 site = a 5-minute link); collect content for V2 pages.
+- **Referral partners** (16:33): only link to each other if you really do business together and it's relevant. Linking out gives away some authority. No link swaps or "backlink pods", no random local sites (e.g. an auto parts store that isn't a client).
+- **Vendors / industry sites** (18:35): e.g. Clutch, DesignRush for agencies. Paying ~$150/mo just for a partner badge link isn't worth it. A link can fit more than one bucket; it doesn't matter which. End goal: a list of links with their **Authority Score**, ranked by it.
+- **Sponsorships** (19:25): set a yearly giving budget ($250 / $500 / $1,000), pick the top 3 causes, then compare: event page AS, does it link to sponsors, how long the link stays (usually one year). Cheaper routes: host a chamber event or lunch-and-learn. Mentions without a link still help AI visibility.
+- **SERP links** (23:45): search each service + city, go through ~10 pages (~100 results). Look for listicles and directories, **not competitors' sites**. ~10 min per search, ~1 hour total, yields ~10–20 decent links.
+  - Yelp: spruce up the profile (photos). Don't ask for Yelp reviews; just share the link.
+  - Old Reddit thread ranking for the keyword: a happy client who already uses Reddit can add a genuine recommendation. Reddit punishes anything that looks like promo.
+  - Check each site's AS **and traffic trend** in Semrush. High AS with flat traffic = probably not worth the effort.
+- **Footer credit links on client sites** (39:55) count, but less than a link in the page copy. Treat them as a free ad.
+- **Backlink Gap setup** (44:47): set all 5 domains to **root domain** (not URL). Sorted by Matches: start with the "4 of 5" rows, then 3 of 5, and so on. Filter **Authority Score from 3** to cut most AI-generated slop; skip adult, fake or spammy sites. Ahrefs has a similar tool.
+- **Paid listings** (53:21): free profile yes (e.g. Agency Spotter free vs $2,800 paid). Over ~$20 is rarely worth it; ~$15/yr on an AS-30 site maybe.
+- **Volume** (54:22): a gap report of ~400 referring domains usually gives ~20–50 legit ones. Export it and delegate the checking. Then swap in the next 4 competitors, then the same industry in a bigger city, then similar businesses in town (e.g. pressure washers → roofers).
+- **Pace math** (55:55): e.g. 3 premier + 10 SERP + 90 citations + 250 competitor ≈ 360 links/year ≈ 30/month ≈ 7.5/week (high end). Most industries: **2–5/week**; competitive ones ~10.
+- **Calibrate** (58:33): check the client's Authority Score at month 3, 6, 9, 12. Far from the target AS = speed up; close = slow down.
+- **Spam line** (59:13): Sam no longer looks at AS 2 or below; **AS 3+** is OK to pursue from competitor research. A few quality links (chamber, industry) beat hundreds of AS-3 links, but there are only so many, so it's a balance.
+- **Profile health check** (1:02:25): Semrush Domain Overview (free) → AS trend. **Referring domains vs backlinks** should be close (1:1 to ~2:1); a huge gap means lots of links from one site. Sort referring domains by AS to review. Testimonials you give vendors are another link source.
+- **"Noise of the internet"** (1:05:09): thousands of backlinks from crawler / backlink-checker sites are normal and likely ignored by Google. Don't show clients full backlink lists. Don't buy links (social bookmarks, Fiverr packages); tier-2 links aren't worth it. Skip the disavow tool (likely does nothing).
+- **First 20 links** (1:09:24): about 2 hours with Claude helping, ~4 alone. Day 10 = reporting + turning results into a case study.
+
+**Goal:** map where the links will come from and start a list **bigger than you'll work this week**. Mix of high-, medium- and lower-authority links from legitimate places; keep sourcing over time.
+
+**Words:** backlink = clickable link from another site to yours · citation = also a backlink when it includes the website link · mention = names the business without linking.
+
+**Four link sources** (one opportunity can fit more than one)
+- **Premier:** chamber, trade association, local publication, partner or community organization. Highly relevant; some bring recognition, referrals or leads.
+- **Competitor-sourced:** a few big ones and many everyday ones. Several similar businesses on one site = a clue you can get listed too.
+- **SERP:** a directory or roundup that shows up when you search the service. Worth it even if it never sends an inquiry.
+- **Citations:** straightforward listings; the Day 8 Wave 1 list gets this moving.
+- Authority Score is one signal only: a local chamber can score far lower than a big directory and still deserve as much attention.
+
+**1 · Premier links (start with relationships you already have)**
+- Existing memberships/partnerships = quick wins: look for a public member page, partner page, event page or directory.
+- Table: relationship → public page or route in → next action. Rows: chamber of commerce · trade groups and associations · certifications · referral partners · manufacturers and vendors · organizations you've worked with.
+- **Editorial idea:** expertise, a local story or a useful example a publication could feature.
+- **Sponsorships (pick 2–3, "lead with your heart"):** community fit first; local relevance and online recognition break a tie. Per sponsorship: event or cause, tier + cost, why support it, sponsor page (public / on main site / stays up), shows (name / logo / profile / link). Paid links are usually marked sponsored or nofollow.
+
+**2 · Search results (same service and area as the whole challenge)**
+- **Like a customer:** [service] in [city] · best [service] in [city] · [service] near me.
+- **Like a lister:** [industry] directory · [industry] association member directory · [city] business directory.
+- Open promising directories, roundups, industry pages. Check the exact category and location. Find the route in: claim a profile, apply, contact an editor, or join.
+- **Ask:** is this a legitimate page for the business, and can it actually get listed? Audience and leads are a bonus.
+- Log: search run → promising pages (row # on the opportunity list).
+
+**3 · Competitor research (where most of the volume comes from)**
+- Semrush → **Backlink Gap**: client domain + up to 4 direct competitors from the same service and area (C1–C4 from Sam's Guide). **Prospects for** = client domain. **Matches** = common sources; **Authority Score** = stronger domains. Then open the actual source page.
+
+| Competitors on the site | What to do |
+|---|---|
+| All or most | Open it early. Legitimate + qualifies → go after it (normal place for businesses in that market). |
+| Some | Still worth a look (real local directory or niche association?). Check how they got on. |
+| None, found elsewhere | Found via search, relationships or industry research with a legitimate route in → pursue it. A gap report won't surface it. |
+
+- **Modest site?** Keep it if the business legitimately belongs, even with a low score. Skip irrelevant or spammy sites.
+- Out of competitors? Same industry in a bigger city (niche sources) + similar businesses in town (local sources). No Semrush? Build from searches, memberships, relationships.
+
+**4 · Opportunity list (bring to Day 10)**
+- **Weekly pace:** 2–10 links a week, based on the competition.
+- Start with 12 rows. Tick **This week** on the few to start, each with a dated next action. Over time: up to **100 possibilities**, about **20 qualified**. Some weeks = several easy listings, others = one pitch or sponsorship. Keep sourcing.
+- Columns: # · exact page · found via (R relationship, S search, C competitor, Cit citation, Sp sponsorship) · why it fits · how to get on it (claim, apply, contact) · cost · next action + date · this week · sent · approved · live.
+- Before adding a citation, check the Day 8 Wave 1 list so it isn't added twice.
+- Keep sent, approved and live separate. Tick **Live** only after clicking the link and checking where it goes (Day 10 compares done vs actually in place).
+
+**Our agency setup:** the list lives in the **Link Opportunities** tab of the client's Master Keyword Database sheet (same columns + an **Authority Score** column, as Sam recommends). Backlink Gap competitors = C1–C4 on Sam's Guide. Never use a client's hidden address on any listing.
 
 ---
 
@@ -334,3 +409,4 @@ Source: https://whitespark.ca/local-search-ranking-factors/ (47 experts, 187 fac
 - Day 6 → Service/location page template; build / reoptimize pages; internal linking; request indexing.
 - Day 7 → GBP services/products, review requests, scheduled GBP posts, monthly GBP care.
 - Day 8 → Citation building (BrightLocal waves); NAP consistency; start of link database.
+- Day 9 → Link Opportunities tab: premier links, sponsorships, SERP links, Semrush Backlink Gap; weekly link pace.
