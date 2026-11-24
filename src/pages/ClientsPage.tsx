@@ -15,6 +15,10 @@ const PER_PAGE = 25
 type StatusFilter = 'all' | ClientStatus
 type Sort = 'recent' | 'name' | 'keywords'
 
+/** One row (wraps on small screens): search · status pills · step · sort (design: Clients.png). */
+const TOOLBAR =
+  'box-border flex flex-wrap items-center gap-3 rounded-[22px] border border-solid border-vv-line bg-vv-surface p-3.5 shadow-[0_14px_30px_-24px_rgba(91,63,208,0.45)] dark:shadow-[0_18px_40px_-28px_rgba(0,0,0,.7)] phone:gap-2.5 phone:p-3'
+
 const STATUS_PILL: Record<ClientStatus, string> = { active: PILL_DONE, paused: PILL_WAITING, archived: PILL_TODO }
 const STATUS_LABEL: Record<ClientStatus, string> = { active: 'Active', paused: 'Paused', archived: 'Archived' }
 
@@ -82,8 +86,8 @@ export default function ClientsPage() {
         </HeaderTools>
       </header>
 
-      <div className={`${CARD} flex-row flex-wrap items-center gap-3 !p-3.5`} role="search">
-        <label className="relative min-w-[220px] flex-[1_1_300px]">
+      <div role="search" className={TOOLBAR}>
+        <label className="relative block min-w-0 flex-[1_1_320px] phone:basis-full">
           <span className="sr-only">Search by name, site or city</span>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-vv-muted">
             <circle cx="11" cy="11" r="7" />
@@ -100,7 +104,7 @@ export default function ClientsPage() {
             placeholder="Search by name, site or city"
           />
         </label>
-        <div role="radiogroup" aria-label="Status" className="flex flex-wrap gap-1.5">
+        <div role="radiogroup" aria-label="Status" className="flex flex-none flex-wrap gap-1.5 phone:basis-full phone:gap-1">
           {(['all', 'active', 'paused', 'archived'] as StatusFilter[]).map((s) => (
             <button
               key={s}
@@ -111,7 +115,7 @@ export default function ClientsPage() {
                 setStatus(s)
                 reset()
               }}
-              className={`min-h-11 rounded-full border border-solid px-4 font-body text-[15px] font-semibold ${
+              className={`min-h-11 rounded-full border border-solid px-4 font-body text-[15px] font-semibold phone:px-3 phone:text-[14px] ${
                 status === s ? 'border-vv-lavender bg-vv-lavender text-vv-ink' : 'border-vv-field-line bg-vv-surface text-vv-body hover:bg-vv-lavender-50'
               }`}
             >
@@ -119,13 +123,13 @@ export default function ClientsPage() {
             </button>
           ))}
         </div>
-        <label className="flex-[0_1_180px]">
+        <label className="block w-[170px] flex-none phone:w-auto phone:min-w-0 phone:flex-1">
           <span className="sr-only">Sam step</span>
           <select className={`${FIELD} rounded-full`} disabled title="Comes with the step-by-step guide" value="">
             <option value="">Any step</option>
           </select>
         </label>
-        <label className="flex-[0_1_210px]">
+        <label className="block w-[210px] flex-none phone:w-auto phone:min-w-0 phone:flex-1">
           <span className="sr-only">Sort</span>
           <select
             className={`${FIELD} rounded-full`}

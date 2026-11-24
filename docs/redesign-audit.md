@@ -214,20 +214,21 @@ No tables, columns or data are removed.
 
 ## 8. Build order (redo phase 1)
 
-1. **Docs + design in place** (0.1–0.3). No code.
-2. **Sidebar** (hub + client mode, switcher, foldable groups) + routes for every section.
-3. **Migration 0002** (8 tables + 2 `seo_clients` columns + 2 `seo_imports` columns + 7 seeded templates). Angel sees the SQL first.
-4. **Overview** + **All clients** (table, filters, 25/page).
-5. **Add client wizard** (4 steps, template pick) + Edit client.
-6. **Client Overview** (Sam's 10 days, services & areas, accounts).
-7. **Guide** (steps, tasks, auto-ticks, progress).
-8. **Templates** library + editor + apply (snapshot).
-9. **Database restyle** (pills with counts, Track pill) + **Matrix** (step 6).
-10. **Uploads + auto-fill**: Day 1 + Day 2 tabs, what I need + how-to steps, one drop zone, code rules first.
-11. **Claude API** auto-fill (matrix, services leftovers, intent gaps, Day 1) + AI log + Review / Approve.
-12. **Clusters** (step 7) + **Export tracked list** (step 8).
-13. **Notes & links.**
-14. Anassa check vs §4, phone + dark mode on every screen.
+Numbers = the redesign steps as built (START-HERE order). Migrations are split per step, each add-only, SQL shown to Angel first.
+
+- ✅ **Docs + design in place** (§0).
+- ✅ **Step 1 · Sidebar** (hub + client mode, switcher, foldable groups) + routes for every section.
+- ✅ **Step 2 · All clients** (table, filters, 25/page) + **Add client wizard** (4 steps) + Edit client. Migration 0002: `seo_clients.industry` (ran Nov 25).
+- **Step 3 · Guide + both Overviews** (migration 0003: `seo_guide_progress`):
+  - 3a **Step-by-step guide** (9 steps, tasks, auto-ticks, progress per client)
+  - 3b **Client Overview** (design Client.png: chips, Continue Day N, 4 stat cards with "Connect the site (coming soon)" / "—" until phase 2, Sam's 10 days from guide progress, Services & areas, Accounts)
+  - 3c **Hub Overview** (design Main.png: greeting, 4 stat cards, SEO overview table as the "Connect the site (coming soon)" empty state, Recently worked on with step + progress bar, Next client, Needs you, Templates you reuse). Replaces the old "Build phases" page.
+  - Then the Sam step column + "Any step" filter on All clients and "Day 2 · Keywords" in the client switcher go live.
+- **Step 4 · Keywords**: Database restyle (pills with counts, Needs role, Track pill) + Matrix + Clusters + Export tracked list.
+- **Step 5 · Templates** library + editor + apply (snapshot). Migration: `seo_templates`, `seo_template_items`, `seo_client_templates` + 7 seeded templates.
+- **Step 6 · Uploads + auto-fill** (Day 1 + Day 2): what I need + how-to steps, one drop zone, code rules first, then the Claude API + AI log + Review / Approve. Migration: `seo_autofill`, `seo_ai_log`.
+- **Step 7 · Notes & links.** Migration: `seo_notes`, `seo_client_links`.
+- **Last:** Anassa check vs §4, phone + dark mode on every screen.
 
 Each step: plan → Angel OK → build → test on localhost → commit locally. No push, merge or deploy until Angel says so.
 
