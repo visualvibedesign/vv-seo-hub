@@ -1,92 +1,122 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useClientContext } from '../../components/layout/ClientLayout'
+import HeaderTools from '../../components/layout/HeaderTools'
 import { Spinner } from '../../components/ui/Loading'
+import StatCard from '../../components/ui/StatCard'
 import { useSaveAccount } from '../../hooks/useClients'
-import { ACCOUNTS, ACCOUNT_STATUS_LABEL, SAM_STEPS } from '../../lib/clientSetup'
-import { BTN_LINK, CARD, CARD_TITLE, FIELD, PILL_DONE, PILL_PROGRESS, PILL_REVIEW, PILL_TODO } from '../../lib/ui'
-import type { AccountStatus, ClientAccount, ClientDetail } from '../../types/seo'
+import { useGuide } from '../../hooks/useGuide'
+import { ACCOUNTS, ACCOUNT_STATUS_LABEL, industryLabel } from '../../lib/clientSetup'
+import { GUIDE, GUIDE_STEPS, stepDay } from '../../lib/guide'
+import { BTN_GHOST, BTN_LIME, BTN_LINK, CARD, CARD_TITLE, FIELD, PILL, PILL_TODO, siteLabel, splitAccent } from '../../lib/ui'
+import type { AccountStatus, ClientAccount, ClientDetail, GuideStatus } from '../../types/seo'
 
-// Overview tab (/clients/{site id}): Sam's 9 steps, services + areas, kickoff answers, account checklist.
-
-/** What's still missing from Day 1 setup (empty = done). */
-function setupGaps(c: ClientDetail): string[] {
-  const gaps: string[] = []
-  for (const k of c.categories.filter((k) => k.code !== 'FAQ' && k.code !== 'Home')) {
-    if (!k.services.length) gaps.push(`${k.code} has no services`)
-  }
-  if (!c.areas.find((a) => a.code === 'A1')?.name) gaps.push('A1 has no name')
-  if (!c.success12mo) gaps.push('12-month success answer')
-  if (!c.usp) gaps.push('USP')
-  if (!c.idealClient) gaps.push('ideal client')
-  const pending = c.accounts.filter((a) => a.status === 'pending').length
-  if (pending) gaps.push(`${pending} account${pending === 1 ? '' : 's'} pending`)
-  return gaps
-}
+// Client Overview (/clients/{site id}), design docs/design/Client.png: name + chips, Continue in the guide,
+// 4 number cards, Sam's 10 days (from guide progress), Services & areas, Accounts.
+// Not faked: the number cards stay "—" until Baseline + reports (phase 2) has real dated numbers.
 
 export default function OverviewPage() {
   const c = useClientContext()
-  const gaps = setupGaps(c)
-
+  const [lead, accent] = splitAccent(c.name)
+  const current = c.guide.current
   return (
-    // Desktop: two columns. Phones: one column in reading order (steps, services, kickoff, then the long checklist).
-    <div className="flex flex-wrap items-start gap-5 phone:flex-col phone:flex-nowrap phone:items-stretch">
-      <div className="flex min-w-0 flex-[3_1_520px] flex-col gap-5 phone:contents">
-        <StepsCard client={c} gaps={gaps} />
-        <AccountsCard client={c} className="phone:order-4" />
+    <>
+      <header className="flex flex-wrap items-end justify-between gap-5">
+        <div className="flex min-w-0 flex-[1_1_520px] flex-col gap-3">
+          <h1 className="m-0 font-display text-[50px] font-semibold leading-none tracking-[-0.02em] phone:text-[36px] phone-sm:text-[32px]">
+            {lead}
+            <em className="font-medium text-vv-purple">{accent}.</em>
+          </h1>
+          <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
+            <li>
+              <a href={c.siteUrl} target="_blank" rel="noopener noreferrer" className={`${CHIP} no-underline hover:border-vv-lavender`}>
+                {siteLabel(c.siteUrl)} ↗
+              </a>
+            </li>
+            {c.city && <li className={CHIP}>{[c.city, c.state].filter(Boolean).join(', ')}</li>}
+            <li className={`${CHIP} !border-vv-lavender-100 !bg-vv-lavender-100 !text-vv-purple-ink`}>Template: {industryLabel(c.industry) ?? 'none yet'}</li>
+            <li className={CHIP} title={c.siteId}>
+              Site id {c.siteId.slice(0, 8)}…
+            </li>
+            {c.status !== 'active' && <li className={`${PILL} bg-vv-st-waiting text-vv-st-waiting-ink`}>{c.status === 'paused' ? 'Paused' : 'Archived'}</li>}
+          </ul>
+        </div>
+        <HeaderTools>
+          <Link to={`/clients/${c.siteId}/edit`} className={BTN_GHOST}>
+            Edit client
+          </Link>
+          <Link to={`/clients/${c.siteId}/guide`} className={BTN_LIME}>
+            {current < GUIDE_STEPS ? `Continue ${stepDay(current)} in the guide ›` : 'Open the guide ›'}
+          </Link>
+        </HeaderTools>
+      </header>
+
+      <section aria-label="Key numbers" className="grid grid-cols-4 gap-4 [@media(max-width:1199px)]:grid-cols-2 phone:gap-2.5">
+        <StatCard label="Search Console" value={null} caption="Impressions + clicks · Baseline + reports (phase 2)" />
+        <StatCard label="GA4 sessions" value={null} caption="Organic sessions · Baseline + reports (phase 2)" bar="lime" />
+        <StatCard label="GBP views" value={null} caption="Views, calls, website clicks · phase 2" />
+        <StatCard label="Map grid" value={null} caption="Whitespark points found · phase 2" bar="red" />
+      </section>
+
+      <div className="grid grid-cols-[minmax(0,13fr)_minmax(0,8fr)] items-start gap-6 [@media(max-width:1100px)]:grid-cols-1">
+        <StepsCard client={c} />
+        <div className="flex min-w-0 flex-col gap-6">
+          <TargetsCard client={c} />
+          <AccountsCard client={c} />
+        </div>
       </div>
-      <div className="flex min-w-0 flex-[2_1_340px] flex-col gap-5 phone:contents">
-        <TargetsCard client={c} className="phone:order-2" />
-        <KickoffCard client={c} className="phone:order-3" />
-      </div>
-    </div>
+    </>
   )
 }
 
-function StepsCard({ client: c, gaps }: { client: ClientDetail; gaps: string[] }) {
+const CHIP = 'inline-flex min-h-8 items-center rounded-full border border-solid border-vv-field-line bg-vv-surface px-3.5 text-[14px] font-medium text-vv-ink'
+
+const STATUS_PILL: Record<GuideStatus, { cls: string; text: string }> = {
+  done: { cls: `${PILL} bg-vv-lavender-100 text-vv-purple-ink`, text: 'Done' },
+  in_progress: { cls: `${PILL} bg-vv-green-100 text-vv-green-ink`, text: 'In progress' },
+  not_started: { cls: PILL_TODO, text: 'Not started' },
+}
+
+function StepsCard({ client: c }: { client: ClientDetail }) {
+  const g = useGuide(c.siteId)
+  const current = c.guide.current
   return (
-    <section className={`${CARD} phone:order-1`} aria-labelledby="ov-steps">
-      <div className="flex flex-col gap-1">
+    <section className={CARD} aria-labelledby="ov-steps">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="ov-steps" className={CARD_TITLE}>
-          Sam’s <em className="font-medium text-vv-purple">9 steps</em>
+          Sam’s 10 days
         </h2>
-        <p className="m-0 text-sm text-vv-muted">The 10-Day Rank Yourself process, one flow per client.</p>
+        <Link to={`/clients/${c.siteId}/guide`} className="text-[15px] font-semibold text-vv-purple-deep underline">
+          {current < GUIDE_STEPS ? `Step ${current + 1} of ${GUIDE_STEPS}` : 'All steps done'} · open the guide ›
+        </Link>
       </div>
-      <ol className="m-0 flex list-none flex-col gap-2 p-0">
-        {SAM_STEPS.map((s) => {
-          let pill: { cls: string; text: string }
-          let detail = ''
-          if (s.n === 0) {
-            pill = gaps.length ? { cls: PILL_PROGRESS, text: 'In progress' } : { cls: PILL_DONE, text: 'Done' }
-            detail = gaps.length ? `Missing: ${gaps.join(', ')}` : 'Services, areas, kickoff answers and accounts are in.'
-          } else if (s.n === 1) {
-            pill = c.counts.keywords ? { cls: PILL_PROGRESS, text: 'In progress' } : { cls: PILL_REVIEW, text: 'Next' }
-            detail = c.counts.keywords ? `${c.counts.keywords} keywords so far` : 'Import the Keyword Planner + Semrush CSVs'
-          } else {
-            pill = { cls: PILL_TODO, text: `Phase ${s.phase}` }
-          }
+      {g.isError && <p className="m-0 text-[14px] font-semibold text-vv-red">Couldn’t load the guide progress.</p>}
+      <ol className="m-0 flex list-none flex-col p-0">
+        {GUIDE.map((s) => {
+          const st = g.data?.steps[s.n]
+          const status: GuideStatus = st?.status ?? 'not_started'
+          const done = status === 'done'
+          const here = s.n === current
+          const blurb = s.n === 1 && c.counts.keywords ? `${c.counts.keywords.toLocaleString('en-US')} ${s.overview.blurb}` : s.overview.blurb
           return (
-            <li key={s.n} className="flex items-center gap-3 rounded-2xl bg-vv-lavender-50 px-4 py-3">
-              <span
-                aria-hidden="true"
-                className="inline-flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-vv-surface font-display text-base font-semibold text-vv-purple-deep"
-              >
-                {s.n}
-              </span>
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="text-[15px] font-semibold">
-                  {s.tab ? (
-                    <Link to={`/clients/${c.siteId}/${s.tab}`} className="text-vv-ink no-underline hover:text-vv-purple-deep">
-                      {s.title}
-                    </Link>
-                  ) : (
-                    s.title
-                  )}{' '}
-                  <span className="text-[13px] font-medium text-vv-muted">· {s.day}</span>
+            <li key={s.n} className="border-0 border-t border-solid border-vv-line first:border-t-0">
+              <Link to={`/clients/${c.siteId}/guide?step=${s.n}`} className="flex min-h-[64px] items-center gap-3.5 py-2.5 text-vv-ink no-underline hover:bg-vv-lavender-50 phone:gap-3">
+                <span
+                  aria-hidden="true"
+                  className={`inline-flex h-10 w-10 flex-none items-center justify-center rounded-xl text-[15px] font-bold ${
+                    done ? 'bg-vv-purple text-white' : here ? 'bg-vv-green text-vv-on-green' : 'bg-vv-lavender-100 text-vv-body'
+                  }`}
+                >
+                  {s.n + 1}
                 </span>
-                {detail && <span className="text-[13px] text-vv-muted">{detail}</span>}
-              </div>
-              <span className={pill.cls}>{pill.text}</span>
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="text-[16px] font-semibold">{s.overview.title}</span>
+                  <span className="truncate text-[14px] text-vv-body phone:whitespace-normal phone:text-[13px]">
+                    {s.day} · {blurb}
+                  </span>
+                </span>
+                {g.isPending ? <Spinner /> : <span className={STATUS_PILL[status].cls}>{STATUS_PILL[status].text}</span>}
+              </Link>
             </li>
           )
         })}
@@ -95,150 +125,114 @@ function StepsCard({ client: c, gaps }: { client: ClientDetail; gaps: string[] }
   )
 }
 
-function TargetsCard({ client: c, className = '' }: { client: ClientDetail; className?: string }) {
+function TargetsCard({ client: c }: { client: ClientDetail }) {
+  const shown = c.categories.filter((k) => k.code !== 'FAQ')
   return (
-    <section className={`${CARD} ${className}`} aria-labelledby="ov-targets">
+    <section className={CARD} aria-labelledby="ov-targets">
       <h2 id="ov-targets" className={CARD_TITLE}>
-        Services &amp; <em className="font-medium text-vv-purple">areas</em>
+        Services &amp; areas
       </h2>
-      <dl className="m-0 flex flex-col gap-3">
-        {c.categories.map((k) => (
-          <div key={k.code} className="flex flex-col gap-1.5">
-            <dt className="text-[15px] font-semibold">
-              <span className="mr-1.5 text-vv-purple-deep">{k.code}</span>
-              {k.name}
-            </dt>
-            <dd className="m-0 flex flex-wrap gap-1.5">
-              {k.services.length ? (
-                k.services.map((s) => (
-                  <span key={s.id} className="rounded-full bg-vv-lavender-100 px-2.5 py-0.5 text-[13px] text-vv-purple-ink">
-                    {s.name}
-                  </span>
-                ))
-              ) : (
-                <span className="text-[13px] text-vv-muted">{k.code === 'FAQ' ? 'Help pages are added as clusters.' : 'No services yet'}</span>
-              )}
+      <dl className="m-0 flex flex-col gap-3.5">
+        {shown.map((k) => (
+          <div key={k.code} className="grid grid-cols-[56px_minmax(0,1fr)] gap-2">
+            <dt className="pt-0.5 text-[14px] font-bold text-vv-purple-deep">{k.code}</dt>
+            <dd className="m-0 flex min-w-0 flex-col">
+              <span className="text-[16px] font-semibold">{k.name || <span className="text-vv-muted">No name yet</span>}</span>
+              <span className="text-[14px] text-vv-body">{serviceLine(k.services.map((s) => s.name)) || 'No services yet'}</span>
             </dd>
           </div>
         ))}
       </dl>
-      <div className="flex flex-col gap-1.5 border-t border-solid border-vv-line pt-3">
+      <ul className="m-0 flex list-none flex-wrap gap-2 border-0 border-t border-solid border-vv-line p-0 pt-3.5">
         {c.areas.map((a) => (
-          <div key={a.code} className="flex items-baseline gap-2 text-[15px]">
-            <span className="font-semibold text-vv-purple-deep">{a.code}</span>
-            {a.status === 'n_a' ? (
-              <span className="text-vv-muted">N/A</span>
-            ) : (
-              <span>
-                {a.name}
-                {a.state ? `, ${a.state}` : ''}
-              </span>
-            )}
-          </div>
+          <li key={a.code} className={`${PILL} ${a.status === 'active' ? 'bg-vv-green-100 text-vv-green-ink' : 'bg-vv-st-todo text-vv-st-todo-ink'}`}>
+            {a.code} {a.status === 'active' ? [a.name, a.state].filter(Boolean).join(', ') : 'N/A'}
+          </li>
         ))}
-      </div>
-    </section>
-  )
-}
-
-function KickoffCard({ client: c, className = '' }: { client: ClientDetail; className?: string }) {
-  const rows: [string, string | null][] = [
-    ['12-month success', c.success12mo],
-    ['Why them (USP)', c.usp],
-    ['Ideal client', c.idealClient],
-    ['Notes', c.notes],
-  ]
-  return (
-    <section className={`${CARD} ${className}`} aria-labelledby="ov-kickoff">
-      <h2 id="ov-kickoff" className={CARD_TITLE}>
-        Kickoff <em className="font-medium text-vv-purple">answers</em>
-      </h2>
-      <dl className="m-0 flex flex-col gap-3">
-        {rows.map(([label, value]) => (
-          <div key={label} className="flex flex-col gap-0.5">
-            <dt className="text-[13px] font-semibold text-vv-muted">{label}</dt>
-            <dd className="m-0 whitespace-pre-line text-[15px] leading-normal text-vv-body">
-              {value || (
-                <Link to={`/clients/${c.siteId}/edit`} className="text-vv-purple-deep">
-                  Add it
-                </Link>
-              )}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </section>
-  )
-}
-
-function AccountsCard({ client: c, className = '' }: { client: ClientDetail; className?: string }) {
-  const ready = c.accounts.filter((a) => a.status === 'ready').length
-  const counted = c.accounts.filter((a) => a.status !== 'n_a').length
-  return (
-    <section className={`${CARD} ${className}`} aria-labelledby="ov-accounts">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="ov-accounts" className={CARD_TITLE}>
-          Account <em className="font-medium text-vv-purple">checklist</em>
-        </h2>
-        <span className="text-sm font-semibold text-vv-muted">
-          {ready} of {counted} ready
-        </span>
-      </div>
-      <p className="m-0 -mt-2 text-[13px] text-vv-muted">Status and next step only. Never passwords or keys here.</p>
-      <ul className="m-0 flex list-none flex-col p-0">
-        {ACCOUNTS.map((def) => {
-          const a = c.accounts.find((x) => x.kind === def.kind)
-          return a ? <AccountRow key={def.kind} siteId={c.siteId} account={a} label={def.label} hint={def.hint} /> : null
-        })}
       </ul>
     </section>
   )
 }
 
+/** "Eyebrow lamination, Eyebrow tint, Chin + 7 more" (first 3 names). */
+function serviceLine(names: string[]): string {
+  return names.length > 3 ? `${names.slice(0, 3).join(', ')} + ${names.length - 3} more` : names.join(', ')
+}
+
+function AccountsCard({ client: c }: { client: ClientDetail }) {
+  const ready = c.accounts.filter((a) => a.status === 'ready').length
+  const counted = c.accounts.filter((a) => a.status !== 'n_a').length
+  return (
+    <section className={CARD} aria-labelledby="ov-accounts">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 id="ov-accounts" className={CARD_TITLE}>
+          Accounts
+        </h2>
+        <span className="text-sm font-semibold text-vv-muted">
+          {ready} of {counted} ready
+        </span>
+      </div>
+      <ul className="m-0 flex list-none flex-col p-0">
+        {ACCOUNTS.map((def) => {
+          const a = c.accounts.find((x) => x.kind === def.kind)
+          return a ? <AccountRow key={def.kind} siteId={c.siteId} account={a} label={def.label} /> : null
+        })}
+      </ul>
+      <p className="m-0 text-[13px] text-vv-muted">Status and next step only. Never passwords or keys here.</p>
+    </section>
+  )
+}
+
 const STATUS_STYLE: Record<AccountStatus, string> = {
-  ready: 'border-vv-st-done bg-vv-st-done text-vv-st-done-ink',
+  ready: 'border-vv-green-100 bg-vv-green-100 text-vv-green-ink',
   pending: 'border-vv-st-waiting bg-vv-st-waiting text-vv-st-waiting-ink',
   n_a: 'border-vv-st-todo bg-vv-st-todo text-vv-st-todo-ink',
 }
 
-function AccountRow({ siteId, account, label, hint }: { siteId: string; account: ClientAccount; label: string; hint: string }) {
+/** Name + status pill (a select), and a "next step" line for anything not ready. */
+function AccountRow({ siteId, account, label }: { siteId: string; account: ClientAccount; label: string }) {
   const save = useSaveAccount(siteId)
   const [next, setNext] = useState(account.nextAction ?? '')
-  const send = (status: AccountStatus, nextAction: string) => save.mutate({ kind: account.kind, status, nextAction, note: account.note ?? '' })
-  // Phones: an empty next step stays folded behind "+ Next step" so 12 rows don't each carry a field.
   const [open, setOpen] = useState(false)
-  const folded = !next && !open
+  const send = (status: AccountStatus, nextAction: string) => save.mutate({ kind: account.kind, status, nextAction, note: account.note ?? '' })
+  const showNext = account.status !== 'ready' && (open || !!next)
 
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_130px_minmax(0,1.3fr)] items-center gap-3 border-b border-solid border-vv-line py-2.5 last:border-0 phone:grid-cols-[minmax(0,1fr)_112px] phone:gap-x-2.5 phone:gap-y-1.5">
-      <div className="flex min-w-0 flex-col">
-        <span className="text-[15px] font-semibold phone:text-sm">{label}</span>
-        {hint && <span className="truncate text-xs text-vv-muted">{hint}</span>}
-        {folded && (
-          <button type="button" onClick={() => setOpen(true)} className={`${BTN_LINK} hidden min-h-7 self-start text-xs phone:inline`}>
-            + Next step
-          </button>
-        )}
+    <li className="flex flex-col gap-1.5 border-0 border-t border-solid border-vv-line py-2 first:border-t-0">
+      <div className="flex items-center justify-between gap-3">
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span className="min-w-0 truncate text-[15px] font-medium">{label}</span>
+          {account.status !== 'ready' && !showNext && (
+            <button type="button" onClick={() => setOpen(true)} aria-label={`Add a next step for ${label}`} className={`${BTN_LINK} min-h-6 flex-none text-[12px]`}>
+              + Next step
+            </button>
+          )}
+        </span>
+        <span className="flex flex-none items-center gap-2">
+          <span className="w-4 text-vv-muted" aria-live="polite">
+            {save.isPending ? <Spinner /> : save.isError ? <span title="Couldn’t save" className="font-bold text-vv-red">!</span> : null}
+          </span>
+          <select
+            aria-label={`${label} status`}
+            value={account.status}
+            onChange={(e) => send(e.target.value as AccountStatus, next)}
+            className={`min-h-9 cursor-pointer rounded-full border border-solid px-3 font-body text-[13px] font-bold ${STATUS_STYLE[account.status]}`}
+          >
+            {(Object.keys(ACCOUNT_STATUS_LABEL) as AccountStatus[]).map((s) => (
+              <option key={s} value={s}>
+                {ACCOUNT_STATUS_LABEL[s]}
+              </option>
+            ))}
+          </select>
+        </span>
       </div>
-      <select
-        aria-label={`${label} status`}
-        value={account.status}
-        onChange={(e) => send(e.target.value as AccountStatus, next)}
-        className={`min-h-10 rounded-full border border-solid px-3 font-body text-sm font-bold ${STATUS_STYLE[account.status]}`}
-      >
-        {(Object.keys(ACCOUNT_STATUS_LABEL) as AccountStatus[]).map((s) => (
-          <option key={s} value={s}>
-            {ACCOUNT_STATUS_LABEL[s]}
-          </option>
-        ))}
-      </select>
-      <div className={`flex items-center gap-2 phone:col-span-2 ${folded ? 'phone:hidden' : ''}`}>
+      {showNext ? (
         <input
-          aria-label={`${label} next action`}
+          aria-label={`${label} next step`}
           autoFocus={open && !next}
-          className={`${FIELD} min-h-10 py-2 text-sm`}
+          className={`${FIELD} min-h-9 py-1.5 text-[13px]`}
           value={next}
-          placeholder={account.status === 'ready' ? '' : 'Next step…'}
+          placeholder="Next step…"
           onChange={(e) => setNext(e.target.value)}
           onBlur={() => {
             if (next !== (account.nextAction ?? '')) send(account.status, next)
@@ -246,10 +240,8 @@ function AccountRow({ siteId, account, label, hint }: { siteId: string; account:
           }}
           onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
         />
-        <span className="w-4 flex-none text-vv-muted" aria-live="polite">
-          {save.isPending ? <Spinner /> : save.isError ? <span title="Couldn’t save" className="font-bold text-vv-red">!</span> : null}
-        </span>
-      </div>
+      ) : null}
     </li>
   )
 }
+

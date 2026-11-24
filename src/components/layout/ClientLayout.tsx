@@ -59,7 +59,7 @@ export default function ClientLayout() {
     .join('/')
   const section = path ? ALL_SECTIONS.find((s) => s.path === path) : undefined
   // Redesigned sections draw their own title (docs/design/); the rest still get the client-name header.
-  const ownHeader = OWN_HEADER.has(section?.key ?? '')
+  const ownHeader = !path || OWN_HEADER.has(section?.key ?? '')
   return (
     <>
       <span className="text-[15px] text-vv-muted">
@@ -67,15 +67,18 @@ export default function ClientLayout() {
           Clients
         </Link>{' '}
         <span aria-hidden="true">›</span>{' '}
-        {section ? (
+        {path ? (
           <>
             <Link to={`/clients/${c.siteId}`} className="text-vv-muted no-underline hover:text-vv-purple-deep">
               {c.name}
             </Link>{' '}
-            <span aria-hidden="true">›</span> <strong className="text-vv-ink">{section.group ? `${section.group} › ${section.label}` : section.label}</strong>
+            <span aria-hidden="true">›</span>{' '}
+            <strong className="text-vv-ink">{section ? (section.group ? `${section.group} › ${section.label}` : section.label) : path}</strong>
           </>
         ) : (
-          <strong className="text-vv-ink">{c.name}</strong>
+          <>
+            {c.name} <span aria-hidden="true">›</span> <strong className="text-vv-ink">Overview</strong>
+          </>
         )}
       </span>
 

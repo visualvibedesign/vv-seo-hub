@@ -146,16 +146,3 @@ export const TAB_COMING: Record<string, string> = {
   templates: 'One template per step of Sam’s 10 days (keyword research, 3×3 matrix, clusters, SEO hotspots, GBP posts, review email, citation waves). Set up once, applied to every new client.',
   automation: 'Slack alerts, the weekly SEO email, ClickUp lists and the Claude drafts queue. Nothing is published without a review.',
 }
-
-/** Sam's process as one flow per client (context pack "Sam's process → SEO Hub steps"). */
-export const SAM_STEPS: { n: number; title: string; day: string; phase: string; tab?: string }[] = [
-  { n: 0, title: 'Client setup', day: 'Day 1', phase: '1' },
-  { n: 1, title: 'Keywords', day: 'Day 2', phase: '1', tab: 'keywords/import' },
-  { n: 2, title: 'Baseline', day: 'Day 3', phase: '2', tab: 'reports' },
-  { n: 3, title: 'GBP check', day: 'Day 4', phase: '4' },
-  { n: 4, title: 'Sitemap + hotspots', day: 'Day 5', phase: '3', tab: 'pages' },
-  { n: 5, title: 'Page brief', day: 'Day 6', phase: '3' },
-  { n: 6, title: 'GBP care', day: 'Day 7', phase: '4' },
-  { n: 7, title: 'Link database', day: 'Days 8–9', phase: '4' },
-  { n: 8, title: 'Results', day: 'Day 10 + monthly', phase: '2', tab: 'reports' },
-]

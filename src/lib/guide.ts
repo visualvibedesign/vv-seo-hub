@@ -18,6 +18,8 @@ export type GuideStep = {
   /** Short label used in the client switcher and All clients ("Day 2 · Keywords"). */
   short: string
   title: string
+  /** Title + one line on the client Overview's "Sam's 10 days" card (design Client.png). */
+  overview: { title: string; blurb: string }
   why: string
   tasks: GuideTask[]
   tools: string
@@ -35,6 +37,7 @@ export const GUIDE: GuideStep[] = [
     day: 'Day 1',
     short: 'Setup',
     title: 'Client setup',
+    overview: { title: 'Client setup', blurb: 'services, areas, kickoff, accounts' },
     why: 'Know what matters before touching anything: the 3 services and areas that bring the most money, and how the client will judge success.',
     tasks: [
       { key: 'services', label: 'Name Home + S1–S3 and the services under each', auto: true, hint: 'Ticks itself when Home and S1–S3 are named and S1–S3 each have a service.' },
@@ -53,6 +56,7 @@ export const GUIDE: GuideStep[] = [
     day: 'Day 2',
     short: 'Keywords',
     title: 'Keyword research',
+    overview: { title: 'Keywords', blurb: 'keywords, matrix, clusters' },
     why: 'Every page target needs real search data behind it. Do SEO, not guess-SEO.',
     tasks: [
       { key: 'seeds', label: 'Build seeds from the Services page' },
@@ -73,6 +77,7 @@ export const GUIDE: GuideStep[] = [
     day: 'Day 3',
     short: 'Baseline',
     title: 'Tracking + baseline',
+    overview: { title: 'Baseline', blurb: 'Semrush, GSC, GA4, GBP, map grid' },
     why: 'Track before you touch anything, so every later change can be compared with where you started.',
     tasks: [
       { key: 'tracking', label: 'Semrush Position Tracking: US (national), the primary keywords', auto: true, hint: 'Ticks itself when keywords are marked Track on.' },
@@ -92,6 +97,7 @@ export const GUIDE: GuideStep[] = [
     day: 'Day 4',
     short: 'GBP check',
     title: 'GBP check',
+    overview: { title: 'GBP check', blurb: 'competitors, categories, reviews' },
     why: 'See who’s in the map pack for each service and what they do that the client doesn’t.',
     tasks: [
       { key: 'maps', label: 'Maps search per service (S1–S3), ads skipped' },
@@ -110,6 +116,7 @@ export const GUIDE: GuideStep[] = [
     day: 'Day 5',
     short: 'Sitemap',
     title: 'Sitemap + hotspots',
+    overview: { title: 'Sitemap + hotspots', blurb: 'pages, titles, metas, H1' },
     why: 'Give each priority search a destination: one page per keyword cluster.',
     tasks: [
       { key: 'structure', label: 'Pick the structure: service first, location first or flat' },
@@ -128,6 +135,7 @@ export const GUIDE: GuideStep[] = [
     day: 'Day 6',
     short: 'Page brief',
     title: 'Page brief + build',
+    overview: { title: 'Page briefs', blurb: 'BrandScript + StoryBrand copy' },
     why: 'Build one useful page: SEO hotspots plus copy that answers what the customer actually asks.',
     tasks: [
       { key: 'brandscript', label: 'BrandScript A–P (once per client)' },
@@ -146,6 +154,7 @@ export const GUIDE: GuideStep[] = [
     day: 'Day 7',
     short: 'GBP care',
     title: 'GBP care',
+    overview: { title: 'GBP care', blurb: 'products, reviews, 13-week posts' },
     why: 'Keep the profile alive: services, products, reviews and a quarter of posts.',
     tasks: [
       { key: 'services', label: 'GBP services list cleaned up' },
@@ -164,6 +173,7 @@ export const GUIDE: GuideStep[] = [
     day: 'Days 8–9',
     short: 'Links',
     title: 'Links + citations',
+    overview: { title: 'Link database', blurb: 'citations in 3 waves, backlinks' },
     why: 'Relevance gets you to page 3–7; authority gets you further. Build a natural backlink profile.',
     tasks: [
       { key: 'nap', label: 'NAP record (address hidden for home or service-area businesses)' },
@@ -185,6 +195,7 @@ export const GUIDE: GuideStep[] = [
     day: 'Day 10 + monthly',
     short: 'Results',
     title: 'Report what changed',
+    overview: { title: 'Results', blurb: 'compare with baseline' },
     why: 'Compare with the baseline, explain where things stand, and choose the next three actions.',
     tasks: [
       { key: 'goal', label: 'Start with the 12-month goal from the kickoff' },
