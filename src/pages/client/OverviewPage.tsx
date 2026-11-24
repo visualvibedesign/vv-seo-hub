@@ -4,7 +4,7 @@ import { useClientContext } from '../../components/layout/ClientLayout'
 import { Spinner } from '../../components/ui/Loading'
 import { useSaveAccount } from '../../hooks/useClients'
 import { ACCOUNTS, ACCOUNT_STATUS_LABEL, SAM_STEPS } from '../../lib/clientSetup'
-import { CARD, CARD_TITLE, FIELD, PILL_DONE, PILL_PROGRESS, PILL_REVIEW, PILL_TODO } from '../../lib/ui'
+import { BTN_LINK, CARD, CARD_TITLE, FIELD, PILL_DONE, PILL_PROGRESS, PILL_REVIEW, PILL_TODO } from '../../lib/ui'
 import type { AccountStatus, ClientAccount, ClientDetail } from '../../types/seo'
 
 // Overview tab (/clients/{site id}): Sam's 9 steps, services + areas, kickoff answers, account checklist.
@@ -29,14 +29,15 @@ export default function OverviewPage() {
   const gaps = setupGaps(c)
 
   return (
-    <div className="flex flex-wrap items-start gap-5">
-      <div className="flex min-w-0 flex-[3_1_520px] flex-col gap-5">
+    // Desktop: two columns. Phones: one column in reading order (steps, services, kickoff, then the long checklist).
+    <div className="flex flex-wrap items-start gap-5 phone:flex-col phone:flex-nowrap phone:items-stretch">
+      <div className="flex min-w-0 flex-[3_1_520px] flex-col gap-5 phone:contents">
         <StepsCard client={c} gaps={gaps} />
-        <AccountsCard client={c} />
+        <AccountsCard client={c} className="phone:order-4" />
       </div>
-      <div className="flex min-w-0 flex-[2_1_340px] flex-col gap-5">
-        <TargetsCard client={c} />
-        <KickoffCard client={c} />
+      <div className="flex min-w-0 flex-[2_1_340px] flex-col gap-5 phone:contents">
+        <TargetsCard client={c} className="phone:order-2" />
+        <KickoffCard client={c} className="phone:order-3" />
       </div>
     </div>
   )
@@ -44,7 +45,7 @@ export default function OverviewPage() {
 
 function StepsCard({ client: c, gaps }: { client: ClientDetail; gaps: string[] }) {
   return (
-    <section className={CARD} aria-labelledby="ov-steps">
+    <section className={`${CARD} phone:order-1`} aria-labelledby="ov-steps">
       <div className="flex flex-col gap-1">
         <h2 id="ov-steps" className={CARD_TITLE}>
           Sam’s <em className="font-medium text-vv-purple">9 steps</em>
@@ -60,7 +61,7 @@ function StepsCard({ client: c, gaps }: { client: ClientDetail; gaps: string[] }
             detail = gaps.length ? `Missing: ${gaps.join(', ')}` : 'Services, areas, kickoff answers and accounts are in.'
           } else if (s.n === 1) {
             pill = c.counts.keywords ? { cls: PILL_PROGRESS, text: 'In progress' } : { cls: PILL_REVIEW, text: 'Next' }
-            detail = c.counts.keywords ? `${c.counts.keywords} keywords so far` : 'Import Keyword Planner + Semrush CSVs (building now)'
+            detail = c.counts.keywords ? `${c.counts.keywords} keywords so far` : 'Import the Keyword Planner + Semrush CSVs'
           } else {
             pill = { cls: PILL_TODO, text: `Phase ${s.phase}` }
           }
@@ -94,9 +95,9 @@ function StepsCard({ client: c, gaps }: { client: ClientDetail; gaps: string[] }
   )
 }
 
-function TargetsCard({ client: c }: { client: ClientDetail }) {
+function TargetsCard({ client: c, className = '' }: { client: ClientDetail; className?: string }) {
   return (
-    <section className={CARD} aria-labelledby="ov-targets">
+    <section className={`${CARD} ${className}`} aria-labelledby="ov-targets">
       <h2 id="ov-targets" className={CARD_TITLE}>
         Services &amp; <em className="font-medium text-vv-purple">areas</em>
       </h2>
@@ -140,7 +141,7 @@ function TargetsCard({ client: c }: { client: ClientDetail }) {
   )
 }
 
-function KickoffCard({ client: c }: { client: ClientDetail }) {
+function KickoffCard({ client: c, className = '' }: { client: ClientDetail; className?: string }) {
   const rows: [string, string | null][] = [
     ['12-month success', c.success12mo],
     ['Why them (USP)', c.usp],
@@ -148,7 +149,7 @@ function KickoffCard({ client: c }: { client: ClientDetail }) {
     ['Notes', c.notes],
   ]
   return (
-    <section className={CARD} aria-labelledby="ov-kickoff">
+    <section className={`${CARD} ${className}`} aria-labelledby="ov-kickoff">
       <h2 id="ov-kickoff" className={CARD_TITLE}>
         Kickoff <em className="font-medium text-vv-purple">answers</em>
       </h2>
@@ -170,11 +171,11 @@ function KickoffCard({ client: c }: { client: ClientDetail }) {
   )
 }
 
-function AccountsCard({ client: c }: { client: ClientDetail }) {
+function AccountsCard({ client: c, className = '' }: { client: ClientDetail; className?: string }) {
   const ready = c.accounts.filter((a) => a.status === 'ready').length
   const counted = c.accounts.filter((a) => a.status !== 'n_a').length
   return (
-    <section className={CARD} aria-labelledby="ov-accounts">
+    <section className={`${CARD} ${className}`} aria-labelledby="ov-accounts">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="ov-accounts" className={CARD_TITLE}>
           Account <em className="font-medium text-vv-purple">checklist</em>
@@ -204,12 +205,20 @@ function AccountRow({ siteId, account, label, hint }: { siteId: string; account:
   const save = useSaveAccount(siteId)
   const [next, setNext] = useState(account.nextAction ?? '')
   const send = (status: AccountStatus, nextAction: string) => save.mutate({ kind: account.kind, status, nextAction, note: account.note ?? '' })
+  // Phones: an empty next step stays folded behind "+ Next step" so 12 rows don't each carry a field.
+  const [open, setOpen] = useState(false)
+  const folded = !next && !open
 
   return (
-    <li className="grid grid-cols-[minmax(0,1fr)_130px_minmax(0,1.3fr)] items-center gap-3 border-b border-solid border-vv-line py-2.5 last:border-0 phone:grid-cols-[minmax(0,1fr)_120px]">
+    <li className="grid grid-cols-[minmax(0,1fr)_130px_minmax(0,1.3fr)] items-center gap-3 border-b border-solid border-vv-line py-2.5 last:border-0 phone:grid-cols-[minmax(0,1fr)_112px] phone:gap-x-2.5 phone:gap-y-1.5">
       <div className="flex min-w-0 flex-col">
-        <span className="text-[15px] font-semibold">{label}</span>
+        <span className="text-[15px] font-semibold phone:text-sm">{label}</span>
         {hint && <span className="truncate text-xs text-vv-muted">{hint}</span>}
+        {folded && (
+          <button type="button" onClick={() => setOpen(true)} className={`${BTN_LINK} hidden min-h-7 self-start text-xs phone:inline`}>
+            + Next step
+          </button>
+        )}
       </div>
       <select
         aria-label={`${label} status`}
@@ -223,14 +232,18 @@ function AccountRow({ siteId, account, label, hint }: { siteId: string; account:
           </option>
         ))}
       </select>
-      <div className="flex items-center gap-2 phone:col-span-2">
+      <div className={`flex items-center gap-2 phone:col-span-2 ${folded ? 'phone:hidden' : ''}`}>
         <input
           aria-label={`${label} next action`}
+          autoFocus={open && !next}
           className={`${FIELD} min-h-10 py-2 text-sm`}
           value={next}
           placeholder={account.status === 'ready' ? '' : 'Next step…'}
           onChange={(e) => setNext(e.target.value)}
-          onBlur={() => next !== (account.nextAction ?? '') && send(account.status, next)}
+          onBlur={() => {
+            if (next !== (account.nextAction ?? '')) send(account.status, next)
+            if (!next) setOpen(false)
+          }}
           onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
         />
         <span className="w-4 flex-none text-vv-muted" aria-live="polite">

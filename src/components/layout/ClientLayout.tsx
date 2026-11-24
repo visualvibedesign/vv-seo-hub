@@ -1,16 +1,17 @@
-import { Link, NavLink, Outlet, useOutletContext, useParams } from 'react-router'
+import { Link, Outlet, useLocation, useOutletContext, useParams } from 'react-router'
 import { useClient } from '../../hooks/useClients'
-import { CLIENT_TABS } from '../../lib/clientSetup'
+import { ALL_SECTIONS } from '../../lib/clientSetup'
 import { BTN_GHOST, BTN_LIME, CARD, PILL_WAITING, siteLabel, splitAccent } from '../../lib/ui'
 import type { ClientDetail } from '../../types/seo'
 import { Bone } from '../ui/Loading'
 import HeaderTools from './HeaderTools'
 
 // Client workspace frame: /clients/{site id}/… (the address the agency hub and Vibe SEO plugin link to).
-// Header + the 8 tabs of the hub workspace SEO Hub replaces; each tab is a child route.
+// Header + the current section (the sections themselves are in the sidebar); each section is a child route.
 export default function ClientLayout() {
   const { siteId } = useParams()
   const q = useClient(siteId)
+  const { pathname } = useLocation()
 
   if (q.isPending)
     return (
@@ -41,7 +42,7 @@ export default function ClientLayout() {
               Add client
             </Link>
           )}
-          <Link to="/" className={BTN_GHOST}>
+          <Link to="/clients" className={BTN_GHOST}>
             All clients
           </Link>
         </div>
@@ -51,13 +52,29 @@ export default function ClientLayout() {
 
   const c = q.data
   const [lead, accent] = splitAccent(c.name)
+  const path = pathname
+    .replace(`/clients/${c.siteId}`, '')
+    .split('/')
+    .filter(Boolean)
+    .join('/')
+  const section = path ? ALL_SECTIONS.find((s) => s.path === path) : undefined
   return (
     <>
       <span className="text-[15px] text-vv-muted">
-        <Link to="/" className="text-vv-muted no-underline hover:text-vv-purple-deep">
+        <Link to="/clients" className="text-vv-muted no-underline hover:text-vv-purple-deep">
           Clients
         </Link>{' '}
-        <span aria-hidden="true">›</span> <strong className="text-vv-ink">{c.name}</strong>
+        <span aria-hidden="true">›</span>{' '}
+        {section ? (
+          <>
+            <Link to={`/clients/${c.siteId}`} className="text-vv-muted no-underline hover:text-vv-purple-deep">
+              {c.name}
+            </Link>{' '}
+            <span aria-hidden="true">›</span> <strong className="text-vv-ink">{section.path.startsWith('keywords') ? `Keywords › ${section.label}` : section.label}</strong>
+          </>
+        ) : (
+          <strong className="text-vv-ink">{c.name}</strong>
+        )}
       </span>
 
       <header className="flex flex-wrap items-end justify-between gap-5">
@@ -85,29 +102,6 @@ export default function ClientLayout() {
           </Link>
         </HeaderTools>
       </header>
-
-      {/* Tabs: same pill bar as HQ's Settings. Not-built tabs still open, showing what's coming. */}
-      <nav aria-label="Client sections" className="flex flex-wrap gap-1 rounded-[22px] bg-vv-lavender-50 p-1">
-        {CLIENT_TABS.map((t) => (
-          <NavLink
-            key={t.key}
-            to={t.path ? `/clients/${c.siteId}/${t.path}` : `/clients/${c.siteId}`}
-            end={!t.path}
-            className={({ isActive }) =>
-              `inline-flex min-h-10 items-center gap-1.5 rounded-full px-4 text-sm font-semibold no-underline ${
-                isActive ? 'bg-vv-surface text-vv-ink shadow-[0_2px_6px_rgba(91,63,208,0.15)]' : 'bg-transparent text-vv-ink hover:bg-vv-surface/60'
-              } ${t.live ? '' : 'text-vv-muted'}`
-            }
-          >
-            {t.label}
-            {!t.live && (
-              <span className="rounded-full bg-vv-lavender-100 px-1.5 py-0.5 text-[10px] font-bold text-vv-purple-deep">
-                {t.phase === 'later' ? 'Later' : `P${t.phase}`}
-              </span>
-            )}
-          </NavLink>
-        ))}
-      </nav>
 
       <Outlet context={c} />
     </>

@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, SiteIdCheck } from '../types/seo'
+import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, DeleteImportCheck, ImportPayload, ImportPreview, ImportRecord, SiteIdCheck } from '../types/seo'
 
 export class ApiError extends Error {
   status: number
@@ -92,4 +92,35 @@ export function saveAccount(
 export function safeNext(next: string | null | undefined): string {
   if (next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\')) return next
   return '/'
+}
+
+// ---- CSV imports (phase 1, step 4) ---------------------------------------------------
+
+/** Dry run: what the import would do (nothing is saved). */
+export function previewImport(payload: ImportPayload): Promise<ImportPreview> {
+  return call('/api/imports/preview', json(payload))
+}
+
+/** Saves the import: keywords, history rows and the raw file (base64, untouched). */
+export function commitImport(payload: ImportPayload, file: { base64: string; type: string }): Promise<{ importId: string; preview: ImportPreview }> {
+  return call('/api/imports/commit', json({ payload, file }))
+}
+
+export function getImports(siteId: string): Promise<{ imports: ImportRecord[] }> {
+  return call(`/api/imports/list?site=${encodeURIComponent(siteId)}`)
+}
+
+/** A 60-second download link for an import's raw file. */
+export function getImportFileUrl(siteId: string, importId: string): Promise<{ url: string }> {
+  return call(`/api/imports/file?site=${encodeURIComponent(siteId)}&id=${encodeURIComponent(importId)}`)
+}
+
+/** Counts for the "Delete this import" confirm (nothing is deleted). */
+export function checkDeleteImport(siteId: string, importId: string): Promise<DeleteImportCheck> {
+  return call(`/api/imports/delete-check?site=${encodeURIComponent(siteId)}&id=${encodeURIComponent(importId)}`)
+}
+
+/** Deletes an import: its history rows, raw file, and the keywords that only came from it. */
+export function deleteImport(siteId: string, importId: string): Promise<{ keywordsRemoved: number; fileRemoved: boolean }> {
+  return call('/api/imports/delete', json({ siteId, importId }))
 }

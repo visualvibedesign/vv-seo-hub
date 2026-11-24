@@ -1,30 +1,17 @@
 import { useEffect, useState } from 'react'
-import { Link, NavLink } from 'react-router'
+import { Link, NavLink, useLocation, useMatch, useNavigate } from 'react-router'
 import { useClients } from '../../hooks/useClients'
+import { CLIENT_SECTIONS, type ClientSection } from '../../lib/clientSetup'
 import type { ClientSummary } from '../../types/seo'
 import Logo from '../ui/Logo'
 import NavIcon, { type NavIconName } from '../ui/NavIcon'
 import ThemeToggle from '../ui/ThemeToggle'
 
-// Left navigation, built from HQ's Sidebar (same sizes, colors, collapse button and phone Menu).
-// "SEO Hub": all clients + add. "Clients": a shortcut to each active client's workspace
-// (/clients/{site id}); the client's tabs live on its page, not here.
-type NavItem = { label: string; icon: NavIconName; to?: string; phase?: string; end?: boolean }
-type NavGroup = { label: string; items: NavItem[] }
-
-function navGroups(clients: ClientSummary[]): NavGroup[] {
-  const active = clients.filter((c) => c.status !== 'archived')
-  return [
-    {
-      label: 'SEO Hub',
-      items: [
-        { label: 'All clients', icon: 'projects', to: '/', end: true },
-        { label: 'Add client', icon: 'ideas', to: '/clients/new', end: true },
-      ],
-    },
-    ...(active.length ? [{ label: 'Clients', items: active.map((c) => ({ label: c.name, icon: 'seo' as NavIconName, to: `/clients/${c.siteId}` })) }] : []),
-  ]
-}
+// Left navigation, built from HQ's Sidebar (same sizes, colors, collapse button, phone Menu, Switch app).
+// Two modes (Angel, 2026-11-20):
+//   - No client open: Overview + All clients, then the client list (+ Add client).
+//   - Client open (/clients/{site id}/…): "← All clients", a client switcher, then the client's sections
+//     (the agency hub's workspace tabs). Keywords has sub-items. Not-built sections are greyed with their tag.
 
 // HQ's Apps page (the one-login portal). On localhost: HQ's dev server (cookies ignore ports, so you
 // stay signed in). Override with VITE_HQ_URL (public address, not a secret).
@@ -34,8 +21,19 @@ const HQ_APPS_URL = `${HQ_URL.endsWith('/') ? HQ_URL.slice(0, -1) : HQ_URL}/apps
 const COLLAPSE_KEY = 'vv-seo-sidebar-collapsed'
 const PHONE = '(max-width: 900px)'
 
+const SECTION_ICON: Record<string, NavIconName> = {
+  overview: 'overview',
+  keywords: 'seo',
+  pages: 'sops',
+  plan: 'builds',
+  reports: 'reports',
+  conversions: 'review',
+  log: 'yesterday',
+  notes: 'notes',
+}
+
 export default function Sidebar() {
-  const groups = navGroups(useClients().data ?? [])
+  const clients = (useClients().data ?? []).filter((c) => c.status !== 'archived')
   const [menuOpen, setMenuOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -70,9 +68,10 @@ export default function Sidebar() {
     return () => window.removeEventListener('keydown', onKey)
   }, [menuOpen])
 
-  const row = `box-border flex min-h-[46px] w-full items-center gap-2.5 rounded-[14px] text-left text-[15px] text-vv-ink no-underline ${
-    mini ? 'justify-center px-0' : 'justify-between px-3'
-  }`
+  // Which client is open? (/clients/new is the Add form, not a client.)
+  const match = useMatch('/clients/:siteId/*')
+  const openId = match?.params.siteId && match.params.siteId !== 'new' ? match.params.siteId : null
+  const close = () => setMenuOpen(false)
 
   return (
     <nav
@@ -124,34 +123,7 @@ export default function Sidebar() {
           menuOpen ? 'phone:flex phone:max-h-[calc(100vh-72px)] phone:w-full phone:flex-col phone:gap-4 phone:overflow-y-auto phone:pb-1.5 phone:pt-3.5' : 'phone:hidden'
         }`}
       >
-        {groups.map((group) => (
-          <div key={group.label} className="flex flex-col gap-[3px]">
-            {mini ? (
-              <span className="mx-2 mb-1.5 border-t border-vv-field-line" aria-hidden="true" />
-            ) : (
-              <span className="whitespace-nowrap px-3 pb-1.5 text-xs font-semibold text-vv-muted">{group.label}</span>
-            )}
-            {group.items.map((item) =>
-              item.to ? (
-                <NavLink
-                  key={item.label}
-                  to={item.to}
-                  end={item.end}
-                  onClick={() => setMenuOpen(false)}
-                  title={mini ? item.label : undefined}
-                  className={({ isActive }) => `${row} ${isActive ? 'bg-vv-lavender font-bold' : 'bg-transparent font-medium'}`}
-                >
-                  {({ isActive }) => <ItemLabel item={item} mini={mini} active={isActive} />}
-                </NavLink>
-              ) : (
-                <span key={item.label} aria-disabled="true" title={`${item.label}: coming in ${item.phase}`} className={`${row} cursor-default font-medium opacity-60`}>
-                  <ItemLabel item={item} mini={mini} active={false} />
-                  {!mini && <span className="whitespace-nowrap rounded-full bg-vv-surface px-2 py-0.5 text-[11px] font-bold text-vv-muted">{item.phase}</span>}
-                </span>
-              ),
-            )}
-          </div>
-        ))}
+        {openId ? <ClientNav siteId={openId} clients={clients} mini={mini} onGo={close} /> : <HubNav clients={clients} mini={mini} onGo={close} />}
 
         {/* Switch app: same as HQ's sidebar (HQ commit caeac2f, 2026-11-20): one button pinned to the
             bottom (in the Menu on phones) that opens HQ's Apps page and stays signed in. Log out lives
@@ -159,7 +131,7 @@ export default function Sidebar() {
         <div className="sticky -bottom-7 z-[1] -mx-1 mt-auto bg-vv-lavender-100 px-1 pb-7 pt-2 phone:static phone:m-0 phone:p-0">
           <a
             href={HQ_APPS_URL}
-            onClick={() => setMenuOpen(false)}
+            onClick={close}
             title={mini ? 'Switch app' : undefined}
             className={`box-border flex min-h-[46px] w-full items-center gap-3 rounded-[14px] border border-solid border-vv-field-line bg-vv-surface text-left text-[15px] font-semibold text-vv-ink no-underline hover:bg-vv-lavender hover:text-vv-ink ${
               mini ? 'justify-center px-0' : 'px-3'
@@ -176,13 +148,192 @@ export default function Sidebar() {
   )
 }
 
-function ItemLabel({ item, mini, active }: { item: NavItem; mini: boolean; active: boolean }) {
+// ---- Pieces ---------------------------------------------------------------------
+
+/** HQ's nav row: 46px, 14px radius, lavender pill when active. */
+const rowClass = (mini: boolean, active: boolean, dim = false) =>
+  `box-border flex min-h-[46px] w-full items-center gap-2.5 rounded-[14px] text-left text-[15px] text-vv-ink no-underline ${
+    mini ? 'justify-center px-0' : 'justify-between px-3'
+  } ${active ? 'bg-vv-lavender font-bold' : 'bg-transparent font-medium hover:bg-vv-lavender-50'} ${dim && !active ? 'opacity-60' : ''}`
+
+function GroupLabel({ label, mini }: { label: string; mini: boolean }) {
+  return mini ? (
+    <span className="mx-2 mb-1.5 border-t border-vv-field-line" aria-hidden="true" />
+  ) : (
+    <span className="whitespace-nowrap px-3 pb-1.5 text-xs font-semibold text-vv-muted">{label}</span>
+  )
+}
+
+function Icon({ name, active }: { name: NavIconName; active: boolean }) {
   return (
-    <span className="flex min-w-0 items-center gap-3">
-      <span className={`inline-flex h-[26px] w-[26px] flex-none items-center justify-center rounded-lg text-vv-purple-deep ${active ? 'bg-vv-surface' : 'bg-transparent'}`}>
-        <NavIcon name={item.icon} />
-      </span>
-      <span className={mini ? 'sr-only' : 'truncate'} title={item.label}>{item.label}</span>
+    <span className={`inline-flex h-[26px] w-[26px] flex-none items-center justify-center rounded-lg text-vv-purple-deep ${active ? 'bg-vv-surface' : 'bg-transparent'}`}>
+      <NavIcon name={name} />
     </span>
   )
+}
+
+function Item({ to, label, icon, mini, end, tag, onGo }: { to: string; label: string; icon: NavIconName; mini: boolean; end?: boolean; tag?: string; onGo: () => void }) {
+  return (
+    <NavLink to={to} end={end} onClick={onGo} title={mini ? (tag ? `${label} (${tag})` : label) : undefined} className={({ isActive }) => rowClass(mini, isActive, !!tag)}>
+      {({ isActive }) => (
+        <>
+          <span className="flex min-w-0 items-center gap-3">
+            <Icon name={icon} active={isActive} />
+            <span className={mini ? 'sr-only' : 'truncate'}>{label}</span>
+          </span>
+          {!mini && tag && <Tag text={tag} />}
+        </>
+      )}
+    </NavLink>
+  )
+}
+
+function Tag({ text }: { text: string }) {
+  return <span className="flex-none whitespace-nowrap rounded-full bg-vv-surface px-2 py-0.5 text-[11px] font-bold text-vv-muted">{text}</span>
+}
+
+/** No client open: Overview + All clients, then each client + Add client. */
+function HubNav({ clients, mini, onGo }: { clients: ClientSummary[]; mini: boolean; onGo: () => void }) {
+  return (
+    <>
+      <div className="flex flex-col gap-[3px]">
+        <GroupLabel label="SEO Hub" mini={mini} />
+        <Item to="/" end label="Overview" icon="overview" mini={mini} onGo={onGo} />
+        <Item to="/clients" end label="All clients" icon="projects" mini={mini} onGo={onGo} />
+      </div>
+      <div className="flex flex-col gap-[3px]">
+        <GroupLabel label="Clients" mini={mini} />
+        {clients.map((c) => (
+          <Item key={c.siteId} to={`/clients/${c.siteId}`} label={c.name} icon="seo" mini={mini} onGo={onGo} />
+        ))}
+        <Item to="/clients/new" end label="Add client" icon="ideas" mini={mini} onGo={onGo} />
+      </div>
+    </>
+  )
+}
+
+/** A client open: back link, client switcher, then the client's sections. */
+function ClientNav({ siteId, clients, mini, onGo }: { siteId: string; clients: ClientSummary[]; mini: boolean; onGo: () => void }) {
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const base = `/clients/${siteId}`
+  const rest = pathname.startsWith(base) ? pathname.slice(base.length) : ''
+  const current = clients.find((c) => c.siteId === siteId)
+  const inKeywords = rest.startsWith('/keywords')
+
+  // Switching client keeps you in the same section (…/keywords/import → other client's …/keywords/import).
+  const switchTo = (id: string) => {
+    if (!id || id === siteId) return
+    navigate(`/clients/${id}${rest === '/edit' ? '' : rest}`)
+    onGo()
+  }
+
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <Link
+          to="/clients"
+          onClick={onGo}
+          title={mini ? 'All clients' : undefined}
+          className={`flex min-h-9 items-center gap-2 rounded-[14px] text-sm font-semibold text-vv-purple-deep no-underline hover:bg-vv-lavender-50 ${mini ? 'justify-center' : 'px-3'}`}
+        >
+          <span aria-hidden="true">←</span>
+          <span className={mini ? 'sr-only' : ''}>All clients</span>
+        </Link>
+        {mini ? (
+          <Link
+            to={base}
+            onClick={onGo}
+            title={current?.name ?? 'Client'}
+            className="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full bg-vv-surface font-display text-base font-semibold text-vv-purple-deep no-underline"
+          >
+            {initials(current?.name ?? '?')}
+          </Link>
+        ) : (
+          <label className="flex flex-col gap-1 px-1">
+            <span className="px-2 text-xs font-semibold text-vv-muted">Client</span>
+            <select
+              value={siteId}
+              onChange={(e) => switchTo(e.target.value)}
+              className="min-h-11 w-full truncate rounded-[14px] border-[1.5px] border-solid border-vv-toggle-line bg-vv-surface px-3 font-body text-[15px] font-bold text-vv-ink"
+            >
+              {!current && <option value={siteId}>Loading…</option>}
+              {clients.map((c) => (
+                <option key={c.siteId} value={c.siteId}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-[3px]">
+        <GroupLabel label="Workspace" mini={mini} />
+        {CLIENT_SECTIONS.map((s) =>
+          s.children ? (
+            <div key={s.key} className="flex flex-col gap-[3px]">
+              {/* Keywords: the parent opens Matrix; it's bold (not a pill) while one of its sub-items is open. */}
+              <Link
+                to={`${base}/${s.path}`}
+                onClick={onGo}
+                title={mini ? s.label : undefined}
+                className={`${rowClass(mini, mini && inKeywords)} ${inKeywords && !mini ? '!font-bold' : ''}`}
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <Icon name={SECTION_ICON[s.key]} active={inKeywords} />
+                  <span className={mini ? 'sr-only' : 'truncate'}>{s.label}</span>
+                </span>
+              </Link>
+              {!mini && (
+                <div className="ml-[22px] flex flex-col gap-[2px] border-l-2 border-solid border-vv-field-line pl-2">
+                  {s.children.map((sub) => (
+                    <SubItem key={sub.key} base={base} s={sub} onGo={onGo} />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <Item
+              key={s.key}
+              to={s.path ? `${base}/${s.path}` : base}
+              end={!s.path}
+              label={s.label}
+              icon={SECTION_ICON[s.key]}
+              mini={mini}
+              tag={s.live ? undefined : s.tag}
+              onGo={onGo}
+            />
+          ),
+        )}
+      </div>
+    </>
+  )
+}
+
+function SubItem({ base, s, onGo }: { base: string; s: ClientSection; onGo: () => void }) {
+  return (
+    <NavLink
+      to={`${base}/${s.path}`}
+      end
+      onClick={onGo}
+      className={({ isActive }) =>
+        `box-border flex min-h-[38px] items-center justify-between gap-2 rounded-xl px-3 text-[14px] text-vv-ink no-underline ${
+          isActive ? 'bg-vv-lavender font-bold' : 'font-medium hover:bg-vv-lavender-50'
+        } ${!s.live && !isActive ? 'opacity-60' : ''}`
+      }
+    >
+      <span className="truncate">{s.label}</span>
+      {!s.live && <Tag text={s.tag} />}
+    </NavLink>
+  )
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter((w) => /^[a-z0-9]/i.test(w))
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join('')
 }

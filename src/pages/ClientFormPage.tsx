@@ -148,7 +148,7 @@ function ClientForm({ initial, existing }: { initial: FormState; existing?: Clie
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
       <span className="text-[15px] text-vv-muted">
-        <Link to="/" className="text-vv-muted no-underline hover:text-vv-purple-deep">
+        <Link to="/clients" className="text-vv-muted no-underline hover:text-vv-purple-deep">
           Clients
         </Link>{' '}
         <span aria-hidden="true">›</span>{' '}
@@ -268,8 +268,8 @@ function ClientForm({ initial, existing }: { initial: FormState; existing?: Clie
         </div>
         <div className="flex flex-col gap-3">
           {f.areas.map((a) => (
-            <div key={a.code} className="grid grid-cols-[48px_1fr_120px_auto] items-end gap-3 phone:grid-cols-[40px_1fr]">
-              <span className="pb-3 font-display text-lg font-semibold text-vv-purple-deep">{a.code}</span>
+            <div key={a.code} className="grid grid-cols-[48px_minmax(0,1fr)_120px_96px] items-center gap-3 phone:grid-cols-[30px_minmax(0,1fr)_70px_62px] phone:gap-2">
+              <span className="font-display text-lg font-semibold text-vv-purple-deep phone:text-base">{a.code}</span>
               <label className={LABEL}>
                 <span className="sr-only">{a.code} name</span>
                 <input
@@ -280,7 +280,7 @@ function ClientForm({ initial, existing }: { initial: FormState; existing?: Clie
                   placeholder={a.status === 'n_a' ? 'N/A' : a.code === 'A1' ? 'Staten Island' : 'City or area'}
                 />
               </label>
-              <label className={`${LABEL} phone:col-start-2`}>
+              <label className={LABEL}>
                 <span className="sr-only">{a.code} state</span>
                 <input
                   className={FIELD}
@@ -291,9 +291,9 @@ function ClientForm({ initial, existing }: { initial: FormState; existing?: Clie
                 />
               </label>
               {a.code === 'A1' ? (
-                <span className="pb-3 text-xs font-semibold text-vv-muted phone:col-start-2">Main area</span>
+                <span className="text-xs font-semibold text-vv-muted">Main area</span>
               ) : (
-                <label className="flex min-h-11 items-center gap-2 pb-1 text-sm font-semibold phone:col-start-2">
+                <label className="flex min-h-11 items-center gap-2 text-sm font-semibold">
                   <input
                     type="checkbox"
                     className="h-5 w-5 accent-vv-purple"
@@ -341,7 +341,7 @@ function ClientForm({ initial, existing }: { initial: FormState; existing?: Clie
           {error}
         </p>
       )}
-      <div className="flex flex-wrap gap-3">
+      <div className="sticky bottom-0 z-[5] -mx-1 flex flex-wrap items-center gap-3 border-t border-solid border-vv-line bg-vv-cream px-1 py-3.5 phone:bottom-0">
         <button type="submit" className={BTN_LIME} disabled={save.isPending || !!siteShown.check?.takenBy}>
           {save.isPending ? (
             <>
@@ -353,7 +353,7 @@ function ClientForm({ initial, existing }: { initial: FormState; existing?: Clie
             'Add client'
           )}
         </button>
-        <Link to={existing ? `/clients/${existing.siteId}` : '/'} className={BTN_GHOST}>
+        <Link to={existing ? `/clients/${existing.siteId}` : '/clients'} className={BTN_GHOST}>
           Cancel
         </Link>
       </div>
@@ -416,8 +416,8 @@ function CategoryEditor({
   const nameTooLong = cat.name.trim().length > NAME_MAX
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-solid border-vv-line p-4">
-      <div className="grid grid-cols-[56px_1fr] items-start gap-3">
-        <span className="pt-8 font-display text-lg font-semibold text-vv-purple-deep">{cat.code}</span>
+      <div className="grid grid-cols-[56px_minmax(0,1fr)] items-start gap-3 phone:grid-cols-1">
+        <span className="pt-8 font-display text-lg font-semibold text-vv-purple-deep phone:hidden">{cat.code}</span>
         <div className="flex min-w-0 flex-col gap-1.5">
           <label className={LABEL}>
             {cat.code === 'Home' ? 'Home category name' : cat.code === 'FAQ' ? 'Help pages category name' : `${cat.code} category name`}
@@ -442,20 +442,20 @@ function CategoryEditor({
       </div>
 
       {cat.services.length > 0 && (
-        <ul className="m-0 flex list-none flex-col gap-2 p-0 pl-[68px] phone:pl-0">
+        <ul className="m-0 grid list-none grid-cols-2 gap-x-4 gap-y-2 p-0 pl-[68px] [@media(max-width:1199px)]:grid-cols-1 phone:pl-0">
           {cat.services.map((s) => {
             const dupe = dupes.has(s.name.trim().toLowerCase())
             return (
-              <li key={s.key} className="flex flex-wrap items-center gap-2">
+              <li key={s.key} className="flex flex-wrap items-center gap-2 phone:gap-1.5">
                 <input
                   aria-label={`Service name (${cat.code})`}
-                  className={`${FIELD} min-h-10 flex-[1_1_220px] py-2 ${dupe ? '!border-vv-error-line' : ''}`}
+                  className={`${FIELD} min-h-10 min-w-0 flex-1 py-2 ${dupe ? '!border-vv-error-line' : ''}`}
                   value={s.name}
                   onChange={(e) => onServices(cat.services.map((x) => (x.key === s.key ? { ...x, name: e.target.value } : x)))}
                 />
                 <select
                   aria-label={`Move ${s.name || 'service'} to`}
-                  className={`${FIELD} min-h-10 w-auto py-2 text-sm`}
+                  className={`${FIELD} min-h-10 w-[92px] flex-none px-3 py-2 text-sm phone:w-[72px] phone:px-2`}
                   value={cat.code}
                   onChange={(e) => onMove(s.key, e.target.value as CategoryCode)}
                 >

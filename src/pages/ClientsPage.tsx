@@ -14,7 +14,7 @@ export default function ClientsPage() {
   return (
     <>
       <span className="text-[15px] text-vv-muted">
-        SEO Hub <span aria-hidden="true">›</span> <strong className="text-vv-ink">Clients</strong>
+        SEO Hub <span aria-hidden="true">›</span> <strong className="text-vv-ink">All clients</strong>
       </span>
 
       <header className="flex flex-wrap items-end justify-between gap-5">
@@ -37,7 +37,7 @@ export default function ClientsPage() {
       </header>
 
       {q.isPending && (
-        <div aria-busy="true" className="grid grid-cols-3 gap-4 [@media(max-width:1199px)]:grid-cols-2 phone:grid-cols-1">
+        <div aria-busy="true" className="grid grid-cols-3 gap-4 [@media(min-width:901px)_and_(max-width:1199px)]:grid-cols-2 phone:grid-cols-1">
           <span role="status" className="sr-only">
             Loading clients
           </span>
@@ -63,7 +63,7 @@ export default function ClientsPage() {
       )}
 
       {active.length > 0 && (
-        <ul aria-label="Clients" className="m-0 grid list-none grid-cols-3 gap-4 p-0 [@media(max-width:1199px)]:grid-cols-2 phone:grid-cols-1">
+        <ul aria-label="Clients" className="m-0 grid list-none grid-cols-3 gap-4 p-0 [@media(min-width:901px)_and_(max-width:1199px)]:grid-cols-2 phone:grid-cols-1">
           {active.map((c) => (
             <li key={c.siteId}>
               <ClientCard client={c} />

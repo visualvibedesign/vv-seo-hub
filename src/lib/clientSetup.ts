@@ -34,21 +34,50 @@ export const ACCOUNT_KINDS = ACCOUNTS.map((a) => a.kind)
 
 export const ACCOUNT_STATUS_LABEL: Record<AccountStatus, string> = { ready: 'Ready', pending: 'Pending', n_a: 'N/A' }
 
-/** The hub workspace tabs SEO Hub replaces (Vibe SEO VVDA_SEO_Workspace), in the hub's order. */
-export const CLIENT_TABS: { key: string; label: string; path: string; phase: string; live: boolean }[] = [
-  { key: 'overview', label: 'Overview', path: '', phase: '1', live: true },
-  { key: 'keywords', label: 'Keywords', path: 'keywords', phase: '1', live: false },
-  { key: 'pages', label: 'Pages', path: 'pages', phase: '3', live: false },
-  { key: 'plan', label: 'Site plan', path: 'plan', phase: '3', live: false },
-  { key: 'reports', label: 'Reports', path: 'reports', phase: '2', live: false },
-  { key: 'conversions', label: 'Conversions', path: 'conversions', phase: 'later', live: false },
-  { key: 'log', label: 'Work log', path: 'log', phase: '5', live: false },
-  { key: 'notes', label: 'Notes & links', path: 'notes', phase: '5', live: false },
+/**
+ * A client's sections in the sidebar (/clients/{site id}/<path>), in the order of the agency hub's
+ * workspace that SEO Hub replaces (Vibe SEO VVDA_SEO_Workspace). `tag` shows on sections not built yet.
+ */
+export type ClientSection = { key: string; label: string; path: string; live: boolean; tag: string; children?: ClientSection[] }
+
+export const CLIENT_SECTIONS: ClientSection[] = [
+  { key: 'overview', label: 'Overview', path: '', live: true, tag: '' },
+  {
+    key: 'keywords',
+    label: 'Keywords',
+    path: 'keywords',
+    live: true,
+    tag: '',
+    children: [
+      { key: 'matrix', label: 'Matrix', path: 'keywords', live: false, tag: 'Step 6' },
+      { key: 'database', label: 'Database', path: 'keywords/database', live: false, tag: 'Step 5' },
+      { key: 'clusters', label: 'Clusters', path: 'keywords/clusters', live: false, tag: 'Step 7' },
+      { key: 'import', label: 'Import', path: 'keywords/import', live: true, tag: '' },
+    ],
+  },
+  { key: 'pages', label: 'Pages', path: 'pages', live: false, tag: 'P3' },
+  { key: 'plan', label: 'Site plan', path: 'plan', live: false, tag: 'P3' },
+  { key: 'reports', label: 'Reports', path: 'reports', live: false, tag: 'P2' },
+  { key: 'conversions', label: 'Conversions', path: 'conversions', live: false, tag: 'Later' },
+  { key: 'log', label: 'Work log', path: 'log', live: false, tag: 'P5' },
+  { key: 'notes', label: 'Notes & links', path: 'notes', live: false, tag: 'P5' },
 ]
 
-/** What each not-yet-built tab will hold (shown on its "coming" card). */
+/** Every section and sub-section, flat (the "Keywords" parent left out: its page is Matrix). */
+export const ALL_SECTIONS: ClientSection[] = CLIENT_SECTIONS.flatMap((s) => (s.children ? s.children : [s]))
+
+/** "Coming in phase 3", "Coming later", "Coming in step 5". */
+export function comingLabel(s: ClientSection): string {
+  if (s.tag === 'Later') return 'Coming later'
+  if (s.tag.startsWith('P')) return `Coming in phase ${s.tag.slice(1)}`
+  return `Building now · phase 1, ${s.tag.toLowerCase()}`
+}
+
+/** What each not-yet-built section will hold (shown on its "coming" card). */
 export const TAB_COMING: Record<string, string> = {
-  keywords: 'Keyword database, CSV import, 3×3 matrix and clusters. Being built now (phase 1, steps 4–8).',
+  matrix: 'The 3×3 matrix: Home + S1–S3 × A1–A3, a primary keyword per cell with backups, N/A and Pending.',
+  database: 'The master keyword database: roles, services, both volumes, missing-data flags, Track toggle and the editable KP range with bulk-set.',
+  clusters: 'One row per page: priority, primary keyword, secondary and FAQ keywords, and why. A keyword can only sit on one page.',
   pages: 'Page list with keep / improve / new, keyword owner per page and SEO hotspots (title, meta, H1, URL).',
   plan: 'Ideal sitemap: site structure, page IDs and internal links. Later the redirects queue.',
   reports: 'Baseline vs results: Semrush rankings, Search Console, GA4, GBP numbers and the map grid.',
@@ -60,7 +89,7 @@ export const TAB_COMING: Record<string, string> = {
 /** Sam's process as one flow per client (context pack "Sam's process → SEO Hub steps"). */
 export const SAM_STEPS: { n: number; title: string; day: string; phase: string; tab?: string }[] = [
   { n: 0, title: 'Client setup', day: 'Day 1', phase: '1' },
-  { n: 1, title: 'Keywords', day: 'Day 2', phase: '1', tab: 'keywords' },
+  { n: 1, title: 'Keywords', day: 'Day 2', phase: '1', tab: 'keywords/import' },
   { n: 2, title: 'Baseline', day: 'Day 3', phase: '2', tab: 'reports' },
   { n: 3, title: 'GBP check', day: 'Day 4', phase: '4' },
   { n: 4, title: 'Sitemap + hotspots', day: 'Day 5', phase: '3', tab: 'pages' },

@@ -8,7 +8,7 @@
 - **Rules + process:** `CLAUDE.md` (hard rules), `docs/seo-hub-context-pack.md`, `docs/seo-hub-phases.md`, `docs/local-seo-playbook.md` (Sam's 10-Day Rank Yourself process), `docs/vibe-seo-handoff-notes.md` (plugin connection).
 - **Current phase plan:** `docs/phase-1-plan.md` (steps ticked as they're done).
 - **No design mockups.** Built directly in the HQ style; styles/components are **copied** from HQ (HQ is read only).
-- **Where we are (Nov 20, 2026):** setup done and pushed (`main`). Phase 1 approved; building on local branch `phase-1`. Steps 1–3 (database, sign-in, clients) done and committed; Anassa is entered. Next: step 4 (CSV import wizard).
+- **Where we are (Nov 20, 2026):** setup done and pushed (`main`). Phase 1 approved; building on local branch `phase-1`. Steps 1–3 done and committed; Anassa entered. Step 4 (CSV import) done (Nov 24): Anassa's files imported, 247 keywords. Bulk imports for any client: `scripts/import-csvs.ts`. Next: step 5 (keyword database page).
 - **Repo:** https://github.com/visualvibedesign/vv-seo-hub (agency account, keep **private**). Never push, merge or deploy until Angel says so; build on local branches.
 
 ## 1. Overview
@@ -52,10 +52,13 @@ Clients (site URL + plugin site id, Home/S1–S3, A1–A3, account checklist), C
 | `/login` | Sign in | 1 ✅ |
 | `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me` | Sign-in API | 1 ✅ |
 | `GET /api/clients/list`, `get?site=`, `site-id?url=`, `POST save`, `POST account` | Clients API (signed in) | 1 ✅ |
-| `/` | Clients list | 1 ✅ |
+| `POST /api/imports/preview`, `POST commit`, `GET list?site=`, `GET file?site=&id=`, `GET delete-check?site=&id=`, `POST delete` | Imports API (signed in) | 1 ✅ |
+| `/` | SEO Hub Overview (numbers, clients, phases) | 1 ✅ |
+| `/clients` | All clients | 1 ✅ |
 | `/clients/new`, `/clients/{site id}/edit` | Add / Edit client | 1 ✅ |
 | `/clients/{site id}` | Overview tab (unknown id → "not an SEO Hub client yet" + Add client) | 1 ✅ |
-| `/clients/{site id}/keywords` (+ `/clusters`, `/import`) | Keywords tab: Matrix, Database, Clusters, Import | 1 |
+| `/clients/{site id}/keywords` (Matrix), `/keywords/database`, `/keywords/clusters` | Keywords | 1 (steps 5–7) |
+| `/clients/{site id}/keywords/import` | CSV import wizard + history | 1 ✅ |
 | `/clients/{site id}/pages` | Pages | 3 |
 | `/clients/{site id}/plan` | Site plan | 3 |
 | `/clients/{site id}/reports` | Reports | 2 |
@@ -65,7 +68,7 @@ Clients (site URL + plugin site id, Home/S1–S3, A1–A3, account checklist), C
 | `POST /api/vibe/checkin` | Plugin check-in (HMAC, not team login) | 5 |
 | `GET /api/health` | Setup check (signed-in only) | done |
 
-Tabs match the hub workspace SEO Hub replaces (`VVDA_SEO_Workspace`); unbuilt ones show "coming in phase X".
+**Navigation (Angel, Nov 20):** the client sections live in the **sidebar**, not as tabs. No client open: Overview, All clients, the client list, Add client. Client open: “← All clients”, a client switcher (keeps you in the same section), then Overview, Keywords (Matrix, Database, Clusters, Import), Pages, Site plan, Reports, Conversions, Work log, Notes & links, in the hub workspace's order (`VVDA_SEO_Workspace`). Not-built ones are greyed with their tag (Step 5, P3, Later) and open a “coming” card. List: `CLIENT_SECTIONS` in `src/lib/clientSetup.ts`.
 
 ### Later phases
 2 Baseline + results · 3 Sitemap + hotspots + page briefs · 4 GBP check/care + link database · 5 Vibe SEO check-in + automation · 6 Client report view. Details: `docs/seo-hub-phases.md`.
@@ -120,6 +123,7 @@ seo_page_keywords    keyword_id (primary key = one page per keyword), page_id, r
 Migration: `supabase/migrations/0001_seo_phase1.sql` (12 tables, 1 function `seo_touch_updated_at`, private bucket `seo-imports` 20 MB/file). One transaction; only creates `seo_*` things, never touches HQ's tables. **Run in Supabase on Nov 20, 2026** (all 12 tables + bucket confirmed by `/api/health`).
 
 Data rules: KP range is text (`10–100`, `No data`, `Not checked`); Semrush `0` stays 0, blank = null ("no data"); Track is its own toggle (not tied to role); missing-data flags are worked out when read (not stored). KP segments: Richmond County shown, "All" stored but hidden (`segment`). Exact duplicate = same text ignoring case + extra spaces, same source; close variants kept.
+**Import merge rules (Angel, Nov 20):** every CSV row is kept in history (`seo_keyword_sources`, raw row included); exact duplicates inside one file are skipped; an existing keyword's EMPTY Semrush volume / KD / CPC / intent is filled, a FILLED one is never overwritten unless “Use the new numbers” is ticked for it in the preview. KP ranges: KP and Semrush imports never touch them; only the Sheet (master_db) import fills an EMPTY one (`kp_volume_by = 'sheet'`); typed ranges are never overwritten. KP CSV numbers are stand-ins: history only. KP file totals ("All" / "Richmond County" rows with no keyword) are kept on the import (`column_map.totals`), not in the table. Raw file: Storage `seo-imports/<site id>/<import id>/<file>`, downloadable from the history. **Delete this import** (history, confirm with counts first): removes its history rows, its raw file and the keywords that only came from it; keywords also in another import stay; numbers it filled into kept keywords stay.
 
 RLS on all, no policies (server-only). Read-only from HQ: `settings.team_password_hash`. Storage bucket `seo-imports` (`<site id>/<import id>/<file>`).
 
@@ -157,24 +161,30 @@ vv-seo-hub/
 ├─ api/health.ts                # GET /api/health (signed in): which seo_ tables/bucket exist (no data)
 ├─ api/auth/[action].ts        # login, logout, me
 ├─ api/clients/[action].ts     # list, get, site-id, save, account
+├─ api/imports/[action].ts     # preview (dry run), commit, list, file (raw file link)
 ├─ server/
 │  ├─ clients/supabase.ts       # db(), must(): server-only Supabase client (from HQ)
 │  ├─ utils/auth.ts             # password check (reads HQ's hash, read only) + vv_session cookie (from HQ)
 │  ├─ utils/siteId.ts           # plugin-compatible site id + URL cleanup
 │  ├─ services/clientService.ts # clients: read, save (services keep ids), site id check, accounts
+│  ├─ services/importService.ts # CSV import plan (preview + commit), merge rules, history, raw file link
 │  └─ dev/apiDevPlugin.ts       # runs /api in npm run dev (from HQ)
 ├─ scripts/check-site-id.ts     # npm run check:site-id (Anassa → c6e74adc…)
 ├─ supabase/migrations/         # 0001_seo_phase1.sql
 ├─ src/
 │  ├─ main.tsx, App.tsx         # entry + routes
-│  ├─ pages/                    # LoginPage, ClientsPage, ClientFormPage, client/OverviewPage, client/ComingSoonPage
+│  ├─ pages/                    # HomePage (hub Overview), LoginPage, ClientsPage, ClientFormPage, client/{Overview,Import,ComingSoon}Page
 │  ├─ hooks/useClients.ts       # TanStack Query: clients, client, save, account
-│  ├─ lib/clientSetup.ts        # shared lists: categories, areas, accounts, 8 tabs, Sam's 9 steps
+│  ├─ hooks/useImports.ts       # imports list, preview, commit
+│  ├─ lib/clientSetup.ts        # shared lists: categories, areas, accounts, CLIENT_SECTIONS (sidebar), Sam's 9 steps
+│  ├─ lib/importRules.ts        # shared: keyword key, number parsing, reports, column auto-match
+│  ├─ lib/readCsv.ts            # browser: reads KP (UTF-16) / Semrush / Sheet CSVs with Papa Parse
 │  ├─ lib/ui.ts                 # HQ class strings (CARD, BTN_LIME, FIELD, pills)
 │  ├─ types/seo.ts              # shared types (browser + server)
 │  ├─ lib/api.ts                # call(), ApiError, getSession, login, logout, safeNext
-│  ├─ components/layout/        # AppLayout, Sidebar (client shortcuts, Switch app), HeaderTools (dark mode), RequireSession, ClientLayout (header + 8 tabs)
-│  ├─ components/ui/            # Logo, ThemeToggle, NavIcon, Loading (from HQ)
+│  ├─ components/layout/        # AppLayout, Sidebar (hub nav / client switcher + sections, Switch app), HeaderTools (dark mode), RequireSession, ClientLayout (header + breadcrumb)
+│  ├─ components/ui/            # Logo, ThemeToggle, NavIcon, Loading, ConfirmDialog (from HQ)
+│  ├─ components/import/        # ImportHistory (list, raw file download, Delete this import)
 │  ├─ lib/theme.ts              # light/dark (from HQ)
 │  └─ styles/                   # tokens.css, index.css (from HQ)
 ├─ public/brand/                # logos + icons (from HQ)
@@ -203,6 +213,7 @@ Planned phase 1 layout: `docs/phase-1-plan.md` §6.
 - **Database changes:** new migration file in `supabase/migrations/`; Angel reviews the SQL, then runs it in Supabase → SQL Editor (it's HQ's live project). Only create/alter `seo_*` objects.
 - Never commit secrets. HQ and Vibe Admin are read only: copy what we need, never edit them.
 - Volumes exactly as exported; skip exact duplicates only; flag missing data; never store or show a private address.
+- **Responsive rule (UI pass, Nov 20):** for a "2 columns on tablets, 1 on phones" grid use `[@media(min-width:901px)_and_(max-width:1199px)]:grid-cols-2 phone:grid-cols-1`. A plain `[@media(max-width:1199px)]:grid-cols-2` beats `phone:` in the CSS and leaves phones on 2 columns. Check pages at 1440, 1280 and 390 px wide, in light and dark.
 - Claude drafts are never published without review.
 - One step per message; Angel tests on localhost; update this file and tick `docs/phase-1-plan.md` after each step.
 - Never push, merge or deploy until Angel says so.
@@ -214,7 +225,7 @@ Planned phase 1 layout: `docs/phase-1-plan.md` §6.
    - [x] Step 1 (database): migration run Nov 20, health check all `ok`.
    - [x] Step 2 (sign-in): team password (read only from HQ), `vv_session` cookie shared with HQ, Sign in page, Log out.
    - [x] Step 3 (clients): list, add/edit (category name vs services box, list-in-name catch, pending services saved), `/clients/{site id}` + 8 tabs, Overview, account checklist, HQ's Switch app sidebar. Anassa entered Nov 20.
-   - [ ] Step 4 (CSV import wizard): next.
+   - [x] Step 4 (CSV import wizard) built + sidebar sections. Not committed yet (Angel tests first).
 2. Phase 2: baseline + results.
 3. Phase 3: sitemap + hotspots + page briefs.
 4. Phase 4: GBP + link database.

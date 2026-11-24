@@ -22,6 +22,8 @@ SEO dashboard web app for Visual Vibe Design: one place for every SEO client's s
 ## Look
 Same as Visual Vibe HQ: reuse its styles and components. Fraunces headings with a purple italic word (#7C5CE6), Inter body, bg #F7F5FF, text #131314, sidebar #EEEAFF, active pill #BFAFFF, white 22px cards with #ECE8FB border, lime #BAD657 pill buttons, light + dark mode, phone layout. Role tags: Primary teal, Secondary light blue, FAQ orange, Near me gray.
 
+UI rule: never change global styles or tokens. Match HQ's layout patterns (page header, cards, tables, spacing). Every list needs empty, loading and error states. Check phone width and dark mode before saying a step is done.
+
 ## How to work with Angel
 - Plan first, build after approval, one step per message, then say what to test on localhost.
 - Short answers, bullets/tables, casual.

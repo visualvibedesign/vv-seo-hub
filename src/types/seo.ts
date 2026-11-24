@@ -102,3 +102,100 @@ export interface SiteIdCheck {
   /** Name of another client that already has this site id. */
   takenBy: string | null
 }
+
+// ---- CSV imports (phase 1, step 4) ---------------------------------------------------
+
+export type ImportSource = 'kp' | 'semrush' | 'sheet'
+export type ImportReport = 'kp_ideas' | 'kp_volumes' | 'keyword_magic' | 'keyword_overview' | 'keyword_gap' | 'master_db'
+
+/** Fields a CSV column can be matched to. */
+export type ImportField = 'keyword' | 'volume' | 'kd' | 'cpc' | 'intent' | 'segment' | 'role' | 'service' | 'kp'
+
+/** One CSV row after column matching. Values stay as exported (text); `raw` is the whole row. */
+export interface ImportRow {
+  keyword: string
+  volume?: string
+  kd?: string
+  cpc?: string
+  intent?: string
+  segment?: string
+  role?: string
+  service?: string
+  kp?: string
+  raw: Record<string, string>
+}
+
+export interface ImportPayload {
+  siteId: string
+  source: ImportSource
+  report: ImportReport
+  fileName: string
+  location: string
+  filter: string
+  columnMap: Partial<Record<ImportField, string>>
+  /** KP file totals (rows with no keyword, e.g. "All" / "Richmond County"): kept on the import, not shown in the table. */
+  totals: { segment: string; volume: string }[]
+  rows: ImportRow[]
+  /** keyword keys whose different Semrush numbers should replace the filled ones ("Use the new numbers"). */
+  useNew?: string[]
+}
+
+export type NumberField = 'semrush_volume' | 'kd' | 'cpc'
+
+export interface ImportDifference {
+  key: string
+  keyword: string
+  changes: { field: NumberField; current: number; incoming: number }[]
+}
+
+export interface ImportPreview {
+  rows: number
+  unique: number
+  newKeywords: number
+  existing: number
+  skippedDuplicates: number
+  duplicateExamples: string[]
+  /** existing keywords that get an empty Semrush number / KD / CPC / intent filled in */
+  filled: number
+  /** Sheet only: KP ranges filled into empty ones */
+  kpFilled: number
+  /** Sheet only: KP ranges left alone because one was typed (or already there) */
+  kpKept: number
+  differences: ImportDifference[]
+  unmatchedServices: string[]
+  unknownRoles: string[]
+  /** new keywords with no Semrush volume (flagged as missing data) */
+  newWithoutVolume: number
+  sampleNew: string[]
+}
+
+export interface ImportRecord {
+  id: string
+  source: ImportSource
+  report: ImportReport
+  fileName: string
+  location: string | null
+  filter: string | null
+  rowsTotal: number
+  rowsAdded: number
+  rowsMerged: number
+  rowsSkipped: number
+  totals: { segment: string; volume: string }[]
+  hasFile: boolean
+  createdAt: string
+}
+
+/** What "Delete this import" would remove (shown in the confirm before anything is deleted). */
+export interface DeleteImportCheck {
+  fileName: string
+  historyRows: number
+  /** keywords that only came from this import (they go) */
+  keywordsRemoved: number
+  /** keywords also in another import (they stay; only this import's history rows go) */
+  keywordsKept: number
+  /** of the removed: ones with a typed KP range, a role or a service */
+  removedWithEdits: number
+  /** of the removed: ones used in the matrix or clusters */
+  removedInUse: number
+  hasFile: boolean
+}
