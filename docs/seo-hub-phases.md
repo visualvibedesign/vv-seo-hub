@@ -143,23 +143,30 @@ Rules: title 50–60 chars, meta 150–160 ending with a CTA, state abbreviation
 - [ ] Whitespark ranking factors checklist (client vs competitors)
 - [ ] Business details: public side only (private address never shown)
 - [ ] GBP care: services/products (one per service page), review request email + tracker, 13-week post calendar with UTM links
-- [ ] Link database: BrightLocal CSV split into 3 waves automatically, Backlink Gap CSV, local + premier links, status per link
+- [ ] Link database: BrightLocal CSV split into 3 waves automatically (Day 8), who does each wave (us / BrightLocal)
+- [ ] Opportunity list (Day 9): exact page, found via (R relationship / S search / C competitor / Cit citation / Sp sponsorship), Authority Score, why it fits, how to get on it (claim / apply / contact / join), cost, next action + date, This week / Sent / Approved / Live as separate ticks (Live only after the link is clicked and checked)
+- [ ] Backlink Gap CSV import (root domain, up to 4 competitors = C1–C4): keeps the "matches" count (e.g. 4 of 5), hides Authority Score below 3 by default, flags citations already on the Day 8 wave list so nothing is added twice
+- [ ] Premier links checklist (chamber, trade groups, certifications, referral partners, vendors, organizations worked with → page or route in + next action) + editorial idea
+- [ ] Sponsorships (2–3): event or cause, tier + cost, why, sponsor page (public / on main site / stays up), shows (name / logo / profile / link)
+- [ ] SERP searches log: search run → promising pages (customer-style + lister-style searches)
+- [ ] Weekly pace (2–10 links/week) per client + count of links live this week vs pace
+- [ ] Authority check typed in at month 3 / 6 / 9 / 12: Authority Score, referring domains, backlinks (no Semrush API)
 
-**Screens:** GBP check tab · GBP care tab (products, reviews, post calendar) · Link database tab (waves, competitor links, local links).
+**Screens:** GBP check tab · GBP care tab (products, reviews, post calendar) · Link database tab (citation waves, opportunity list with This week / Sent / Approved / Live filters, premier + sponsorships, SERP searches, authority checks).
 
-**Tables:** `competitors` · `competitor_reviews` · `factor_checks` · `gbp_profile` (public fields) · `gbp_products` · `review_requests` · `gbp_posts` (week, topic, CTA page, UTM, image need, status) · `links` (type: citation / backlink / local / premier, wave, domain, authority, verification, owner, status).
+**Tables:** `competitors` · `competitor_reviews` · `factor_checks` · `gbp_profile` (public fields) · `gbp_products` · `review_requests` · `gbp_posts` (week, topic, CTA page, UTM, image need, status) · `links` (type: citation / backlink / local / premier, wave, domain, authority, verification, owner, status) · `link_opportunities` (page URL, domain, found_via, authority_score, competitor_matches, why_fits, how_to_get, cost, next_action, next_action_date, this_week, sent_at, approved_at, live_at, link_id when it becomes a link) · `premier_relationships` (relationship type, page or route in, next action) · `sponsorships` (event, tier, cost, why, page flags, shows flags) · `serp_searches` (search, promising opportunity ids) · `authority_checks` (date, authority score, referring domains, backlinks). Weekly pace lives on the client.
 
 **Prompt to paste**
 ```
 Phase 4 of SEO Hub: GBP check, GBP care and link database (Sam Days 4, 7, 8–9). Phases 1–3 are done.
-Read the phase 4 section of docs/seo-hub-phases.md and Days 4, 7 and 8 of docs/local-seo-playbook.md.
+Read the phase 4 section of docs/seo-hub-phases.md and Days 4, 7, 8 and 9 of docs/local-seo-playbook.md.
 
 No mockups. Build directly in the same HQ style.
-Step 1 (plan only): tables, BrightLocal + Backlink Gap CSV import rules, UTM builder.
-Step 2 (after I approve): build on a local branch step by step using Anassa (S1–S3, Staten Island), including the 13-week post calendar and the 3 citation waves. Tell me what to test on localhost.
+Step 1 (plan only): tables, BrightLocal + Backlink Gap CSV import rules, UTM builder, opportunity list statuses.
+Step 2 (after I approve): build on a local branch step by step using Anassa (S1–S3, Staten Island), including the 13-week post calendar, the 3 citation waves and a 12-row starting opportunity list. Tell me what to test on localhost.
 Step 3: do NOT push, merge or deploy until I say so.
 
-Rules: never store or show the private address; review tracker keeps only customer ref, date, channel, result; waves = rows 1,4,7… / 2,5,8… / 3,6,9…; no GBP API yet.
+Rules: never store or show the private address (not on any listing either); review tracker keeps only customer ref, date, channel, result; waves = rows 1,4,7… / 2,5,8… / 3,6,9…; no GBP API yet; no Semrush API (Backlink Gap = CSV, authority checks typed in); Sent / Approved / Live stay separate; check the wave list before adding a citation as an opportunity.
 ```
 
 ---
