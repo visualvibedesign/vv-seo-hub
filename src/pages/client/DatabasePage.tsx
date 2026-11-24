@@ -169,7 +169,7 @@ export default function DatabasePage() {
           <select className={FIELD} value={f.role} onChange={(e) => set('role', e.target.value as Filters['role'])}>
             <option value="">All</option>
             {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-            <option value="none">No role</option>
+            <option value="none">Needs role</option>
           </select>
         </label>
         <label className={LABEL}>
@@ -248,7 +248,7 @@ export default function DatabasePage() {
           <select aria-label="Set role" className={SMALL_FIELD} value="" disabled={save.isPending} onChange={(e) => bulk({ role: e.target.value === 'none' ? null : (e.target.value as KeywordRole) })}>
             <option value="" disabled>Role…</option>
             {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-            <option value="none">No role</option>
+            <option value="none">Needs role</option>
           </select>
           <select aria-label="Set service" className={SMALL_FIELD} value="" disabled={save.isPending} onChange={(e) => bulk({ serviceId: e.target.value === 'none' ? null : e.target.value })}>
             <option value="" disabled>Service…</option>
@@ -412,7 +412,7 @@ function RoleSelect({ k, onSave }: { k: KeywordItem; onSave: (r: KeywordRole | n
       value={k.role ?? ''}
       onChange={(e) => onSave((e.target.value || null) as KeywordRole | null)}
     >
-      <option value="">+ Role</option>
+      <option value="">Needs role</option>
       {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
     </select>
   )

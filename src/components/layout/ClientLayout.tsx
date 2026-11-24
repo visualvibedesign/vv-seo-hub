@@ -70,7 +70,7 @@ export default function ClientLayout() {
             <Link to={`/clients/${c.siteId}`} className="text-vv-muted no-underline hover:text-vv-purple-deep">
               {c.name}
             </Link>{' '}
-            <span aria-hidden="true">›</span> <strong className="text-vv-ink">{section.path.startsWith('keywords') ? `Keywords › ${section.label}` : section.label}</strong>
+            <span aria-hidden="true">›</span> <strong className="text-vv-ink">{section.group ? `${section.group} › ${section.label}` : section.label}</strong>
           </>
         ) : (
           <strong className="text-vv-ink">{c.name}</strong>

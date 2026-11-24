@@ -35,55 +35,106 @@ export const ACCOUNT_KINDS = ACCOUNTS.map((a) => a.kind)
 export const ACCOUNT_STATUS_LABEL: Record<AccountStatus, string> = { ready: 'Ready', pending: 'Pending', n_a: 'N/A' }
 
 /**
- * A client's sections in the sidebar (/clients/{site id}/<path>), in the order of the agency hub's
- * workspace that SEO Hub replaces (Vibe SEO VVDA_SEO_Workspace). `tag` shows on sections not built yet.
+ * A client's sections (/clients/{site id}/<path>), grouped like the design's sidebar (docs/design/Sidebar.png,
+ * Client.png): a few top items, then KEYWORDS, RESULTS, PAGES, LOCAL, SITE. `live` = built.
+ * `tag` says when a section comes: 'P1' (phase 1, being built), 'P2'…'P4', 'Plugin' (needs the Vibe SEO
+ * plugin), 'Later'. Only 'Later' shows in the sidebar; the others show on the section's "coming" card.
  */
-export type ClientSection = { key: string; label: string; path: string; live: boolean; tag: string; children?: ClientSection[] }
+export type ClientSection = { key: string; label: string; path: string; live: boolean; tag: string; group?: string }
+export type ClientGroup = { key: string; label: string; items: ClientSection[] }
 
-export const CLIENT_SECTIONS: ClientSection[] = [
+export const CLIENT_TOP: ClientSection[] = [
   { key: 'overview', label: 'Overview', path: '', live: true, tag: '' },
+  { key: 'guide', label: 'Step-by-step guide', path: 'guide', live: false, tag: 'P1' },
+  { key: 'uploads', label: 'Uploads + auto-fill', path: 'uploads', live: false, tag: 'P1' },
+]
+
+export const CLIENT_GROUPS: ClientGroup[] = [
   {
     key: 'keywords',
     label: 'Keywords',
-    path: 'keywords',
-    live: true,
-    tag: '',
-    children: [
-      { key: 'matrix', label: 'Matrix', path: 'keywords', live: false, tag: 'Step 6' },
+    items: [
+      { key: 'matrix', label: 'Matrix', path: 'keywords', live: false, tag: 'P1' },
       { key: 'database', label: 'Database', path: 'keywords/database', live: true, tag: '' },
-      { key: 'clusters', label: 'Clusters', path: 'keywords/clusters', live: false, tag: 'Step 7' },
+      { key: 'clusters', label: 'Clusters', path: 'keywords/clusters', live: false, tag: 'P1' },
       { key: 'import', label: 'Import', path: 'keywords/import', live: true, tag: '' },
     ],
   },
-  { key: 'pages', label: 'Pages', path: 'pages', live: false, tag: 'P3' },
-  { key: 'plan', label: 'Site plan', path: 'plan', live: false, tag: 'P3' },
-  { key: 'reports', label: 'Reports', path: 'reports', live: false, tag: 'P2' },
-  { key: 'conversions', label: 'Conversions', path: 'conversions', live: false, tag: 'Later' },
-  { key: 'log', label: 'Work log', path: 'log', live: false, tag: 'P5' },
-  { key: 'notes', label: 'Notes & links', path: 'notes', live: false, tag: 'P5' },
+  {
+    key: 'results',
+    label: 'Results',
+    items: [
+      { key: 'reports', label: 'Baseline + reports', path: 'reports', live: false, tag: 'P2' },
+      { key: 'review', label: 'Day 10 review', path: 'review', live: false, tag: 'P2' },
+    ],
+  },
+  {
+    key: 'pages',
+    label: 'Pages',
+    items: [
+      { key: 'pages', label: 'Sitemap + hotspots', path: 'pages', live: false, tag: 'P3' },
+      { key: 'plan', label: 'Site plan', path: 'plan', live: false, tag: 'P3' },
+      { key: 'briefs', label: 'Page briefs', path: 'briefs', live: false, tag: 'P3' },
+    ],
+  },
+  {
+    key: 'local',
+    label: 'Local',
+    items: [
+      { key: 'gbp', label: 'GBP check', path: 'gbp', live: false, tag: 'P4' },
+      { key: 'gbp-care', label: 'GBP care', path: 'gbp-care', live: false, tag: 'P4' },
+      { key: 'links', label: 'Links', path: 'links', live: false, tag: 'P4' },
+    ],
+  },
+  {
+    key: 'site',
+    label: 'Site',
+    items: [
+      { key: 'site', label: 'Connection + work log', path: 'site', live: false, tag: 'Plugin' },
+      { key: 'notes', label: 'Notes & links', path: 'notes', live: false, tag: 'P1' },
+      { key: 'conversions', label: 'Conversions', path: 'conversions', live: false, tag: 'Later' },
+    ],
+  },
 ]
 
-/** Every section and sub-section, flat (the "Keywords" parent left out: its page is Matrix). */
-export const ALL_SECTIONS: ClientSection[] = CLIENT_SECTIONS.flatMap((s) => (s.children ? s.children : [s]))
+/** Every client section, flat; grouped ones carry their group's label (for the breadcrumb). */
+export const ALL_SECTIONS: ClientSection[] = [...CLIENT_TOP, ...CLIENT_GROUPS.flatMap((g) => g.items.map((s) => ({ ...s, group: g.label })))]
 
-/** "Coming in phase 3", "Coming later", "Coming in step 5". */
+/** Hub pages (no client open). Clients are never listed in the sidebar (50+ clients): they live on All clients. */
+export const HUB_SECTIONS: ClientSection[] = [
+  { key: 'hub-overview', label: 'Overview', path: '/', live: true, tag: '' },
+  { key: 'clients', label: 'All clients', path: '/clients', live: true, tag: '' },
+  { key: 'templates', label: 'Templates', path: '/templates', live: false, tag: 'P1' },
+  { key: 'automation', label: 'Automation', path: '/automation', live: false, tag: 'P5' },
+]
+
+/** "Building now · phase 1", "Coming in phase 3", "Comes with the Vibe SEO plugin", "Coming later". */
 export function comingLabel(s: ClientSection): string {
   if (s.tag === 'Later') return 'Coming later'
-  if (s.tag.startsWith('P')) return `Coming in phase ${s.tag.slice(1)}`
-  return `Building now · phase 1, ${s.tag.toLowerCase()}`
+  if (s.tag === 'Plugin') return 'Comes with the Vibe SEO plugin'
+  if (s.tag === 'P1') return 'Building now · phase 1'
+  return `Coming in phase ${s.tag.slice(1)}`
 }
 
 /** What each not-yet-built section will hold (shown on its "coming" card). */
 export const TAB_COMING: Record<string, string> = {
-  matrix: 'The 3×3 matrix: Home + S1–S3 × A1–A3, a primary keyword per cell with backups, N/A and Pending.',
-  database: 'The master keyword database: roles, services, both volumes, missing-data flags, Track toggle and the editable KP range with bulk-set.',
+  guide: 'Sam’s 10 days as 9 steps for this client: tasks to tick, tools, a tip, a button to the right screen and Sam’s video. Progress is saved per client.',
+  uploads: 'You upload, Claude fills, you approve. Each day lists the exact exports with “how to get this file” steps, one drop zone, what Claude filled (ready to review) and what needs you.',
+  matrix: 'The 3×3 matrix: Home + S1–S3 × A1–A3, a primary keyword per cell with backups, N/A and Pending, plus Export tracked list.',
   clusters: 'One row per page: priority, primary keyword, secondary and FAQ keywords, and why. A keyword can only sit on one page.',
-  pages: 'Page list with keep / improve / new, keyword owner per page and SEO hotspots (title, meta, H1, URL).',
-  plan: 'Ideal sitemap: site structure, page IDs and internal links. Later the redirects queue.',
-  reports: 'Baseline vs results: Semrush rankings, Search Console, GA4, GBP numbers and the map grid.',
+  reports: 'Baseline vs now: Semrush rankings, Search Console, GA4, GBP numbers, the map grid and a monthly report archive.',
+  review: 'Day 10: start with the goal, compare like with like, work worth explaining, the six buckets, the client update and up to 3 next actions.',
+  pages: 'Ideal sitemap (P1, P2… keep / improve / new) with the keyword owner per page and SEO hotspots: title, meta, H1, URL with live counters and a Google preview.',
+  plan: 'How the pages connect (service first / location first / flat) and the redirects queue when a URL changes.',
+  briefs: 'BrandScript once per client, then StoryBrand page copy (11 sections, V1 / V2). Only real facts, [brackets] for the rest.',
+  gbp: 'Who’s in the map pack per service, the Whitespark top map factors and the public business details (private address never stored).',
+  'gbp-care': 'Products (one per service page), the review email + tracker and a 13-week post calendar.',
+  links: 'Citations in 3 waves (BrightLocal), Backlink Gap, local + premier links, and Sam’s Day 9 opportunity list.',
+  site: 'Connect the site (coming soon): the per-site SEO Hub key, last check-in, push preview and the work log. Comes with the Vibe SEO plugin.',
+  notes: 'Quick links to the client’s tools and the rules and decisions the team needs to remember.',
   conversions: 'Conversion insights (calls, forms, Clarity). Moves over from the agency hub later.',
-  log: 'Every change pushed to the site through the Vibe SEO plugin, plus what we did each month.',
-  notes: 'Goals, targets, notes and useful links for this client.',
+  templates: 'One template per step of Sam’s 10 days (keyword research, 3×3 matrix, clusters, SEO hotspots, GBP posts, review email, citation waves). Set up once, applied to every new client.',
+  automation: 'Slack alerts, the weekly SEO email, ClickUp lists and the Claude drafts queue. Nothing is published without a review.',
 }
 
 /** Sam's process as one flow per client (context pack "Sam's process → SEO Hub steps"). */

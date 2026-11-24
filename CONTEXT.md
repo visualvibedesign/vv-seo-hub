@@ -8,7 +8,7 @@
 - **Rules + process:** `CLAUDE.md` (hard rules), `docs/seo-hub-context-pack.md`, `docs/seo-hub-phases.md`, `docs/local-seo-playbook.md` (Sam's 10-Day Rank Yourself process), `docs/vibe-seo-handoff-notes.md` (plugin connection).
 - **Current phase plan:** `docs/phase-1-plan.md` (steps ticked as they're done).
 - **No design mockups.** Built directly in the HQ style; styles/components are **copied** from HQ (HQ is read only).
-- **Where we are (Nov 20, 2026):** setup done and pushed (`main`). Phase 1 approved; building on local branch `phase-1`. Steps 1–3 done and committed; Anassa entered. Step 4 (CSV import) done (Nov 24): Anassa's files imported, 247 keywords. Bulk imports for any client: `scripts/import-csvs.ts`. Next: step 5 (keyword database page).
+- **Where we are (Nov 25, 2026):** phase 1 steps 1–5 built (database, sign-in, clients, CSV import, keyword database), backed up in `5793ec7`. Now redoing phase 1 to match the design on local branch `redesign` (plan: `docs/redesign-audit.md`, screens: `docs/design/`). Redesign step 1 (sidebar) done. Anassa: 247 keywords (31 "Needs role"), 10 tracked. Bulk imports for any client: `scripts/import-csvs.ts`.
 - **Repo:** https://github.com/visualvibedesign/vv-seo-hub (agency account, keep **private**). Never push, merge or deploy until Angel says so; build on local branches.
 
 ## 1. Overview
@@ -68,7 +68,7 @@ Clients (site URL + plugin site id, Home/S1–S3, A1–A3, account checklist), C
 | `POST /api/vibe/checkin` | Plugin check-in (HMAC, not team login) | 5 |
 | `GET /api/health` | Setup check (signed-in only) | done |
 
-**Navigation (Angel, Nov 20):** the client sections live in the **sidebar**, not as tabs. No client open: Overview, All clients, the client list, Add client. Client open: “← All clients”, a client switcher (keeps you in the same section), then Overview, Keywords (Matrix, Database, Clusters, Import), Pages, Site plan, Reports, Conversions, Work log, Notes & links, in the hub workspace's order (`VVDA_SEO_Workspace`). Not-built ones are greyed with their tag (Step 5, P3, Later) and open a “coming” card. List: `CLIENT_SECTIONS` in `src/lib/clientSetup.ts`.
+**Navigation (design, Nov 25):** hub mode = Overview · All clients · Templates · Automation + a lime "+ Add client" button; clients are **never** listed in the sidebar (they live on All clients and in the client switcher). Client mode = "← All clients", the client switcher card (search; keeps you in the same section), Overview · Step-by-step guide · Uploads + auto-fill, then foldable groups KEYWORDS (Matrix, Database, Clusters, Import) · RESULTS (Baseline + reports, Day 10 review) · PAGES (Sitemap + hotspots, Site plan, Page briefs) · LOCAL (GBP check, GBP care, Links) · SITE (Connection + work log, Notes & links, Conversions "Later"). Fold state + collapse-to-icons are remembered in the browser. Not-built sections open a "coming" card with their phase. Lists: `CLIENT_TOP`, `CLIENT_GROUPS`, `HUB_SECTIONS` in `src/lib/clientSetup.ts`.
 
 ### Later phases
 2 Baseline + results · 3 Sitemap + hotspots + page briefs · 4 GBP check/care + link database · 5 Vibe SEO check-in + automation · 6 Client report view. Details: `docs/seo-hub-phases.md`.

@@ -23,8 +23,11 @@ const router = createBrowserRouter([
           { path: '/clients', lazy: page(() => import('./pages/ClientsPage')) },
           { path: '/clients/new', lazy: page(() => import('./pages/ClientFormPage')) },
           { path: '/clients/:siteId/edit', lazy: page(() => import('./pages/ClientFormPage')) },
+          // Hub pages not built yet (Templates: phase 1, Automation: phase 5)
+          { path: '/templates', lazy: page(() => import('./pages/HubComingSoonPage')) },
+          { path: '/automation', lazy: page(() => import('./pages/HubComingSoonPage')) },
           // Client workspace: /clients/{site id} is the address the agency hub + Vibe SEO plugin link to.
-          // Its sections are in the sidebar (src/lib/clientSetup.ts CLIENT_SECTIONS).
+          // Its sections are in the sidebar (src/lib/clientSetup.ts CLIENT_TOP + CLIENT_GROUPS).
           {
             path: '/clients/:siteId',
             lazy: page(() => import('./components/layout/ClientLayout')),
