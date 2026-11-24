@@ -2,7 +2,7 @@
 // Tables: seo_clients, seo_client_categories, seo_client_services, seo_client_areas, seo_client_accounts.
 // No address is ever stored (there is no column for it).
 import { z } from 'zod'
-import { ACCOUNT_KINDS, AREA_CODES, CATEGORY_CODES, DEFAULT_FAQ_NAME } from '../../src/lib/clientSetup.js'
+import { ACCOUNT_KINDS, AREA_CODES, CATEGORY_CODES, DEFAULT_FAQ_NAME, INDUSTRY_KEYS } from '../../src/lib/clientSetup.js'
 import type {
   AccountKind,
   AccountStatus,
@@ -14,12 +14,13 @@ import type {
   ClientCategory,
   ClientCounts,
   ClientDetail,
+  ClientIndustry,
   ClientInput,
   ClientStatus,
   ClientSummary,
   SiteIdCheck,
 } from '../../src/types/seo.js'
-import { db, must } from '../clients/supabase.js'
+import { DatabaseError, db, must } from '../clients/supabase.js'
 import { normalizeSiteUrl, siteIdFor, SiteUrlError } from '../utils/siteId.js'
 
 /** A problem the person can fix (shown on the form). */
@@ -37,6 +38,8 @@ type ClientRow = {
   usp: string | null
   success_12mo: string | null
   status: ClientStatus
+  /** null until migration 0002 runs, or when no template was picked. */
+  industry?: ClientIndustry | null
   notes: string | null
   created_at: string
   updated_at: string
@@ -50,21 +53,35 @@ const byCode = <T extends { code: string }>(order: readonly string[]) => (a: T, 
 
 // ---- Read ------------------------------------------------------------------------
 
-async function countsFor(clientIds: string[]): Promise<Map<string, ClientCounts>> {
-  const out = new Map<string, ClientCounts>(clientIds.map((id) => [id, { keywords: 0, imports: 0, pages: 0, lastImportAt: null }]))
-  if (!clientIds.length) return out
+/** Counts per client (head-only counts, run in parallel). `lastWorkedAt` = latest edit, import or keyword change. */
+async function countsFor(clients: Pick<ClientRow, 'id' | 'updated_at'>[]): Promise<Map<string, ClientCounts>> {
+  const out = new Map<string, ClientCounts>()
+  const head = { count: 'exact', head: true } as const
   await Promise.all(
-    clientIds.map(async (id) => {
-      const [kw, pg, imp] = await Promise.all([
-        db().from('seo_keywords').select('id', { count: 'exact', head: true }).eq('client_id', id),
-        db().from('seo_pages').select('id', { count: 'exact', head: true }).eq('client_id', id),
+    clients.map(async ({ id, updated_at }) => {
+      const kws = () => db().from('seo_keywords').select('id', head).eq('client_id', id)
+      const [kw, tracked, noRole, pg, imp, pending, lastKw] = await Promise.all([
+        kws(),
+        kws().eq('track', true),
+        kws().is('role', null),
+        db().from('seo_pages').select('id', head).eq('client_id', id),
         db().from('seo_imports').select('created_at', { count: 'exact' }).eq('client_id', id).order('created_at', { ascending: false }).limit(1),
+        db().from('seo_client_accounts').select('id', head).eq('client_id', id).eq('status', 'pending'),
+        db().from('seo_keywords').select('updated_at').eq('client_id', id).order('updated_at', { ascending: false }).limit(1),
       ])
-      const c = out.get(id)!
-      c.keywords = kw.count ?? 0
-      c.pages = pg.count ?? 0
-      c.imports = imp.count ?? 0
-      c.lastImportAt = (imp.data as { created_at: string }[] | null)?.[0]?.created_at ?? null
+      for (const r of [kw, tracked, noRole, pg, imp, pending, lastKw]) if (r.error) throw new DatabaseError(`Counting this client’s data: ${r.error.message}`)
+      const lastImportAt = (imp.data as { created_at: string }[] | null)?.[0]?.created_at ?? null
+      const lastKwAt = (lastKw.data as { updated_at: string }[] | null)?.[0]?.updated_at ?? null
+      out.set(id, {
+        keywords: kw.count ?? 0,
+        imports: imp.count ?? 0,
+        pages: pg.count ?? 0,
+        lastImportAt,
+        tracked: tracked.count ?? 0,
+        needsRole: noRole.count ?? 0,
+        accountsPending: pending.count ?? 0,
+        lastWorkedAt: [updated_at, lastImportAt, lastKwAt].filter((d): d is string => !!d).sort().pop()!,
+      })
     }),
   )
   return out
@@ -76,7 +93,7 @@ export async function listClients(): Promise<ClientSummary[]> {
     await db().from('seo_client_categories').select('client_id, code, name').in('client_id', clients.map((c) => c.id)),
     'Loading service categories',
   ) as Pick<CategoryRow, 'client_id' | 'code' | 'name'>[]
-  const counts = await countsFor(clients.map((c) => c.id))
+  const counts = await countsFor(clients)
   return clients.map((c) => ({
     ...summaryOf(c),
     categories: cats
@@ -88,7 +105,7 @@ export async function listClients(): Promise<ClientSummary[]> {
 }
 
 function summaryOf(c: ClientRow) {
-  return { siteId: c.site_id, siteUrl: c.site_url, name: c.name, city: c.city, state: c.state, status: c.status }
+  return { siteId: c.site_id, siteUrl: c.site_url, name: c.name, city: c.city, state: c.state, status: c.status, industry: c.industry ?? null }
 }
 
 async function clientRow(siteId: string): Promise<ClientRow | null> {
@@ -104,7 +121,7 @@ export async function getClient(siteId: string): Promise<ClientDetail | null> {
     db().from('seo_client_services').select('*').eq('client_id', c.id).order('sort'),
     db().from('seo_client_areas').select('*').eq('client_id', c.id),
     db().from('seo_client_accounts').select('*').eq('client_id', c.id),
-    countsFor([c.id]),
+    countsFor([c]),
   ])
   const svc = must(services, 'Loading services') as ServiceRow[]
   const categories: ClientCategory[] = (must(cats, 'Loading service categories') as CategoryRow[]).sort(byCode(CATEGORY_CODES)).map((k) => ({
@@ -157,6 +174,7 @@ const InputSchema = z.object({
   success12mo: text(2000),
   notes: text(4000),
   status: z.enum(['active', 'paused', 'archived']),
+  industry: z.enum(INDUSTRY_KEYS as [ClientIndustry, ...ClientIndustry[]]).nullable().default(null),
   categories: z
     .array(
       z.object({
@@ -167,6 +185,10 @@ const InputSchema = z.object({
     )
     .length(5),
   areas: z.array(z.object({ code: z.enum(['A1', 'A2', 'A3']), name: text(80), state: text(40), status: z.enum(['active', 'n_a']) })).length(3),
+  accounts: z
+    .array(z.object({ kind: z.enum(ACCOUNT_KINDS as [AccountKind, ...AccountKind[]]), status: z.enum(['ready', 'pending', 'n_a']) }))
+    .max(ACCOUNT_KINDS.length)
+    .optional(),
 })
 
 const FIELD_LABEL: Record<string, string> = {
@@ -252,15 +274,28 @@ export async function saveClient(raw: unknown, existingSiteId?: string): Promise
     success_12mo: orNull(input.success12mo),
     notes: orNull(input.notes),
     status: input.status,
+    industry: input.industry,
   }
 
+  try {
+    return await writeClient(input, fields, existingSiteId, site.siteId)
+  } catch (err) {
+    // Migration 0002 adds seo_clients.industry. Until it runs, say so instead of a raw database error.
+    if (err instanceof DatabaseError && /industry/i.test(err.message) && /column/i.test(err.message)) {
+      throw new ClientInputError('The industry column is missing: run supabase/migrations/0002_seo_client_industry.sql in Supabase first.')
+    }
+    throw err
+  }
+}
+
+async function writeClient(input: ClientInput, fields: Record<string, unknown>, existingSiteId: string | undefined, siteId: string) {
   if (!existingSiteId) return createClient(input, fields)
 
   const current = await clientRow(existingSiteId)
   if (!current) throw new ClientInputError('That client no longer exists.')
   must(await db().from('seo_clients').update(fields).eq('id', current.id), 'Saving the client')
   await saveStructure(current.id, input)
-  return { siteId: site.siteId }
+  return { siteId }
 }
 
 async function createClient(input: ClientInput, fields: Record<string, unknown>): Promise<{ siteId: string }> {
@@ -293,7 +328,14 @@ async function createClient(input: ClientInput, fields: Record<string, unknown>)
     must(
       await db()
         .from('seo_client_accounts')
-        .insert(ACCOUNT_KINDS.map((kind, i) => ({ client_id: created.id, kind, status: 'pending', sort: i }))),
+        .insert(
+          ACCOUNT_KINDS.map((kind, i) => ({
+            client_id: created.id,
+            kind,
+            status: input.accounts?.find((a) => a.kind === kind)?.status ?? 'pending',
+            sort: i,
+          })),
+        ),
       'Adding the account checklist',
     )
     await saveServices(created.id, input)

@@ -51,11 +51,22 @@ export interface ClientAccount {
   updatedAt: string
 }
 
+/** Industry template picked in the Add client wizard (seo_clients.industry, migration 0002). */
+export type ClientIndustry = 'waxing_beauty' | 'med_spa' | 'home_services' | 'blank'
+
 export interface ClientCounts {
   keywords: number
   imports: number
   pages: number
   lastImportAt: string | null
+  /** Keywords with Track on (Semrush Position Tracking). */
+  tracked: number
+  /** Keywords with no role yet ("Needs role"). */
+  needsRole: number
+  /** Account checklist rows still Pending. */
+  accountsPending: number
+  /** Latest of: client edited, last import, last keyword change. */
+  lastWorkedAt: string
 }
 
 export interface ClientSummary {
@@ -65,6 +76,7 @@ export interface ClientSummary {
   city: string | null
   state: string | null
   status: ClientStatus
+  industry: ClientIndustry | null
   categories: { code: CategoryCode; name: string }[]
   counts: ClientCounts
 }
@@ -92,8 +104,11 @@ export interface ClientInput {
   success12mo: string
   notes: string
   status: ClientStatus
+  industry: ClientIndustry | null
   categories: { code: CategoryCode; name: string; services: { id?: string; name: string }[] }[]
   areas: { code: AreaCode; name: string; state: string; status: AreaStatus }[]
+  /** Add client only (wizard step 4): starting status per account. Edits happen on the Overview checklist. */
+  accounts?: { kind: AccountKind; status: AccountStatus }[]
 }
 
 export interface SiteIdCheck {
