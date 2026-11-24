@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { useClientContext } from '../../components/layout/ClientLayout'
+import HeaderTools from '../../components/layout/HeaderTools'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { Bone, Spinner } from '../../components/ui/Loading'
 import { useKeywords, useUpdateKeywords } from '../../hooks/useKeywords'
 import { ApiError } from '../../lib/api'
 import { SOURCE_LABEL } from '../../lib/importRules'
 import { intentParts, KP_PICKS, num, ROLE_LABEL, ROLE_PILL, ROLES, STATUS_LABEL } from '../../lib/keywordUi'
-import { BTN_GHOST, BTN_LIME, BTN_LINK, CARD, CARD_TITLE, FIELD, LABEL } from '../../lib/ui'
+import { BTN_GHOST, BTN_LIME, BTN_LINK, CARD, CARD_TITLE, siteLabel } from '../../lib/ui'
 import type { ClientDetail, ImportSource, KeywordChanges, KeywordItem, KeywordRole, KeywordStatus } from '../../types/seo'
 
 // Keywords › Database (/clients/{site id}/keywords/database): every keyword of this client.
@@ -17,6 +18,23 @@ import type { ClientDetail, ImportSource, KeywordChanges, KeywordItem, KeywordRo
 const PAGE_SIZE = 100
 const SMALL_FIELD = 'box-border min-h-9 rounded-xl border-[1.5px] border-solid border-vv-field-line bg-vv-field px-2 py-1 font-body text-[13px] text-vv-ink'
 const NO_DATA = <span className="text-vv-muted" title="No data">—</span>
+/** Toolbar select / search (one row). */
+const FILTER = 'box-border min-h-10 rounded-full border-[1.5px] border-solid border-vv-field-line bg-vv-field px-3.5 font-body text-[14px] text-vv-ink phone:min-w-0 phone:flex-[1_1_40%] phone:px-3 phone:text-[13px]'
+/** Row select that reads like plain text until hovered. */
+const INLINE_SELECT = 'box-border min-h-8 cursor-pointer rounded-lg border border-solid border-transparent bg-transparent px-1.5 py-1 font-body text-[14px] text-vv-ink hover:border-vv-field-line focus:border-vv-field-line'
+
+/** Semrush Position Tracking list: Keyword + Tags (role; service). A download only: nothing leaves SEO Hub. */
+function downloadTracked(c: ClientDetail, list: KeywordItem[], svcName: Map<string, string>) {
+  const cell = (v: string) => (/[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v)
+  const tags = (k: KeywordItem) => [k.role ? ROLE_LABEL[k.role] : '', k.serviceId ? (svcName.get(k.serviceId) ?? '') : ''].filter(Boolean).join(';')
+  const lines = ['Keyword,Tags', ...list.map((k) => [k.keyword, tags(k)].map(cell).join(','))]
+  const blob = new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = siteLabel(c.siteUrl).replace(/[^\w.-]+/g, '-') + '-tracked-keywords.csv'
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
 
 type Missing = '' | 'kp' | 'semrush' | 'kd'
 type SortKey = 'keyword' | 'semrush' | 'kd' | 'cpc' | 'kp'
@@ -114,120 +132,117 @@ export default function DatabasePage() {
 
   if (q.isPending)
     return (
+      <>
+      <DbHeader siteId={c.siteId} />
       <section className={CARD} aria-busy="true">
         <span role="status" className="sr-only">Loading keywords</span>
         <Bone className="h-7 w-56" />
         <Bone className="h-10 w-full rounded-2xl" />
         {Array.from({ length: 8 }, (_, i) => <Bone key={i} className="h-9 w-full" />)}
       </section>
+      </>
     )
 
   if (q.isError)
     return (
+      <>
+      <DbHeader siteId={c.siteId} />
       <section className={`${CARD} items-start`}>
         <h2 className={CARD_TITLE}>Couldn’t load the keywords</h2>
         <p className="m-0 text-[15px] text-vv-body">Try again in a moment.</p>
         <button type="button" className={BTN_GHOST} onClick={() => void q.refetch()}>Try again</button>
       </section>
+      </>
     )
 
   if (all.length === 0)
     return (
+      <>
+      <DbHeader siteId={c.siteId} />
       <section className={`${CARD} items-start`}>
         <h2 className={CARD_TITLE}>No keywords <em className="font-medium text-vv-purple">yet</em></h2>
         <p className="m-0 max-w-[640px] text-[15px] text-vv-body">Import Keyword Planner or Semrush exports and every keyword shows up here, with both volumes kept exactly as exported.</p>
         <Link to={`/clients/${c.siteId}/keywords/import`} className={BTN_LIME}>Import keywords</Link>
       </section>
+      </>
     )
 
-  const counts = {
-    noKp: all.filter((k) => !k.kpVolume && k.status !== 'rejected').length,
-    tracked: all.filter((k) => k.track).length,
-    noRole: all.filter((k) => !k.role && k.status !== 'rejected').length,
-  }
+  // Role pill counts follow the status filter (Rejected stays out of "Keep + Later").
+  const inStatus = all.filter((k) => (f.status === 'all' ? true : f.status === 'active' ? k.status !== 'rejected' : k.status === f.status))
+  const roleCount = (r: Filters['role']) => (r === '' ? inStatus.length : inStatus.filter((k) => (r === 'none' ? !k.role : k.role === r)).length)
+  const tracked = all.filter((k) => k.track && k.status !== 'rejected')
 
   return (
+    <>
+      <DbHeader siteId={c.siteId} onExport={tracked.length ? () => downloadTracked(c, tracked, svcName) : undefined} />
+
     <section className={CARD} aria-labelledby="db-h">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-1">
-          <h2 id="db-h" className={CARD_TITLE}>Keyword <em className="font-medium text-vv-purple">database</em></h2>
-          <p className="m-0 text-sm text-vv-muted">
-            {all.length.toLocaleString()} keywords · {counts.tracked} tracked · {counts.noKp} without a KP range · {counts.noRole} without a role
-          </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="db-h" className={CARD_TITLE}>Database</h2>
+        <div role="radiogroup" aria-label="Role" className="flex flex-wrap gap-1.5">
+          {(['', ...ROLES, 'none'] as Filters['role'][]).map((r) => {
+            const on = f.role === r
+            return (
+              <button
+                key={r || 'all'}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => set('role', r)}
+                className={`inline-flex min-h-10 items-center gap-1.5 rounded-full border border-solid px-3.5 font-body text-[14px] font-semibold ${
+                  on ? 'border-vv-lavender bg-vv-lavender text-vv-ink' : 'border-vv-field-line bg-vv-surface text-vv-ink hover:bg-vv-lavender-50'
+                }`}
+              >
+                {r === '' ? 'All' : r === 'none' ? 'Needs role' : ROLE_LABEL[r]}
+                <span className={on ? 'text-vv-ink' : 'text-vv-muted'}>{roleCount(r).toLocaleString('en-US')}</span>
+              </button>
+            )
+          })}
         </div>
-        <Link to={`/clients/${c.siteId}/keywords/import`} className={BTN_GHOST}>Import more</Link>
       </div>
 
-      {/* Filters */}
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5 phone:grid-cols-2">
-        <label className={`${LABEL} col-span-2`}>
-          Search
-          <input className={FIELD} type="search" value={f.q} onChange={(e) => set('q', e.target.value)} placeholder="e.g. brazilian" />
+      {/* Other filters: one compact row */}
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative block min-w-0 flex-[1_1_220px] phone:basis-full">
+          <span className="sr-only">Search keywords</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-vv-muted">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input className={`${FILTER} w-full pl-9 phone:pl-9`} type="search" value={f.q} onChange={(e) => set('q', e.target.value)} placeholder="Search keywords" />
         </label>
-        <label className={LABEL}>
-          Role
-          <select className={FIELD} value={f.role} onChange={(e) => set('role', e.target.value as Filters['role'])}>
-            <option value="">All</option>
-            {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
-            <option value="none">Needs role</option>
-          </select>
-        </label>
-        <label className={LABEL}>
-          Service
-          <select className={FIELD} value={f.service} onChange={(e) => set('service', e.target.value)}>
-            <option value="">All</option>
-            <ServiceOptions svc={svc} />
-            <option value="none">No service</option>
-          </select>
-        </label>
-        <label className={LABEL}>
-          Intent
-          <select className={FIELD} value={f.intent} onChange={(e) => set('intent', e.target.value)}>
-            <option value="">All</option>
-            {intents.map((i) => <option key={i} value={i}>{i}</option>)}
-          </select>
-        </label>
-        <label className={LABEL}>
-          Source
-          <select className={FIELD} value={f.source} onChange={(e) => set('source', e.target.value as Filters['source'])}>
-            <option value="">All</option>
-            {(['kp', 'semrush', 'sheet'] as ImportSource[]).map((s) => <option key={s} value={s}>{SOURCE_LABEL[s]}</option>)}
-          </select>
-        </label>
-        <label className={LABEL}>
-          Missing data
-          <select className={FIELD} value={f.missing} onChange={(e) => set('missing', e.target.value as Missing)}>
-            <option value="">Any</option>
-            <option value="kp">No KP range</option>
-            <option value="semrush">No Semrush volume</option>
-            <option value="kd">No KD</option>
-          </select>
-        </label>
-        <label className={LABEL}>
-          Tracked
-          <select className={FIELD} value={f.track} onChange={(e) => set('track', e.target.value as Filters['track'])}>
-            <option value="">All</option>
-            <option value="yes">Tracked</option>
-            <option value="no">Not tracked</option>
-          </select>
-        </label>
-        <label className={LABEL}>
-          Status
-          <select className={FIELD} value={f.status} onChange={(e) => set('status', e.target.value as Filters['status'])}>
-            <option value="active">Keep + Later</option>
-            <option value="keep">Keep</option>
-            <option value="later">Later</option>
-            <option value="rejected">Rejected</option>
-            <option value="all">All</option>
-          </select>
-        </label>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-vv-muted">
-        <span aria-live="polite">
-          {rows.length === all.length ? `Showing all ${rows.length.toLocaleString()}` : `${rows.length.toLocaleString()} of ${all.length.toLocaleString()} match`}
-        </span>
-        {filtered && <button type="button" className={BTN_LINK} onClick={clearFilters}>Clear filters</button>}
+        <select aria-label="Service" className={FILTER} value={f.service} onChange={(e) => set('service', e.target.value)}>
+          <option value="">Any service</option>
+          <ServiceOptions svc={svc} />
+          <option value="none">No service</option>
+        </select>
+        <select aria-label="Intent" className={FILTER} value={f.intent} onChange={(e) => set('intent', e.target.value)}>
+          <option value="">Any intent</option>
+          {intents.map((i) => <option key={i} value={i}>{i}</option>)}
+        </select>
+        <select aria-label="Source" className={FILTER} value={f.source} onChange={(e) => set('source', e.target.value as Filters['source'])}>
+          <option value="">Any source</option>
+          {(['kp', 'semrush', 'sheet'] as ImportSource[]).map((s) => <option key={s} value={s}>{SOURCE_LABEL[s]}</option>)}
+        </select>
+        <select aria-label="Missing data" className={FILTER} value={f.missing} onChange={(e) => set('missing', e.target.value as Missing)}>
+          <option value="">Missing data: any</option>
+          <option value="kp">No KP range</option>
+          <option value="semrush">No Semrush volume</option>
+          <option value="kd">No KD</option>
+        </select>
+        <select aria-label="Tracked" className={FILTER} value={f.track} onChange={(e) => set('track', e.target.value as Filters['track'])}>
+          <option value="">Tracked or not</option>
+          <option value="yes">Tracked</option>
+          <option value="no">Not tracked</option>
+        </select>
+        <select aria-label="Status" className={FILTER} value={f.status} onChange={(e) => set('status', e.target.value as Filters['status'])}>
+          <option value="active">Keep + Later</option>
+          <option value="keep">Keep</option>
+          <option value="later">Later</option>
+          <option value="rejected">Rejected</option>
+          <option value="all">All statuses</option>
+        </select>
+        {filtered && <button type="button" className={`${BTN_LINK} px-1`} onClick={clearFilters}>Clear filters</button>}
       </div>
 
       {message && (
@@ -275,35 +290,37 @@ export default function DatabasePage() {
         <>
           {/* Desktop table */}
           <div className="overflow-x-auto phone:hidden">
-            <table className="w-full border-collapse text-left text-sm">
+            <table className="w-full border-collapse text-left text-[14px]">
               <thead>
-                <tr className="bg-vv-st-todo text-vv-st-todo-ink">
-                  <th className="w-8 px-2 py-2">
+                <tr className="bg-vv-lavender-50 text-[11px] uppercase tracking-[0.1em] text-vv-body">
+                  <th className="w-8 rounded-l-xl px-2 py-3">
                     <input type="checkbox" aria-label="Select this page" checked={pageAllSelected} onChange={() => setSelected((s) => { const n = new Set(s); shown.forEach((k) => (pageAllSelected ? n.delete(k.id) : n.add(k.id))); return n })} />
                   </th>
                   <SortTh label="Keyword" k="keyword" sort={sort} onSort={sortBy} />
-                  <th className="px-2 py-2 font-semibold">Role</th>
-                  <th className="px-2 py-2 font-semibold">Service</th>
-                  <th className="px-2 py-2 font-semibold">Intent</th>
+                  <th className="px-2 py-3 font-bold">Role</th>
+                  <th className="px-2 py-3 font-bold">Service</th>
+                  <th className="px-2 py-3 font-bold">Intent</th>
                   <SortTh label="KP range" k="kp" sort={sort} onSort={sortBy} title="Sorts by the Keyword Planner export number (the greyed hint)" />
                   <SortTh label="Semrush" k="semrush" sort={sort} onSort={sortBy} right />
-                  <SortTh label="KD" k="kd" sort={sort} onSort={sortBy} right />
+                  <SortTh label="KD %" k="kd" sort={sort} onSort={sortBy} right />
                   <SortTh label="CPC" k="cpc" sort={sort} onSort={sortBy} right />
-                  <th className="px-2 py-2 font-semibold">Track</th>
-                  <th className="px-2 py-2 font-semibold">Status</th>
-                  <th className="px-2 py-2 font-semibold">Sources</th>
+                  <th className="px-2 py-3 font-bold">Track</th>
+                  <th className="rounded-r-xl px-2 py-3 font-bold">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {shown.map((k) => (
-                  <tr key={k.id} className={`border-t border-solid border-vv-line align-middle ${selected.has(k.id) ? 'bg-vv-lavender-50' : ''} ${k.status === 'rejected' ? 'opacity-60' : ''}`}>
+                  <tr key={k.id} className={`border-0 border-t border-solid border-vv-line align-middle [&>td]:py-2 ${selected.has(k.id) ? 'bg-vv-lavender-50' : ''} ${k.status === 'rejected' ? 'opacity-60' : ''}`}>
                     <td className="px-2 py-1.5">
                       <input type="checkbox" aria-label={`Select ${k.keyword}`} checked={selected.has(k.id)} onChange={() => toggle(k.id)} />
                     </td>
-                    <td className="max-w-[280px] px-2 py-1.5 font-semibold" title={k.notes ?? undefined}>{k.keyword}</td>
+                    <td className="min-w-[200px] max-w-[300px] px-2 py-1.5" title={k.notes ?? undefined}>
+                      <span className="block font-semibold">{k.keyword}</span>
+                      <span className="block text-[12px] text-vv-muted">{k.sources.map((s) => SOURCE_LABEL[s].replace(' (testing)', '')).join(' · ')}</span>
+                    </td>
                     <td className="px-2 py-1.5"><RoleSelect k={k} onSave={(role) => void run([k.id], { role })} /></td>
                     <td className="px-2 py-1.5">
-                      <select aria-label={`Service for ${k.keyword}`} className={`${SMALL_FIELD} max-w-[160px]`} value={k.serviceId ?? ''} onChange={(e) => void run([k.id], { serviceId: e.target.value || null })}>
+                      <select aria-label={`Service for ${k.keyword}`} className={`${INLINE_SELECT} max-w-[170px]`} value={k.serviceId ?? ''} onChange={(e) => void run([k.id], { serviceId: e.target.value || null })}>
                         <option value="">—</option>
                         <ServiceOptions svc={svc} />
                       </select>
@@ -314,8 +331,7 @@ export default function DatabasePage() {
                     <td className="px-2 py-1.5 text-right tabular-nums">{k.kd === null ? NO_DATA : k.kd}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{k.cpc === null ? NO_DATA : `$${k.cpc.toFixed(2)}`}</td>
                     <td className="px-2 py-1.5"><TrackToggle k={k} onSave={(track) => void run([k.id], { track })} /></td>
-                    <td className="px-2 py-1.5"><StatusSelect k={k} onSave={(status) => void run([k.id], { status })} /></td>
-                    <td className="whitespace-nowrap px-2 py-1.5 text-xs text-vv-muted">{k.sources.map((s) => SOURCE_LABEL[s].replace(' (testing)', '')).join(' · ')}</td>
+                    <td className="px-2 py-1.5"><StatusSelect plain k={k} onSave={(status) => void run([k.id], { status })} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -353,13 +369,18 @@ export default function DatabasePage() {
             ))}
           </ul>
 
-          {pages > 1 && (
-            <nav aria-label="Pages" className="flex flex-wrap items-center justify-center gap-3 text-sm">
-              <button type="button" className={BTN_GHOST} disabled={cur === 0} onClick={() => setPage(cur - 1)}>← Previous</button>
-              <span>Page {cur + 1} of {pages}</span>
-              <button type="button" className={BTN_GHOST} disabled={cur >= pages - 1} onClick={() => setPage(cur + 1)}>Next →</button>
-            </nav>
-          )}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <span className="text-[14px] text-vv-body" aria-live="polite">
+              Showing {(cur * PAGE_SIZE + 1).toLocaleString('en-US')}–{(cur * PAGE_SIZE + shown.length).toLocaleString('en-US')} of {rows.length.toLocaleString('en-US')} · “—” = no data in the export (never shown as 0)
+            </span>
+            {pages > 1 && (
+              <nav aria-label="Pages" className="flex items-center gap-2 text-sm">
+                <button type="button" className={BTN_GHOST} disabled={cur === 0} onClick={() => setPage(cur - 1)}>‹ Previous</button>
+                <span>Page {cur + 1} of {pages}</span>
+                <button type="button" className={BTN_GHOST} disabled={cur >= pages - 1} onClick={() => setPage(cur + 1)}>Next ›</button>
+              </nav>
+            )}
+          </div>
         </>
       )}
 
@@ -377,6 +398,7 @@ export default function DatabasePage() {
         }}
       />
     </section>
+    </>
   )
 }
 
@@ -396,8 +418,8 @@ function ServiceOptions({ svc }: { svc: ReturnType<typeof services> }) {
 function SortTh(props: { label: string; k: SortKey; sort: { key: SortKey; dir: 1 | -1 }; onSort: (k: SortKey) => void; right?: boolean; title?: string }) {
   const active = props.sort.key === props.k
   return (
-    <th className={`px-2 py-2 font-semibold ${props.right ? 'text-right' : ''}`} aria-sort={active ? (props.sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
-      <button type="button" title={props.title} className="cursor-pointer border-0 bg-transparent p-0 font-semibold text-inherit" onClick={() => props.onSort(props.k)}>
+    <th className={`whitespace-nowrap px-2 py-3 font-bold ${props.right ? 'text-right' : ''}`} aria-sort={active ? (props.sort.dir === 1 ? 'ascending' : 'descending') : 'none'}>
+      <button type="button" title={props.title} className="cursor-pointer border-0 bg-transparent p-0 font-bold uppercase tracking-[0.1em] text-inherit" onClick={() => props.onSort(props.k)}>
         {props.label} {active ? (props.sort.dir === 1 ? '↑' : '↓') : ''}
       </button>
     </th>
@@ -418,9 +440,9 @@ function RoleSelect({ k, onSave }: { k: KeywordItem; onSave: (r: KeywordRole | n
   )
 }
 
-function StatusSelect({ k, onSave }: { k: KeywordItem; onSave: (s: KeywordStatus) => void }) {
+function StatusSelect({ k, onSave, plain }: { k: KeywordItem; onSave: (s: KeywordStatus) => void; plain?: boolean }) {
   return (
-    <select aria-label={`Status for ${k.keyword}`} className={SMALL_FIELD} value={k.status} onChange={(e) => onSave(e.target.value as KeywordStatus)}>
+    <select aria-label={`Status for ${k.keyword}`} className={plain ? INLINE_SELECT : SMALL_FIELD} value={k.status} onChange={(e) => onSave(e.target.value as KeywordStatus)}>
       {(Object.keys(STATUS_LABEL) as KeywordStatus[]).map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
     </select>
   )
@@ -429,11 +451,7 @@ function StatusSelect({ k, onSave }: { k: KeywordItem; onSave: (s: KeywordStatus
 function Intent({ k }: { k: KeywordItem }) {
   const parts = intentParts(k.intent)
   if (!parts.length) return NO_DATA
-  return (
-    <span className="inline-flex gap-1">
-      {parts.map((p) => <span key={p.label} className={p.className} title={p.label}>{p.short}<span className="sr-only"> {p.label}</span></span>)}
-    </span>
-  )
+  return <span className="text-vv-body">{parts.map((p) => p.label).join(', ')}</span>
 }
 
 function TrackToggle({ k, onSave }: { k: KeywordItem; onSave: (t: boolean) => void }) {
@@ -444,9 +462,10 @@ function TrackToggle({ k, onSave }: { k: KeywordItem; onSave: (t: boolean) => vo
       aria-checked={k.track}
       aria-label={`Track ${k.keyword}`}
       onClick={() => onSave(!k.track)}
-      className={`relative inline-flex h-6 w-11 flex-none cursor-pointer items-center rounded-full border-0 p-0 transition-colors ${k.track ? 'bg-vv-purple' : 'bg-vv-toggle-line'}`}
+      title={k.track ? 'In Semrush Position Tracking. Click to turn off' : 'Click to track in Semrush'}
+      className={`inline-flex min-h-8 cursor-pointer items-center rounded-full border-0 px-3 font-body text-[12px] font-bold ${k.track ? 'bg-vv-green-100 text-vv-green-ink' : 'bg-vv-st-todo text-vv-st-todo-ink hover:bg-vv-lavender-100'}`}
     >
-      <span className={`absolute h-[18px] w-[18px] rounded-full bg-white shadow transition-transform ${k.track ? 'translate-x-[23px]' : 'translate-x-[3px]'}`} />
+      {k.track ? 'Tracked' : 'Off'}
     </button>
   )
 }
@@ -536,5 +555,27 @@ function BulkKp({ onSet, disabled }: { onSet: (v: string | null) => void; disabl
       <option value="__type">Type a range…</option>
       <option value="__clear">Clear range</option>
     </select>
+  )
+}
+
+/** Page title + tools (design Keywords.png). Export is off until a keyword has Track on. */
+function DbHeader({ siteId, onExport }: { siteId: string; onExport?: () => void }) {
+  return (
+    <header className="flex flex-wrap items-end justify-between gap-5">
+      <div className="flex min-w-0 flex-[1_1_480px] flex-col gap-2.5">
+        <h1 className="m-0 font-display text-[50px] font-semibold leading-none tracking-[-0.02em] phone:text-[36px] phone-sm:text-[32px]">
+          Keyword <em className="font-medium text-vv-purple">database.</em>
+        </h1>
+        <p className="m-0 text-[17px] leading-normal text-vv-body">Day 2 · every keyword for this client · volumes kept exactly as exported</p>
+      </div>
+      <HeaderTools>
+        <button type="button" className={BTN_GHOST} disabled={!onExport} onClick={onExport} title={onExport ? undefined : 'No keyword has Track on yet'}>
+          Export tracked list
+        </button>
+        <Link to={`/clients/${siteId}/keywords/import`} className={BTN_LIME}>
+          Upload CSVs
+        </Link>
+      </HeaderTools>
+    </header>
   )
 }
