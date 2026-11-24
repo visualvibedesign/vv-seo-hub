@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, DeleteImportCheck, ImportPayload, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
+import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, DeleteImportCheck, GuideState, ImportPayload, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
 export class ApiError extends Error {
   status: number
@@ -134,4 +134,20 @@ export function updateKeywords(req: KeywordUpdateRequest): Promise<KeywordUpdate
 /** Deletes an import: its history rows, raw file, and the keywords that only came from it. */
 export function deleteImport(siteId: string, importId: string): Promise<{ keywordsRemoved: number; fileRemoved: boolean }> {
   return call('/api/imports/delete', json({ siteId, importId }))
+}
+
+// ---- Step-by-step guide (redesign step 3) ------------------------------------------------
+
+export function getGuide(siteId: string): Promise<{ guide: GuideState }> {
+  return call(`/api/guide/get?site=${encodeURIComponent(siteId)}`)
+}
+
+/** Tick / untick a hand task. */
+export function setGuideTask(siteId: string, step: number, task: string, done: boolean): Promise<{ guide: GuideState }> {
+  return call('/api/guide/task', json({ siteId, step, task, done }))
+}
+
+/** Mark a step done, or reopen it. */
+export function setGuideStep(siteId: string, step: number, done: boolean): Promise<{ guide: GuideState }> {
+  return call('/api/guide/step', json({ siteId, step, done }))
 }

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useMatch, useNavigate } from 'react-router'
 import { useClients } from '../../hooks/useClients'
 import { CLIENT_GROUPS, CLIENT_TOP, HUB_SECTIONS, type ClientGroup, type ClientSection } from '../../lib/clientSetup'
+import { stepDay, stepLabel } from '../../lib/guide'
 import type { ClientSummary } from '../../types/seo'
 import Logo from '../ui/Logo'
 import NavIcon, { type NavIconName } from '../ui/NavIcon'
@@ -266,7 +267,16 @@ function ClientNav({ siteId, clients, mini, onGo }: { siteId: string; clients: C
 
       <div className="flex flex-col gap-1">
         {CLIENT_TOP.map((s) => (
-          <Item key={s.key} to={s.path ? `${base}/${s.path}` : base} end label={s.label} iconKey={s.key} mini={mini} tag={sidebarTag(s)} onGo={onGo} />
+          <Item
+            key={s.key}
+            to={s.path ? `${base}/${s.path}` : base}
+            end
+            label={s.label}
+            iconKey={s.key}
+            mini={mini}
+            tag={s.key === 'guide' && current ? stepDay(current.guide.current) : sidebarTag(s)}
+            onGo={onGo}
+          />
         ))}
       </div>
 
@@ -317,8 +327,7 @@ function Avatar({ name }: { name: string }) {
 /**
  * Client card + switcher (design: avatar, name on one line, a line under it, ⇅ button). Opens a list with
  * search; switching keeps you in the same section (…/keywords/import → other client's …/keywords/import).
- * The line under the name will show the guide step ("Day 2 · Keywords") once the guide is built; until
- * then it shows the city.
+ * The line under the name is the client's guide step ("Day 2 · Keywords").
  */
 function ClientSwitcher({ siteId, current, clients, onGo }: { siteId: string; current?: ClientSummary; clients: ClientSummary[]; onGo: () => void }) {
   const navigate = useNavigate()
@@ -360,7 +369,7 @@ function ClientSwitcher({ siteId, current, clients, onGo }: { siteId: string; cu
   }
 
   const name = current?.name ?? 'Loading…'
-  const sub = current ? [current.city, current.state].filter(Boolean).join(', ') : ''
+  const sub = current ? stepLabel(current.guide.current) : ''
 
   return (
     <div ref={box} className="relative">
@@ -418,7 +427,9 @@ function ClientSwitcher({ siteId, current, clients, onGo }: { siteId: string; cu
                   }`}
                 >
                   <span className="w-full truncate text-[14px] font-bold text-vv-ink">{c.name}</span>
-                  {c.city && <span className="w-full truncate text-[12px] text-vv-body">{[c.city, c.state].filter(Boolean).join(', ')}</span>}
+                  <span className="w-full truncate text-[12px] text-vv-body">
+                    {[stepLabel(c.guide.current), [c.city, c.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
+                  </span>
                 </button>
               </li>
             ))}

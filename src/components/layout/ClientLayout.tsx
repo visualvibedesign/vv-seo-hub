@@ -58,6 +58,8 @@ export default function ClientLayout() {
     .filter(Boolean)
     .join('/')
   const section = path ? ALL_SECTIONS.find((s) => s.path === path) : undefined
+  // Redesigned sections draw their own title (docs/design/); the rest still get the client-name header.
+  const ownHeader = OWN_HEADER.has(section?.key ?? '')
   return (
     <>
       <span className="text-[15px] text-vv-muted">
@@ -77,7 +79,7 @@ export default function ClientLayout() {
         )}
       </span>
 
-      <header className="flex flex-wrap items-end justify-between gap-5">
+      {!ownHeader && <header className="flex flex-wrap items-end justify-between gap-5">
         <div className="flex min-w-0 flex-[1_1_480px] flex-col gap-2.5">
           <h1 className="m-0 font-display text-[50px] font-semibold leading-none tracking-[-0.02em] phone:text-[36px] phone-sm:text-[32px]">
             {lead}
@@ -101,12 +103,15 @@ export default function ClientLayout() {
             Edit client
           </Link>
         </HeaderTools>
-      </header>
+      </header>}
 
       <Outlet context={c} />
     </>
   )
 }
+
+/** Sections that have their own page header (title + tools) from the design. */
+const OWN_HEADER = new Set(['guide'])
 
 /** The client loaded by ClientLayout, for its tab pages. */
 // eslint-disable-next-line react-refresh/only-export-components

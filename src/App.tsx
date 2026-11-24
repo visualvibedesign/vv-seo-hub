@@ -33,6 +33,7 @@ const router = createBrowserRouter([
             lazy: page(() => import('./components/layout/ClientLayout')),
             children: [
               { index: true, lazy: page(() => import('./pages/client/OverviewPage')) },
+              { path: 'guide', lazy: page(() => import('./pages/client/GuidePage')) },
               { path: 'keywords/import', lazy: page(() => import('./pages/client/ImportPage')) },
               { path: 'keywords/database', lazy: page(() => import('./pages/client/DatabasePage')) },
               { path: 'keywords/*', lazy: page(() => import('./pages/client/ComingSoonPage')) },

@@ -4,12 +4,13 @@ import HeaderTools from '../components/layout/HeaderTools'
 import { Bone } from '../components/ui/Loading'
 import { useClients } from '../hooks/useClients'
 import { industryLabel } from '../lib/clientSetup'
+import { GUIDE, GUIDE_STEPS, stepDay } from '../lib/guide'
 import { BTN_LIME, CARD, FIELD, PILL, PILL_DONE, PILL_TODO, PILL_WAITING, siteLabel } from '../lib/ui'
 import type { ClientStatus, ClientSummary } from '../types/seo'
 
 // All clients (/clients), design docs/design/Clients.png: search, status pills, step filter, sort,
 // 25 per page. Clients live here (and in the client switcher), never in the sidebar, so it stays tidy with 50+.
-// Not faked: "Sam step" waits for the step-by-step guide, "SEO score" for the Vibe SEO plugin (both show "—").
+// Sam step = the client's current guide step. Not faked: "SEO score" waits for the Vibe SEO plugin ("—").
 
 const PER_PAGE = 25
 type StatusFilter = 'all' | ClientStatus
@@ -18,6 +19,8 @@ type Sort = 'recent' | 'name' | 'keywords'
 /** One row (wraps on small screens): search · status pills · step · sort (design: Clients.png). */
 const TOOLBAR =
   'box-border flex flex-wrap items-center gap-3 rounded-[22px] border border-solid border-vv-line bg-vv-surface p-3.5 shadow-[0_14px_30px_-24px_rgba(91,63,208,0.45)] dark:shadow-[0_18px_40px_-28px_rgba(0,0,0,.7)] phone:gap-2.5 phone:p-3'
+
+const STEP_PILL = `${PILL} bg-vv-lavender-100 text-vv-purple-ink no-underline hover:text-vv-purple-ink`
 
 const STATUS_PILL: Record<ClientStatus, string> = { active: PILL_DONE, paused: PILL_WAITING, archived: PILL_TODO }
 const STATUS_LABEL: Record<ClientStatus, string> = { active: 'Active', paused: 'Paused', archived: 'Archived' }
@@ -39,6 +42,8 @@ export default function ClientsPage() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
   const [sort, setSort] = useState<Sort>('recent')
+  /** '' = any step; '0'…'8' = current guide step; '9' = all done (monthly). */
+  const [step, setStep] = useState('')
   const [page, setPage] = useState(0)
 
   const all = useMemo(() => q.data ?? [], [q.data])
@@ -47,6 +52,7 @@ export default function ClientsPage() {
     const list = all.filter(
       (c) =>
         (status === 'all' || c.status === status) &&
+        (step === '' || c.guide.current === Number(step)) &&
         (!term || [c.name, siteLabel(c.siteUrl), c.city ?? '', c.state ?? ''].some((v) => v.toLowerCase().includes(term))),
     )
     return list.sort((a, b) =>
@@ -56,7 +62,7 @@ export default function ClientsPage() {
           ? b.counts.keywords - a.counts.keywords || a.name.localeCompare(b.name)
           : b.counts.lastWorkedAt.localeCompare(a.counts.lastWorkedAt),
     )
-  }, [all, search, status, sort])
+  }, [all, search, status, sort, step])
 
   const pages = Math.max(1, Math.ceil(shown.length / PER_PAGE))
   const cur = Math.min(page, pages - 1)
@@ -125,8 +131,21 @@ export default function ClientsPage() {
         </div>
         <label className="block w-[170px] flex-none phone:w-auto phone:min-w-0 phone:flex-1">
           <span className="sr-only">Sam step</span>
-          <select className={`${FIELD} rounded-full`} disabled title="Comes with the step-by-step guide" value="">
+          <select
+            className={`${FIELD} rounded-full`}
+            value={step}
+            onChange={(e) => {
+              setStep(e.target.value)
+              reset()
+            }}
+          >
             <option value="">Any step</option>
+            {GUIDE.map((g) => (
+              <option key={g.n} value={g.n}>
+                {g.day.replace(' + monthly', '')} · {g.title}
+              </option>
+            ))}
+            <option value={GUIDE_STEPS}>Monthly (all done)</option>
           </select>
         </label>
         <label className="block w-[210px] flex-none phone:w-auto phone:min-w-0 phone:flex-1">
@@ -206,7 +225,9 @@ export default function ClientsPage() {
                         <td className="whitespace-nowrap px-4 py-3">{c.city ? `${c.city}${c.state ? `, ${c.state}` : ''}` : <Dash />}</td>
                         <td className="px-4 py-3 text-vv-body">{industryLabel(c.industry) ?? <Dash />}</td>
                         <td className="px-4 py-3">
-                          <Dash title="Comes with the step-by-step guide" />
+                          <Link to={`/clients/${c.siteId}/guide`} className={STEP_PILL} title={GUIDE[c.guide.current]?.title ?? 'All steps done'}>
+                            {stepDay(c.guide.current)}
+                          </Link>
                         </td>
                         <td className="px-4 py-3">
                           <Dash title="Comes with the Vibe SEO plugin" />
@@ -239,6 +260,7 @@ export default function ClientsPage() {
                       </span>
                       <span className="flex flex-wrap gap-1.5 text-sm">
                         {industryLabel(c.industry) && <span className={`${PILL} bg-vv-lavender-100 text-vv-purple-ink`}>{industryLabel(c.industry)}</span>}
+                        <span className={STEP_PILL}>{stepDay(c.guide.current)}</span>
                         <span className={PILL_TODO}>{c.counts.keywords.toLocaleString('en-US')} keywords</span>
                       </span>
                       {needsYou(c) && <span className="text-sm text-vv-body">Needs you: {needsYou(c)}</span>}

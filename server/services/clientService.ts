@@ -3,6 +3,7 @@
 // No address is ever stored (there is no column for it).
 import { z } from 'zod'
 import { ACCOUNT_KINDS, AREA_CODES, CATEGORY_CODES, DEFAULT_FAQ_NAME, INDUSTRY_KEYS } from '../../src/lib/clientSetup.js'
+import { GUIDE_STEPS } from '../../src/lib/guide.js'
 import type {
   AccountKind,
   AccountStatus,
@@ -18,6 +19,7 @@ import type {
   ClientInput,
   ClientStatus,
   ClientSummary,
+  GuideSummary,
   SiteIdCheck,
 } from '../../src/types/seo.js'
 import { DatabaseError, db, must } from '../clients/supabase.js'
@@ -87,13 +89,32 @@ async function countsFor(clients: Pick<ClientRow, 'id' | 'updated_at'>[]): Promi
   return out
 }
 
+/** Guide summary per client from seo_guide_progress: current = first step not done (9 = all done). */
+export async function guideSummaries(clientIds: string[]): Promise<Map<string, GuideSummary>> {
+  const rows = clientIds.length
+    ? (must(
+        await db().from('seo_guide_progress').select('client_id, step').eq('status', 'done').in('client_id', clientIds),
+        'Loading guide progress',
+      ) as { client_id: string; step: number }[])
+    : []
+  return new Map(clientIds.map((id) => [id, guideSummaryOf(rows.filter((r) => r.client_id === id).map((r) => r.step))]))
+}
+
+/** From the done step numbers (0–8). */
+export function guideSummaryOf(doneSteps: number[]): GuideSummary {
+  const done = new Set(doneSteps)
+  let current = 0
+  while (current < GUIDE_STEPS && done.has(current)) current++
+  return { current, doneCount: done.size }
+}
+
 export async function listClients(): Promise<ClientSummary[]> {
   const clients = must(await db().from('seo_clients').select('*').order('name'), 'Loading clients') as ClientRow[]
   const cats = must(
     await db().from('seo_client_categories').select('client_id, code, name').in('client_id', clients.map((c) => c.id)),
     'Loading service categories',
   ) as Pick<CategoryRow, 'client_id' | 'code' | 'name'>[]
-  const counts = await countsFor(clients)
+  const [counts, guides] = await Promise.all([countsFor(clients), guideSummaries(clients.map((c) => c.id))])
   return clients.map((c) => ({
     ...summaryOf(c),
     categories: cats
@@ -101,6 +122,7 @@ export async function listClients(): Promise<ClientSummary[]> {
       .sort(byCode(CATEGORY_CODES))
       .map((k) => ({ code: k.code, name: k.name })),
     counts: counts.get(c.id)!,
+    guide: guides.get(c.id)!,
   }))
 }
 
@@ -116,12 +138,13 @@ async function clientRow(siteId: string): Promise<ClientRow | null> {
 export async function getClient(siteId: string): Promise<ClientDetail | null> {
   const c = await clientRow(siteId)
   if (!c) return null
-  const [cats, services, areas, accounts, counts] = await Promise.all([
+  const [cats, services, areas, accounts, counts, guides] = await Promise.all([
     db().from('seo_client_categories').select('*').eq('client_id', c.id),
     db().from('seo_client_services').select('*').eq('client_id', c.id).order('sort'),
     db().from('seo_client_areas').select('*').eq('client_id', c.id),
     db().from('seo_client_accounts').select('*').eq('client_id', c.id),
     countsFor([c]),
+    guideSummaries([c.id]),
   ])
   const svc = must(services, 'Loading services') as ServiceRow[]
   const categories: ClientCategory[] = (must(cats, 'Loading service categories') as CategoryRow[]).sort(byCode(CATEGORY_CODES)).map((k) => ({
@@ -150,6 +173,7 @@ export async function getClient(siteId: string): Promise<ClientDetail | null> {
     areas: areaList,
     accounts: accountList,
     counts: counts.get(c.id)!,
+    guide: guides.get(c.id)!,
   }
 }
 

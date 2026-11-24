@@ -79,6 +79,7 @@ export interface ClientSummary {
   industry: ClientIndustry | null
   categories: { code: CategoryCode; name: string }[]
   counts: ClientCounts
+  guide: GuideSummary
 }
 
 export interface ClientDetail extends ClientSummary {
@@ -262,3 +263,31 @@ export interface KeywordUpdateRequest {
 
 /** needsConfirm: how many selected keywords already have a different KP range (nothing saved yet). */
 export type KeywordUpdateResult = { updated: number } | { needsConfirm: number }
+
+// ---- Step-by-step guide (redesign step 3, migration 0003) ------------------------------
+
+export type GuideStatus = 'not_started' | 'in_progress' | 'done'
+
+export interface GuideStepState {
+  step: number
+  status: GuideStatus
+  /** Task keys ticked by hand. */
+  tasksDone: string[]
+  /** Auto task keys that the data says are done right now. */
+  autoDone: string[]
+  startedAt: string | null
+  doneAt: string | null
+}
+
+export interface GuideState {
+  /** First step that isn't done (9 = all done → monthly). */
+  current: number
+  doneCount: number
+  steps: GuideStepState[]
+}
+
+/** Short guide summary on every client (switcher, All clients, Overview). */
+export interface GuideSummary {
+  current: number
+  doneCount: number
+}
