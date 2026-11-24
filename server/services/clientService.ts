@@ -29,7 +29,7 @@ import { normalizeSiteUrl, siteIdFor, SiteUrlError } from '../utils/siteId.js'
 export class ClientInputError extends Error {}
 
 // ---- Rows as Supabase returns them ---------------------------------------------
-type ClientRow = {
+export type ClientRow = {
   id: string
   site_id: string
   site_url: string
@@ -130,14 +130,18 @@ function summaryOf(c: ClientRow) {
   return { siteId: c.site_id, siteUrl: c.site_url, name: c.name, city: c.city, state: c.state, status: c.status, industry: c.industry ?? null }
 }
 
-async function clientRow(siteId: string): Promise<ClientRow | null> {
+export async function clientRow(siteId: string): Promise<ClientRow | null> {
   if (!/^[0-9a-f]{32}$/.test(siteId)) return null
   return must(await db().from('seo_clients').select('*').eq('site_id', siteId).maybeSingle(), 'Loading the client') as ClientRow | null
 }
 
 export async function getClient(siteId: string): Promise<ClientDetail | null> {
   const c = await clientRow(siteId)
-  if (!c) return null
+  return c ? clientDetail(c) : null
+}
+
+/** Everything about one client, from its row (one round of parallel queries). */
+export async function clientDetail(c: ClientRow): Promise<ClientDetail> {
   const [cats, services, areas, accounts, counts, guides] = await Promise.all([
     db().from('seo_client_categories').select('*').eq('client_id', c.id),
     db().from('seo_client_services').select('*').eq('client_id', c.id).order('sort'),

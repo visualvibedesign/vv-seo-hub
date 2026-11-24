@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { GUIDE, GUIDE_STEPS } from '../../src/lib/guide.js'
 import type { ClientDetail, GuideState, GuideStatus, GuideStepState } from '../../src/types/seo.js'
 import { db, must } from '../clients/supabase.js'
-import { getClient, guideSummaryOf } from './clientService.js'
+import { clientDetail, clientRow, guideSummaryOf } from './clientService.js'
 
 /** A problem the person can fix (400). */
 export class GuideInputError extends Error {}
@@ -27,8 +27,7 @@ async function clientId(siteId: string): Promise<string> {
 }
 
 /** Which auto tasks the data says are done, per step. */
-async function autoDone(c: ClientDetail, id: string): Promise<Map<number, string[]>> {
-  const reports = must(await db().from('seo_imports').select('source, report').eq('client_id', id), 'Loading imports') as { source: string; report: string }[]
+function autoDone(c: ClientDetail, reports: { source: string; report: string }[]): Map<number, string[]> {
   const cat = (code: string) => c.categories.find((k) => k.code === code)
   const named = (code: string) => !!cat(code)?.name.trim()
   const a1 = c.areas.find((a) => a.code === 'A1')
@@ -48,15 +47,17 @@ async function autoDone(c: ClientDetail, id: string): Promise<Map<number, string
   return out
 }
 
+/** Two database rounds: the client row, then everything else in parallel. */
 export async function getGuide(siteId: string): Promise<GuideState> {
-  const c = await getClient(siteId)
-  if (!c) throw new GuideInputError('That client doesn’t exist.')
-  const id = await clientId(siteId)
-  const [rows, auto] = await Promise.all([
-    db().from('seo_guide_progress').select('client_id, step, status, tasks_done, started_at, done_at').eq('client_id', id),
-    autoDone(c, id),
+  const row = await clientRow(siteId)
+  if (!row) throw new GuideInputError('That client doesn’t exist.')
+  const [c, rows, imports] = await Promise.all([
+    clientDetail(row),
+    db().from('seo_guide_progress').select('client_id, step, status, tasks_done, started_at, done_at').eq('client_id', row.id),
+    db().from('seo_imports').select('source, report').eq('client_id', row.id),
   ])
   const progress = must(rows, 'Loading guide progress') as ProgressRow[]
+  const auto = autoDone(c, must(imports, 'Loading imports') as { source: string; report: string }[])
   const steps: GuideStepState[] = GUIDE.map((s) => {
     const r = progress.find((p) => p.step === s.n)
     const handKeys = new Set(s.tasks.filter((t) => !t.auto).map((t) => t.key))

@@ -191,7 +191,7 @@ function Item({ to, label, iconKey, mini, end, tag, onGo }: { to: string; label:
         </span>
       ) : (
         <>
-          <span className="truncate">{label}</span>
+          <span className="min-w-0 leading-tight [overflow-wrap:anywhere]">{label}</span>
           {tag && <Tag text={tag} />}
         </>
       )}
@@ -200,7 +200,7 @@ function Item({ to, label, iconKey, mini, end, tag, onGo }: { to: string; label:
 }
 
 function Tag({ text }: { text: string }) {
-  return <span className="flex-none whitespace-nowrap rounded-full bg-vv-surface px-2.5 py-0.5 text-xs font-semibold text-vv-body">{text}</span>
+  return <span className="flex-none whitespace-nowrap rounded-full bg-vv-surface px-2 py-0.5 text-[11px] font-semibold text-vv-body">{text}</span>
 }
 
 /** Only "Later" shows in the sidebar; the phase of a not-built section shows on its page. */
@@ -383,7 +383,7 @@ function ClientSwitcher({ siteId, current, clients, onGo }: { siteId: string; cu
       >
         <Avatar name={current?.name ?? '?'} />
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-[15px] font-bold text-vv-ink">{name}</span>
+          <span className="line-clamp-2 text-[14px] font-bold leading-tight text-vv-ink" title={name}>{name}</span>
           {sub && (
             <span className="flex items-center gap-1.5 truncate text-[13px] text-vv-body">
               <span aria-hidden="true" className="h-1.5 w-1.5 flex-none rounded-full bg-vv-purple" />
@@ -426,7 +426,7 @@ function ClientSwitcher({ siteId, current, clients, onGo }: { siteId: string; cu
                     c.siteId === siteId ? 'bg-vv-lavender' : 'bg-transparent hover:bg-vv-lavender-50'
                   }`}
                 >
-                  <span className="w-full truncate text-[14px] font-bold text-vv-ink">{c.name}</span>
+                  <span className="line-clamp-2 w-full text-[14px] font-bold leading-tight text-vv-ink">{c.name}</span>
                   <span className="w-full truncate text-[12px] text-vv-body">
                     {[stepLabel(c.guide.current), [c.city, c.state].filter(Boolean).join(', ')].filter(Boolean).join(' · ')}
                   </span>

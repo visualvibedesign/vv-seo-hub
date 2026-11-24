@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getGuide, setGuideStep, setGuideTask } from '../lib/api'
 import type { GuideState } from '../types/seo'
 
-export function useGuide(siteId: string) {
-  return useQuery({ queryKey: ['guide', siteId], queryFn: () => getGuide(siteId), select: (d) => d.guide })
+export function useGuide(siteId: string, enabled = true) {
+  return useQuery({ queryKey: ['guide', siteId], queryFn: () => getGuide(siteId), select: (d) => d.guide, enabled: enabled && !!siteId })
 }
 
 /** Ticks and step status. The client list + client also carry the current step, so they refresh too. */

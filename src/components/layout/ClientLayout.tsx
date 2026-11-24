@@ -1,5 +1,6 @@
 import { Link, Outlet, useLocation, useOutletContext, useParams } from 'react-router'
 import { useClient } from '../../hooks/useClients'
+import { useGuide } from '../../hooks/useGuide'
 import { ALL_SECTIONS } from '../../lib/clientSetup'
 import { BTN_GHOST, BTN_LIME, CARD, PILL_WAITING, siteLabel, splitAccent } from '../../lib/ui'
 import type { ClientDetail } from '../../types/seo'
@@ -12,6 +13,9 @@ export default function ClientLayout() {
   const { siteId } = useParams()
   const q = useClient(siteId)
   const { pathname } = useLocation()
+  // Overview and Guide need guide progress: start loading it now, not after the client has loaded.
+  const rest = pathname.replace(`/clients/${siteId}`, '').replace(/^\/+|\/+$/g, '')
+  useGuide(siteId ?? '', rest === '' || rest === 'guide')
 
   if (q.isPending)
     return (
