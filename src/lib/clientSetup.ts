@@ -119,7 +119,7 @@ export const ALL_SECTIONS: ClientSection[] = [...CLIENT_TOP, ...CLIENT_GROUPS.fl
 export const HUB_SECTIONS: ClientSection[] = [
   { key: 'hub-overview', label: 'Overview', path: '/', live: true, tag: '' },
   { key: 'clients', label: 'All clients', path: '/clients', live: true, tag: '' },
-  { key: 'templates', label: 'Templates', path: '/templates', live: false, tag: 'P1' },
+  { key: 'templates', label: 'Templates', path: '/templates', live: true, tag: '' },
   { key: 'automation', label: 'Automation', path: '/automation', live: false, tag: 'P5' },
 ]
 

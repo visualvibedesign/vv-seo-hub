@@ -356,3 +356,40 @@ export interface ClusterPage {
   ideas: string[]
   keywords: ClusterKeyword[]
 }
+
+// ---- Templates (redesign step 5; migrations 0004 + 0005) ---------------------------------------------
+
+export type TemplateKind = 'keyword_research' | 'matrix' | 'clusters' | 'hotspots' | 'gbp_posts' | 'review_email' | 'citation_waves'
+export type TemplateItemKind = 'pattern' | 'word' | 'rule' | 'export' | 'text'
+export type WordGroup = 'money' | 'faq' | 'service'
+
+export interface TemplateItem {
+  kind: TemplateItemKind
+  wordGroup: WordGroup | null
+  body: string
+}
+
+export interface Template {
+  id: string
+  kind: TemplateKind
+  name: string
+  samStep: number
+  /** null = all industries */
+  industry: ClientIndustry | null
+  description: string
+  builtIn: boolean
+  updatedAt: string
+  items: TemplateItem[]
+  /** Clients it was applied to (latest first). */
+  applied: { siteId: string; name: string; appliedAt: string }[]
+}
+
+export interface TemplateInput {
+  id?: string
+  kind: TemplateKind
+  name: string
+  samStep: number
+  industry: ClientIndustry | null
+  description: string
+  items: TemplateItem[]
+}

@@ -24,7 +24,9 @@ const router = createBrowserRouter([
           { path: '/clients/new', lazy: page(() => import('./pages/AddClientPage')) },
           { path: '/clients/:siteId/edit', lazy: page(() => import('./pages/ClientFormPage')) },
           // Hub pages not built yet (Templates: phase 1, Automation: phase 5)
-          { path: '/templates', lazy: page(() => import('./pages/HubComingSoonPage')) },
+          { path: '/templates', lazy: page(() => import('./pages/TemplatesPage')) },
+          { path: '/templates/new', lazy: page(() => import('./pages/TemplateEditorPage')) },
+          { path: '/templates/:id/edit', lazy: page(() => import('./pages/TemplateEditorPage')) },
           { path: '/automation', lazy: page(() => import('./pages/HubComingSoonPage')) },
           // Client workspace: /clients/{site id} is the address the agency hub + Vibe SEO plugin link to.
           // Its sections are in the sidebar (src/lib/clientSetup.ts CLIENT_TOP + CLIENT_GROUPS).

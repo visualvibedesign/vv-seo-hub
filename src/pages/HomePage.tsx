@@ -3,6 +3,7 @@ import HeaderTools from '../components/layout/HeaderTools'
 import { Bone } from '../components/ui/Loading'
 import StatCard from '../components/ui/StatCard'
 import { useClients } from '../hooks/useClients'
+import { useTemplates } from '../hooks/useTemplates'
 import { industryLabel } from '../lib/clientSetup'
 import { GUIDE, GUIDE_STEPS, stepLabel } from '../lib/guide'
 import { needsYouItems, type NeedsYouItem } from '../lib/needsYou'
@@ -11,7 +12,7 @@ import type { ClientSummary } from '../types/seo'
 
 // Hub Overview (/), design docs/design/Main.png: every SEO client, where they are in Sam's 10 days, and what
 // needs you next. Not faked: the SEO overview table waits for the Vibe SEO plugin ("Connect the site
-// (coming soon)"), the Templates number waits for the Templates step. Login is the shared team password,
+// (coming soon)"), the Templates number counts the generic templates (industry versions are copies of them). Login is the shared team password,
 // so there's no person's name to greet.
 
 const RECENT = 3
@@ -23,6 +24,7 @@ function greeting(d = new Date()): string {
 
 export default function HomePage() {
   const q = useClients()
+  const templates = useTemplates()
   const all = q.data ?? []
   const active = all.filter((c) => c.status === 'active')
   const keywords = active.reduce((n, c) => n + c.counts.keywords, 0)
@@ -70,7 +72,7 @@ export default function HomePage() {
             <StatCard label="Active clients" value={active.length} caption={active.length === 1 ? active[0].name : active.length ? 'with SEO work going' : 'Add the first one'} />
             <StatCard label="Keywords" value={keywords} caption="across all clients" bar="lime" />
             <StatCard label="Tracked in Semrush" value={tracked} caption="US, national" />
-            <StatCard label="Templates" value={null} caption="Come with the Templates step" bar="orange" />
+            <StatCard label="Templates" value={templates.data ? templates.data.filter((t) => t.industry === null).length : null} caption={templates.data ? "reused on every client" : "Run migration 0004"} bar="orange" />
           </>
         )}
       </section>

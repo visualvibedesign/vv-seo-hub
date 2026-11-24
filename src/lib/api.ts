@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
+import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
 export class ApiError extends Error {
   status: number
@@ -165,4 +165,20 @@ export function setMatrixCell(cell: MatrixCellInput): Promise<{ matrix: MatrixSt
 
 export function getClusters(siteId: string): Promise<{ pages: ClusterPage[] }> {
   return call(`/api/clusters/list?site=${encodeURIComponent(siteId)}`)
+}
+
+// ---- Templates (redesign step 5) ---------------------------------------------------------
+
+export function getTemplates(): Promise<{ templates: Template[] }> {
+  return call('/api/templates/list')
+}
+
+/** Adds a template (no id) or saves an existing one. */
+export function saveTemplate(t: TemplateInput): Promise<{ template: Template }> {
+  return call('/api/templates/save', json(t))
+}
+
+/** Stores a copy of the template on the client. */
+export function applyTemplate(templateId: string, siteId: string): Promise<{ template: Template }> {
+  return call('/api/templates/apply', json({ templateId, siteId }))
 }
