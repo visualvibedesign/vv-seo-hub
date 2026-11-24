@@ -5,7 +5,7 @@ import { useClientContext } from '../../components/layout/ClientLayout'
 import { Spinner } from '../../components/ui/Loading'
 import { useCommitImport, usePreviewImport } from '../../hooks/useImports'
 import { ApiError } from '../../lib/api'
-import { FIELD_LABEL, REPORTS, SOURCE_FIELDS, SOURCE_LABEL, sourceOf } from '../../lib/importRules'
+import { FIELD_LABEL, keywordKey, REPORTS, SOURCE_FIELDS, SOURCE_LABEL, sourceOf } from '../../lib/importRules'
 import { applyMap, fileToBase64, filterRows, initialMap, readCsvFile, type ParsedFile } from '../../lib/readCsv'
 import { BTN_GHOST, BTN_LIME, CARD, CARD_TITLE, FIELD, LABEL, PILL_DONE, PILL_WAITING } from '../../lib/ui'
 import type { ClientDetail, ImportField, ImportPayload, ImportPreview, ImportReport, ImportSource, NumberField } from '../../types/seo'
@@ -34,6 +34,8 @@ export default function ImportPage() {
   const [exclude, setExclude] = useState('')
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [useNew, setUseNew] = useState<Set<string>>(new Set())
+  /** Address-like keywords Angel ticked "Import anyway" (keys). Empty = all held back. */
+  const [allowAddr, setAllowAddr] = useState<Set<string>>(new Set())
   const [error, setError] = useState('')
   const [reading, setReading] = useState(false)
   const previewQ = usePreviewImport()
@@ -100,6 +102,7 @@ export default function ImportPage() {
     totals: mapped.totals,
     rows,
     useNew: [...useNew],
+    allowAddresses: [...allowAddr],
   })
 
   const runPreview = async () => {
@@ -115,6 +118,7 @@ export default function ImportPage() {
       const p = await previewQ.mutateAsync(payload())
       setPreview(p)
       setUseNew(new Set())
+      setAllowAddr(new Set())
       setStep('preview')
     } catch (e) {
       setError(e instanceof ApiError && e.detail ? e.detail : 'Couldn’t check the import. Try again.')
@@ -173,6 +177,8 @@ export default function ImportPage() {
           preview={preview}
           useNew={useNew}
           setUseNew={setUseNew}
+          allowAddr={allowAddr}
+          setAllowAddr={setAllowAddr}
           onBack={() => setStep('match')}
           onImport={runImport}
           busy={commitQ.isPending}
@@ -490,6 +496,8 @@ function PreviewStep({
   preview: p,
   useNew,
   setUseNew,
+  allowAddr,
+  setAllowAddr,
   onBack,
   onImport,
   busy,
@@ -498,6 +506,8 @@ function PreviewStep({
   preview: ImportPreview
   useNew: Set<string>
   setUseNew: (s: Set<string>) => void
+  allowAddr: Set<string>
+  setAllowAddr: (s: Set<string>) => void
   onBack: () => void
   onImport: () => void
   busy: boolean
@@ -527,6 +537,36 @@ function PreviewStep({
           </div>
         ))}
       </div>
+
+      {p.addresses.length > 0 && (
+        <div role="alert" className="flex flex-col gap-2 rounded-2xl bg-vv-orange-100 px-4 py-3 text-sm text-vv-orange-ink">
+          <strong>Looks like an address: {p.addresses.length} held back</strong>
+          <span>These look like street addresses, so they’re not imported (not even kept in the import history). A client’s private address must never be stored. Tick one only if it’s a public business address you want as a keyword.</span>
+          <ul className="m-0 flex list-none flex-col gap-1 p-0">
+            {p.addresses.map((k) => {
+              const key = keywordKey(k)
+              return (
+                <li key={key}>
+                  <label className="flex min-h-9 items-center gap-2 font-semibold">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 accent-vv-purple"
+                      checked={allowAddr.has(key)}
+                      onChange={() => {
+                        const next = new Set(allowAddr)
+                        if (next.has(key)) next.delete(key)
+                        else next.add(key)
+                        setAllowAddr(next)
+                      }}
+                    />
+                    {k} <span className="font-normal">· import anyway</span>
+                  </label>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
 
       <ul className="m-0 flex list-none flex-col gap-2 p-0 text-sm text-vv-body">
         {p.skippedDuplicates > 0 && <li>Duplicates (same text, same file): {p.duplicateExamples.join(', ')}{p.skippedDuplicates > p.duplicateExamples.length ? '…' : ''}</li>}

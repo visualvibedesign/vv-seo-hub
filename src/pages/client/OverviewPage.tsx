@@ -159,9 +159,17 @@ function serviceLine(names: string[]): string {
   return names.length > 3 ? `${names.slice(0, 3).join(', ')} + ${names.length - 3} more` : names.join(', ')
 }
 
+/** The 6 core accounts (count toward "pending" + the guide tick), then "More accounts" folded. */
 function AccountsCard({ client: c }: { client: ClientDetail }) {
-  const ready = c.accounts.filter((a) => a.status === 'ready').length
-  const counted = c.accounts.filter((a) => a.status !== 'n_a').length
+  const rows = (core: boolean) =>
+    ACCOUNTS.filter((d) => d.core === core).flatMap((def) => {
+      const a = c.accounts.find((x) => x.kind === def.kind)
+      return a ? [<AccountRow key={def.kind} siteId={c.siteId} account={a} label={def.label} />] : []
+    })
+  const core = c.accounts.filter((a) => ACCOUNTS.find((d) => d.kind === a.kind)?.core)
+  const ready = core.filter((a) => a.status === 'ready').length
+  const counted = core.filter((a) => a.status !== 'n_a').length
+  const more = rows(false)
   return (
     <section className={CARD} aria-labelledby="ov-accounts">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -172,12 +180,19 @@ function AccountsCard({ client: c }: { client: ClientDetail }) {
           {ready} of {counted} ready
         </span>
       </div>
-      <ul className="m-0 flex list-none flex-col p-0">
-        {ACCOUNTS.map((def) => {
-          const a = c.accounts.find((x) => x.kind === def.kind)
-          return a ? <AccountRow key={def.kind} siteId={c.siteId} account={a} label={def.label} /> : null
-        })}
-      </ul>
+      <ul className="m-0 flex list-none flex-col p-0">{rows(true)}</ul>
+      {more.length > 0 && (
+        <details className="group border-0 border-t border-solid border-vv-line pt-2">
+          <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between text-[14px] font-semibold text-vv-purple-deep [&::-webkit-details-marker]:hidden">
+            More accounts ({more.length})
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="transition-transform group-open:rotate-180">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </summary>
+          <p className="m-0 pb-1 text-[12px] text-vv-muted">Optional. They don’t count toward “accounts pending”.</p>
+          <ul className="m-0 flex list-none flex-col p-0">{more}</ul>
+        </details>
+      )}
       <p className="m-0 text-[13px] text-vv-muted">Status and next step only. Never passwords or keys here.</p>
     </section>
   )

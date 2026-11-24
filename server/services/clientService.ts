@@ -2,7 +2,7 @@
 // Tables: seo_clients, seo_client_categories, seo_client_services, seo_client_areas, seo_client_accounts.
 // No address is ever stored (there is no column for it).
 import { z } from 'zod'
-import { ACCOUNT_KINDS, AREA_CODES, CATEGORY_CODES, DEFAULT_FAQ_NAME, INDUSTRY_KEYS } from '../../src/lib/clientSetup.js'
+import { ACCOUNT_KINDS, AREA_CODES, CATEGORY_CODES, CORE_ACCOUNT_KINDS, DEFAULT_FAQ_NAME, INDUSTRY_KEYS } from '../../src/lib/clientSetup.js'
 import { GUIDE_STEPS } from '../../src/lib/guide.js'
 import type {
   AccountKind,
@@ -68,7 +68,8 @@ async function countsFor(clients: Pick<ClientRow, 'id' | 'updated_at'>[]): Promi
         kws().is('role', null),
         db().from('seo_pages').select('id', head).eq('client_id', id),
         db().from('seo_imports').select('created_at', { count: 'exact' }).eq('client_id', id).order('created_at', { ascending: false }).limit(1),
-        db().from('seo_client_accounts').select('id', head).eq('client_id', id).eq('status', 'pending'),
+        // Only the 6 core accounts count as "pending" (clientSetup CORE_ACCOUNT_KINDS).
+        db().from('seo_client_accounts').select('id', head).eq('client_id', id).eq('status', 'pending').in('kind', CORE_ACCOUNT_KINDS),
         db().from('seo_keywords').select('updated_at').eq('client_id', id).order('updated_at', { ascending: false }).limit(1),
       ])
       for (const r of [kw, tracked, noRole, pg, imp, pending, lastKw]) if (r.error) throw new DatabaseError(`Counting this client’s data: ${r.error.message}`)

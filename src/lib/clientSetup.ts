@@ -25,22 +25,27 @@ export const CATEGORY_HINT: Record<CategoryCode, string> = {
 
 export const DEFAULT_FAQ_NAME = 'FAQ & help pages'
 
-/** Day 1 account inventory. Status + next action only: never passwords or keys. */
-export const ACCOUNTS: { kind: AccountKind; label: string; hint: string }[] = [
-  { kind: 'domain_dns', label: 'Domain / DNS', hint: 'For Search Console TXT verification' },
-  { kind: 'hosting', label: 'Hosting', hint: '' },
-  { kind: 'platform', label: 'Website platform', hint: 'WordPress + Vibe Admin / Vibe SEO' },
-  { kind: 'gbp', label: 'Google Business Profile', hint: 'Manager access' },
-  { kind: 'gsc', label: 'Search Console', hint: 'Domain property' },
-  { kind: 'ga4', label: 'Google Analytics (GA4)', hint: 'Goal: generate leads' },
-  { kind: 'semrush', label: 'Semrush Position Tracking', hint: 'US (national), ~10 keywords' },
-  { kind: 'whitespark', label: 'Whitespark geogrid', hint: 'Top 1–3 services, main city' },
-  { kind: 'clarity', label: 'Microsoft Clarity', hint: 'Check privacy/consent first' },
-  { kind: 'cloudflare', label: 'Cloudflare', hint: 'If used' },
-  { kind: 'google_ads', label: 'Google Ads / Keyword Planner', hint: 'If used' },
-  { kind: 'ai_visibility', label: 'AI visibility tool', hint: 'Optional' },
+/**
+ * Day 1 account inventory (Sam's full list). Status + next action only: never passwords or keys.
+ * `core` = the context pack's checklist (GSC, GA4, GBP, Semrush, Whitespark, Clarity): only these count toward
+ * "accounts pending" and the guide's accounts tick (Angel, Nov 25). The rest sit under "More accounts".
+ */
+export const ACCOUNTS: { kind: AccountKind; label: string; hint: string; core: boolean }[] = [
+  { kind: 'gsc', label: 'Search Console', hint: 'Domain property', core: true },
+  { kind: 'ga4', label: 'GA4', hint: 'Goal: generate leads', core: true },
+  { kind: 'gbp', label: 'Google Business Profile', hint: 'Manager access', core: true },
+  { kind: 'semrush', label: 'Semrush', hint: 'Position Tracking, US (national), ~10 keywords', core: true },
+  { kind: 'whitespark', label: 'Whitespark', hint: 'Geogrid: top 1–3 services, main city', core: true },
+  { kind: 'clarity', label: 'Clarity', hint: 'Check privacy/consent first', core: true },
+  { kind: 'domain_dns', label: 'Domain / DNS', hint: 'For Search Console TXT verification', core: false },
+  { kind: 'hosting', label: 'Hosting', hint: '', core: false },
+  { kind: 'platform', label: 'Website platform', hint: 'WordPress + Vibe Admin / Vibe SEO', core: false },
+  { kind: 'cloudflare', label: 'Cloudflare', hint: 'If used', core: false },
+  { kind: 'google_ads', label: 'Google Ads / Keyword Planner', hint: 'If used', core: false },
+  { kind: 'ai_visibility', label: 'AI visibility tool', hint: 'Optional', core: false },
 ]
 export const ACCOUNT_KINDS = ACCOUNTS.map((a) => a.kind)
+export const CORE_ACCOUNT_KINDS = ACCOUNTS.filter((a) => a.core).map((a) => a.kind)
 
 export const ACCOUNT_STATUS_LABEL: Record<AccountStatus, string> = { ready: 'Ready', pending: 'Pending', n_a: 'N/A' }
 

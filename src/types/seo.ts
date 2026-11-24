@@ -154,6 +154,8 @@ export interface ImportPayload {
   rows: ImportRow[]
   /** keyword keys whose different Semrush numbers should replace the filled ones ("Use the new numbers"). */
   useNew?: string[]
+  /** Address-like keyword keys Angel OKd to import anyway (everything else that looks like an address is held back). */
+  allowAddresses?: string[]
 }
 
 export type NumberField = 'semrush_volume' | 'kd' | 'cpc'
@@ -183,6 +185,8 @@ export interface ImportPreview {
   /** new keywords with no Semrush volume (flagged as missing data) */
   newWithoutVolume: number
   sampleNew: string[]
+  /** Keywords that look like a street address: held back, not imported unless allowed. */
+  addresses: string[]
 }
 
 export interface ImportRecord {

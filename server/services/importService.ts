@@ -10,7 +10,7 @@
 //     EMPTY one (kp_volume_by = 'sheet'). Typed ranges are never overwritten.
 //   - KP CSV numbers are stand-ins (50, 500): stored in history only, never as a volume.
 import { z } from 'zod'
-import { keywordKey, parseCpc, parseKd, parseRole, parseVolume, sourceOf } from '../../src/lib/importRules.js'
+import { keywordKey, looksLikeAddress, parseCpc, parseKd, parseRole, parseVolume, sourceOf } from '../../src/lib/importRules.js'
 import type { DeleteImportCheck, ImportDifference, ImportPayload, ImportPreview, ImportRecord, ImportRow, NumberField } from '../../src/types/seo.js'
 import { db, DatabaseError, must } from '../clients/supabase.js'
 
@@ -44,6 +44,7 @@ const PayloadSchema = z.object({
   totals: z.array(z.object({ segment: z.string().max(120), volume: z.string().max(60) })).max(50),
   rows: z.array(RowSchema).max(MAX_ROWS),
   useNew: z.array(z.string().max(300)).max(MAX_ROWS).optional(),
+  allowAddresses: z.array(z.string().max(300)).max(200).optional(),
 })
 
 function validate(raw: unknown): ImportPayload {
@@ -123,8 +124,16 @@ async function plan(p: ImportPayload): Promise<Plan> {
   const seen = new Set<string>()
   const unique: Plan['unique'] = []
   const skipped: string[] = []
+  // 0. Street addresses ("2627 hylan blvd staten island") are held back: never stored (not even in the
+  //    import history) unless Angel ticks them. A client's private address must never be stored.
+  const allowed = new Set(p.allowAddresses ?? [])
+  const addresses = new Map<string, string>()
   for (const row of p.rows) {
     const key = keywordKey(row.keyword)
+    if (looksLikeAddress(row.keyword) && !allowed.has(key)) {
+      addresses.set(key, row.keyword)
+      continue
+    }
     const dupKey = `${key}\u0000${(row.segment ?? '').toLowerCase()}`
     if (seen.has(dupKey)) {
       skipped.push(row.keyword)
@@ -247,6 +256,7 @@ async function plan(p: ImportPayload): Promise<Plan> {
       unknownRoles: [...unknownRoles].sort(),
       newWithoutVolume: p.source === 'kp' ? 0 : newWithoutVolume,
       sampleNew: creates.slice(0, 10).map((c) => String(c.keyword)),
+      addresses: [...addresses.values()],
     },
   }
 }

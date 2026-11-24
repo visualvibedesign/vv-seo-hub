@@ -213,33 +213,14 @@ export default function AddClientPage() {
               </h2>
               <p className="m-0 text-sm text-vv-muted">What’s ready today. Status only: never passwords or keys. You can change these later on the client’s Overview.</p>
             </div>
-            <ul className="m-0 flex list-none flex-col p-0">
-              {ACCOUNTS.map((a) => (
-                <li key={a.kind} className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-vv-line py-3 last:border-b-0">
-                  <span className="flex min-w-0 flex-col">
-                    <span className="text-[15px] font-semibold text-vv-ink">{a.label}</span>
-                    {a.hint && <span className="text-[13px] text-vv-muted">{a.hint}</span>}
-                  </span>
-                  <span role="radiogroup" aria-label={`${a.label} status`} className="inline-flex gap-1 rounded-full bg-vv-lavender-50 p-1">
-                    {(['ready', 'pending', 'n_a'] as AccountStatus[]).map((st) => {
-                      const on = accounts[a.kind] === st
-                      return (
-                        <button
-                          key={st}
-                          type="button"
-                          role="radio"
-                          aria-checked={on}
-                          onClick={() => setAccounts((x) => ({ ...x, [a.kind]: st }))}
-                          className={`min-h-9 rounded-full border-0 px-3.5 font-body text-[13px] font-bold ${on ? 'bg-vv-lavender text-vv-ink' : 'bg-transparent text-vv-body hover:bg-vv-surface'}`}
-                        >
-                          {ACCOUNT_STATUS_LABEL[st]}
-                        </button>
-                      )
-                    })}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <AccountList list={ACCOUNTS.filter((a) => a.core)} accounts={accounts} setAccounts={setAccounts} />
+            <details className="group">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-[15px] font-semibold text-vv-purple-deep [&::-webkit-details-marker]:hidden">
+                More accounts ({ACCOUNTS.filter((a) => !a.core).length})
+                <span className="text-[13px] font-normal text-vv-muted">optional, they don’t count toward “accounts pending”</span>
+              </summary>
+              <AccountList list={ACCOUNTS.filter((a) => !a.core)} accounts={accounts} setAccounts={setAccounts} />
+            </details>
           </>
         )}
       </section>
@@ -273,5 +254,39 @@ export default function AddClientPage() {
         </button>
       </div>
     </form>
+  )
+}
+
+type AccountMap = Record<AccountKind, AccountStatus>
+
+function AccountList({ list, accounts, setAccounts }: { list: typeof ACCOUNTS; accounts: AccountMap; setAccounts: (f: (x: AccountMap) => AccountMap) => void }) {
+  return (
+    <ul className="m-0 flex list-none flex-col p-0">
+      {list.map((a) => (
+        <li key={a.kind} className="flex flex-wrap items-center justify-between gap-3 border-0 border-b border-solid border-vv-line py-3 last:border-b-0">
+          <span className="flex min-w-0 flex-col">
+            <span className="text-[15px] font-semibold text-vv-ink">{a.label}</span>
+            {a.hint && <span className="text-[13px] text-vv-muted">{a.hint}</span>}
+          </span>
+          <span role="radiogroup" aria-label={`${a.label} status`} className="inline-flex gap-1 rounded-full bg-vv-lavender-50 p-1">
+            {(['ready', 'pending', 'n_a'] as AccountStatus[]).map((st) => {
+              const on = accounts[a.kind] === st
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setAccounts((x) => ({ ...x, [a.kind]: st }))}
+                  className={`min-h-9 rounded-full border-0 px-3.5 font-body text-[13px] font-bold ${on ? 'bg-vv-lavender text-vv-ink' : 'bg-transparent text-vv-body hover:bg-vv-surface'}`}
+                >
+                  {ACCOUNT_STATUS_LABEL[st]}
+                </button>
+              )
+            })}
+          </span>
+        </li>
+      ))}
+    </ul>
   )
 }

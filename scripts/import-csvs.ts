@@ -82,6 +82,7 @@ function guessFilter(rows: { keyword: string }[], words: string[]) {
     }
     const p = COMMIT ? (await commitImport(payload, { base64: f.buf.toString('base64'), type: 'text/csv' })).preview : await previewImport(payload)
     console.log(`${COMMIT ? 'DONE ' : 'OK   '} ${f.name}  [${report}]  ${p.rows} rows · ${p.newKeywords} new · ${p.existing} merged · ${p.skippedDuplicates} dupes · ${p.filled} filled${payload.filter ? ` · ${payload.filter}` : ''}`)
+    if (p.addresses.length) console.log(`      held back (looks like an address, never imported by this script): ${p.addresses.join(' | ')}`)
   }
 })().catch((e) => {
   console.error('FAILED:', e instanceof Error ? e.message : e)
