@@ -105,7 +105,7 @@ export function guideSummaryOf(doneSteps: number[]): GuideSummary {
   const done = new Set(doneSteps)
   let current = 0
   while (current < GUIDE_STEPS && done.has(current)) current++
-  return { current, doneCount: done.size }
+  return { current, doneCount: done.size, doneSteps: [...done].sort((a, b) => a - b) }
 }
 
 export async function listClients(): Promise<ClientSummary[]> {

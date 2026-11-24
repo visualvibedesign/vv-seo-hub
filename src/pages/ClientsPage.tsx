@@ -5,6 +5,7 @@ import { Bone } from '../components/ui/Loading'
 import { useClients } from '../hooks/useClients'
 import { industryLabel } from '../lib/clientSetup'
 import { GUIDE, GUIDE_STEPS, stepDay } from '../lib/guide'
+import { needsYouItems } from '../lib/needsYou'
 import { BTN_LIME, CARD, FIELD, PILL, PILL_DONE, PILL_TODO, PILL_WAITING, siteLabel } from '../lib/ui'
 import type { ClientStatus, ClientSummary } from '../types/seo'
 
@@ -25,16 +26,8 @@ const STEP_PILL = `${PILL} bg-vv-lavender-100 text-vv-purple-ink no-underline ho
 const STATUS_PILL: Record<ClientStatus, string> = { active: PILL_DONE, paused: PILL_WAITING, archived: PILL_TODO }
 const STATUS_LABEL: Record<ClientStatus, string> = { active: 'Active', paused: 'Paused', archived: 'Archived' }
 
-/** The first thing this client needs from you, from real counts only. */
-function needsYou(c: ClientSummary): string | null {
-  if (c.status === 'archived') return null
-  if (c.counts.keywords === 0 && c.counts.accountsPending > 0) return 'Accounts to check'
-  if (c.counts.keywords === 0) return 'Import keywords'
-  if (c.counts.needsRole > 0) return `${c.counts.needsRole} keyword${c.counts.needsRole === 1 ? '' : 's'} need a role`
-  if (c.counts.tracked === 0) return 'Pick keywords to track'
-  if (c.counts.accountsPending > 0) return `${c.counts.accountsPending} account${c.counts.accountsPending === 1 ? '' : 's'} pending`
-  return null
-}
+/** The first thing this client needs from you (src/lib/needsYou.ts, real counts only). */
+const needsYou = (c: ClientSummary): string | null => needsYouItems(c)[0]?.title ?? null
 
 export default function ClientsPage() {
   const q = useClients()

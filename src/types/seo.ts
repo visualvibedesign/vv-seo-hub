@@ -290,4 +290,6 @@ export interface GuideState {
 export interface GuideSummary {
   current: number
   doneCount: number
+  /** Step numbers marked done (for the 9-part progress bar). */
+  doneSteps: number[]
 }

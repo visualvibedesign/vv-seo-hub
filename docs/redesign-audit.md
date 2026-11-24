@@ -219,7 +219,7 @@ Numbers = the redesign steps as built (START-HERE order). Migrations are split p
 - ✅ **Docs + design in place** (§0).
 - ✅ **Step 1 · Sidebar** (hub + client mode, switcher, foldable groups) + routes for every section.
 - ✅ **Step 2 · All clients** (table, filters, 25/page) + **Add client wizard** (4 steps) + Edit client. Migration 0002: `seo_clients.industry` (ran Nov 25).
-- **Step 3 · Guide + both Overviews** (migration 0003: `seo_guide_progress`):
+- ✅ **Step 3 · Guide + both Overviews** (migration 0003: `seo_guide_progress`):
   - 3a **Step-by-step guide** (9 steps, tasks, auto-ticks, progress per client)
   - 3b **Client Overview** (design Client.png: chips, Continue Day N, 4 stat cards with "Connect the site (coming soon)" / "—" until phase 2, Sam's 10 days from guide progress, Services & areas, Accounts)
   - 3c **Hub Overview** (design Main.png: greeting, 4 stat cards, SEO overview table as the "Connect the site (coming soon)" empty state, Recently worked on with step + progress bar, Next client, Needs you, Templates you reuse). Replaces the old "Build phases" page.
