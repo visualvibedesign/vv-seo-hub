@@ -8,7 +8,8 @@ import { useKeywords, useUpdateKeywords } from '../../hooks/useKeywords'
 import { ApiError } from '../../lib/api'
 import { SOURCE_LABEL } from '../../lib/importRules'
 import { intentParts, KP_PICKS, num, ROLE_LABEL, ROLE_PILL, ROLES, STATUS_LABEL } from '../../lib/keywordUi'
-import { BTN_GHOST, BTN_LIME, BTN_LINK, CARD, CARD_TITLE, siteLabel } from '../../lib/ui'
+import { downloadTracked } from '../../lib/exportTracked'
+import { BTN_GHOST, BTN_LIME, BTN_LINK, CARD, CARD_TITLE } from '../../lib/ui'
 import type { ClientDetail, ImportSource, KeywordChanges, KeywordItem, KeywordRole, KeywordStatus } from '../../types/seo'
 
 // Keywords › Database (/clients/{site id}/keywords/database): every keyword of this client.
@@ -22,19 +23,6 @@ const NO_DATA = <span className="text-vv-muted" title="No data">—</span>
 const FILTER = 'box-border min-h-10 rounded-full border-[1.5px] border-solid border-vv-field-line bg-vv-field px-3.5 font-body text-[14px] text-vv-ink phone:min-w-0 phone:flex-[1_1_40%] phone:px-3 phone:text-[13px]'
 /** Row select that reads like plain text until hovered. */
 const INLINE_SELECT = 'box-border min-h-8 cursor-pointer rounded-lg border border-solid border-transparent bg-transparent px-1.5 py-1 font-body text-[14px] text-vv-ink hover:border-vv-field-line focus:border-vv-field-line'
-
-/** Semrush Position Tracking list: Keyword + Tags (role; service). A download only: nothing leaves SEO Hub. */
-function downloadTracked(c: ClientDetail, list: KeywordItem[], svcName: Map<string, string>) {
-  const cell = (v: string) => (/[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v)
-  const tags = (k: KeywordItem) => [k.role ? ROLE_LABEL[k.role] : '', k.serviceId ? (svcName.get(k.serviceId) ?? '') : ''].filter(Boolean).join(';')
-  const lines = ['Keyword,Tags', ...list.map((k) => [k.keyword, tags(k)].map(cell).join(','))]
-  const blob = new Blob([lines.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = siteLabel(c.siteUrl).replace(/[^\w.-]+/g, '-') + '-tracked-keywords.csv'
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
-}
 
 type Missing = '' | 'kp' | 'semrush' | 'kd'
 type SortKey = 'keyword' | 'semrush' | 'kd' | 'cpc' | 'kp'
@@ -174,7 +162,7 @@ export default function DatabasePage() {
 
   return (
     <>
-      <DbHeader siteId={c.siteId} onExport={tracked.length ? () => downloadTracked(c, tracked, svcName) : undefined} />
+      <DbHeader siteId={c.siteId} onExport={tracked.length ? () => downloadTracked(c, tracked) : undefined} />
 
     <section className={CARD} aria-labelledby="db-h">
       <div className="flex flex-wrap items-center justify-between gap-3">

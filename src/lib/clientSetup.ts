@@ -69,9 +69,9 @@ export const CLIENT_GROUPS: ClientGroup[] = [
     key: 'keywords',
     label: 'Keywords',
     items: [
-      { key: 'matrix', label: 'Matrix', path: 'keywords', live: false, tag: 'P1' },
+      { key: 'matrix', label: 'Matrix', path: 'keywords', live: true, tag: '' },
       { key: 'database', label: 'Database', path: 'keywords/database', live: true, tag: '' },
-      { key: 'clusters', label: 'Clusters', path: 'keywords/clusters', live: false, tag: 'P1' },
+      { key: 'clusters', label: 'Clusters', path: 'keywords/clusters', live: true, tag: '' },
       { key: 'import', label: 'Import', path: 'keywords/import', live: true, tag: '' },
     ],
   },

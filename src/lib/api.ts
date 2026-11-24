@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, DeleteImportCheck, GuideState, ImportPayload, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
+import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
 export class ApiError extends Error {
   status: number
@@ -150,4 +150,19 @@ export function setGuideTask(siteId: string, step: number, task: string, done: b
 /** Mark a step done, or reopen it. */
 export function setGuideStep(siteId: string, step: number, done: boolean): Promise<{ guide: GuideState }> {
   return call('/api/guide/step', json({ siteId, step, done }))
+}
+
+// ---- 3×3 matrix + clusters (redesign step 4) ---------------------------------------------
+
+export function getMatrix(siteId: string): Promise<{ matrix: MatrixState }> {
+  return call(`/api/matrix/get?site=${encodeURIComponent(siteId)}`)
+}
+
+/** Replaces one cell's primary + backups. */
+export function setMatrixCell(cell: MatrixCellInput): Promise<{ matrix: MatrixState }> {
+  return call('/api/matrix/cell', json(cell))
+}
+
+export function getClusters(siteId: string): Promise<{ pages: ClusterPage[] }> {
+  return call(`/api/clusters/list?site=${encodeURIComponent(siteId)}`)
 }

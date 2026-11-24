@@ -224,7 +224,7 @@ Numbers = the redesign steps as built (START-HERE order). Migrations are split p
   - 3b **Client Overview** (design Client.png: chips, Continue Day N, 4 stat cards with "Connect the site (coming soon)" / "—" until phase 2, Sam's 10 days from guide progress, Services & areas, Accounts)
   - 3c **Hub Overview** (design Main.png: greeting, 4 stat cards, SEO overview table as the "Connect the site (coming soon)" empty state, Recently worked on with step + progress bar, Next client, Needs you, Templates you reuse). Replaces the old "Build phases" page.
   - Then the Sam step column + "Any step" filter on All clients and "Day 2 · Keywords" in the client switcher go live.
-- **Step 4 · Keywords**: Database restyle (pills with counts, Needs role, Track pill) + Matrix + Clusters + Export tracked list.
+- ✅ **Step 4 · Keywords**: Database restyle (pills with counts, Needs role, Track pill) + Matrix + Clusters + Export tracked list.
 - **Step 5 · Templates** library + editor + apply (snapshot). Migration: `seo_templates`, `seo_template_items`, `seo_client_templates` + 7 seeded templates.
 - **Step 6 · Uploads + auto-fill** (Day 1 + Day 2): what I need + how-to steps, one drop zone, code rules first, then the Claude API + AI log + Review / Approve. Migration: `seo_autofill`, `seo_ai_log`.
 - **Step 7 · Notes & links.** Migration: `seo_notes`, `seo_client_links`.

@@ -297,3 +297,62 @@ export interface GuideSummary {
   /** Step numbers marked done (for the 9-part progress bar). */
   doneSteps: number[]
 }
+
+// ---- 3×3 matrix (redesign step 4b; tables seo_matrix_cells + seo_matrix_keywords from 0001) -------------
+
+export type PageStatus = 'live' | 'scheduled' | 'planned'
+
+export interface MatrixKeyword {
+  id: string
+  keyword: string
+  role: KeywordRole | null
+  semrushVolume: number | null
+  kpVolume: string | null
+  /** The page that owns this keyword (Clusters), if any. */
+  page: { name: string; status: PageStatus } | null
+}
+
+export interface MatrixCell {
+  category: CategoryCode
+  area: AreaCode
+  /** n_a = the area is N/A; pending = no primary picked yet; target = has a primary. */
+  state: 'target' | 'n_a' | 'pending'
+  primary: MatrixKeyword | null
+  backups: MatrixKeyword[]
+}
+
+export interface MatrixState {
+  rows: { code: CategoryCode; name: string; cells: MatrixCell[] }[]
+  areas: { code: AreaCode; name: string | null; state: string | null; status: AreaStatus }[]
+}
+
+export interface MatrixCellInput {
+  siteId: string
+  category: CategoryCode
+  area: AreaCode
+  primaryId: string | null
+  backupIds: string[]
+}
+
+// ---- Clusters (redesign step 4c; seo_pages + seo_page_keywords from 0001) -------------------------------
+
+export interface ClusterKeyword {
+  id: string
+  keyword: string
+  role: 'primary' | 'secondary' | 'faq'
+  semrushVolume: number | null
+  kd: number | null
+  kpVolume: string | null
+}
+
+export interface ClusterPage {
+  id: string
+  category: CategoryCode
+  name: string
+  url: string | null
+  priority: 'high' | 'medium' | 'low'
+  status: PageStatus
+  why: string | null
+  ideas: string[]
+  keywords: ClusterKeyword[]
+}
