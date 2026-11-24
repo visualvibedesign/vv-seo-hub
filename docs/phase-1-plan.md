@@ -196,6 +196,9 @@ One step per message, on local branch **`phase-1`**. After each step: what to te
   - [x] Anassa's files imported (Nov 24) with the reusable `scripts/import-csvs.ts` (any client, one folder per client, dry run by default): 13 files, 31 new keywords, 247 total; 4 identical copies skipped; 3 unfiltered national exports (5k–10k rows) held back. Angel checked the history (Nov 24)
   - [x] Position Tracking exports are refused by the CSV reader (phase 2 data, not keyword research)
 - [ ] **5. Keyword database:** filters, role/intent tags, both volumes, missing-data flags, **editable KP range + bulk bar** (KP range, role, service, track, status), Track toggle
+  - [x] Fix (Nov 24): Anassa's Master Keyword Database had been imported as a Keyword Planner file (roles, services, KP ranges lost). Deleted that import and re-imported it as the Sheet source: 216 KP ranges, roles and services filled
+  - [x] built (Nov 24): `/keywords/database` (DatabasePage), `/api/keywords/list` + `update`, `keywordService`; filters (search, role, service, intent, source, missing data, tracked, status), sort, 100 per page, inline role / service / KP range / Track / status, bulk bar with KP overwrite confirm, phone cards, loading / error / empty states. Server tested on Anassa (list, KP clash confirm, track, bad service / client refused)
+  - [ ] Angel checks on localhost (desktop, phone width, dark mode)
 - [ ] **6. 3×3 matrix:** Home row + S1–S3 × A1–A3, N/A / Pending, primary + backups with volumes, pick from the table
 - [ ] **7. Clusters:** pages, priority, primary, Volume · KD, secondary + FAQ ideas, Why, no keyword on two pages, Priority legend
 - [ ] **8. Export tracked list** CSV for Semrush Position Tracking

@@ -31,6 +31,7 @@ const router = createBrowserRouter([
             children: [
               { index: true, lazy: page(() => import('./pages/client/OverviewPage')) },
               { path: 'keywords/import', lazy: page(() => import('./pages/client/ImportPage')) },
+              { path: 'keywords/database', lazy: page(() => import('./pages/client/DatabasePage')) },
               { path: 'keywords/*', lazy: page(() => import('./pages/client/ComingSoonPage')) },
               { path: 'keywords', lazy: page(() => import('./pages/client/ComingSoonPage')) },
               { path: ':tab', lazy: page(() => import('./pages/client/ComingSoonPage')) },

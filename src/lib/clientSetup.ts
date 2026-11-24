@@ -50,7 +50,7 @@ export const CLIENT_SECTIONS: ClientSection[] = [
     tag: '',
     children: [
       { key: 'matrix', label: 'Matrix', path: 'keywords', live: false, tag: 'Step 6' },
-      { key: 'database', label: 'Database', path: 'keywords/database', live: false, tag: 'Step 5' },
+      { key: 'database', label: 'Database', path: 'keywords/database', live: true, tag: '' },
       { key: 'clusters', label: 'Clusters', path: 'keywords/clusters', live: false, tag: 'Step 7' },
       { key: 'import', label: 'Import', path: 'keywords/import', live: true, tag: '' },
     ],

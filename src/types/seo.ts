@@ -199,3 +199,51 @@ export interface DeleteImportCheck {
   removedInUse: number
   hasFile: boolean
 }
+
+// ---- Keyword database (phase 1, step 5) ----------------------------------------------
+
+export type KeywordRole = 'primary' | 'secondary' | 'faq' | 'near_me'
+export type KeywordStatus = 'keep' | 'later' | 'rejected'
+
+/** One keyword as the Database page shows it. Numbers exactly as stored; null = no data (never 0). */
+export interface KeywordItem {
+  id: string
+  keyword: string
+  role: KeywordRole | null
+  serviceId: string | null
+  intent: string | null
+  /** KP range as text ("10–100", "No data", "Not checked"); null = not set yet. */
+  kpVolume: string | null
+  kpVolumeBy: 'typed' | 'sheet' | null
+  /** Keyword Planner CSV stand-in (e.g. "50"), shown greyed as a hint, never used as the value. */
+  kpStandIn: string | null
+  semrushVolume: number | null
+  kd: number | null
+  cpc: number | null
+  track: boolean
+  status: KeywordStatus
+  notes: string | null
+  sources: ImportSource[]
+  createdAt: string
+}
+
+/** What a single edit or the bulk bar changes. Only the keys present are changed. */
+export interface KeywordChanges {
+  kpVolume?: string | null
+  role?: KeywordRole | null
+  serviceId?: string | null
+  track?: boolean
+  status?: KeywordStatus
+  notes?: string | null
+}
+
+export interface KeywordUpdateRequest {
+  siteId: string
+  ids: string[]
+  changes: KeywordChanges
+  /** Bulk KP range: replace ranges that are already set (asked first). */
+  overwriteKp?: boolean
+}
+
+/** needsConfirm: how many selected keywords already have a different KP range (nothing saved yet). */
+export type KeywordUpdateResult = { updated: number } | { needsConfirm: number }

@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, DeleteImportCheck, ImportPayload, ImportPreview, ImportRecord, SiteIdCheck } from '../types/seo'
+import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, DeleteImportCheck, ImportPayload, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
 export class ApiError extends Error {
   status: number
@@ -118,6 +118,17 @@ export function getImportFileUrl(siteId: string, importId: string): Promise<{ ur
 /** Counts for the "Delete this import" confirm (nothing is deleted). */
 export function checkDeleteImport(siteId: string, importId: string): Promise<DeleteImportCheck> {
   return call(`/api/imports/delete-check?site=${encodeURIComponent(siteId)}&id=${encodeURIComponent(importId)}`)
+}
+
+// ---- Keyword database (phase 1, step 5) ------------------------------------------------
+
+export function getKeywords(siteId: string): Promise<{ keywords: KeywordItem[] }> {
+  return call(`/api/keywords/list?site=${encodeURIComponent(siteId)}`)
+}
+
+/** One row or many. Bulk KP range over existing ranges returns { needsConfirm } and saves nothing. */
+export function updateKeywords(req: KeywordUpdateRequest): Promise<KeywordUpdateResult> {
+  return call('/api/keywords/update', json(req))
 }
 
 /** Deletes an import: its history rows, raw file, and the keywords that only came from it. */
