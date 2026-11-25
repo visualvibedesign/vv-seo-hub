@@ -70,6 +70,8 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
 ### GBP (typed)
 - Overview › GBP › "Add this month's numbers": a period (from / to) + the numbers. `seo_gbp_snapshots`.
 
+**2d built (Nov 26, no SQL: tables from 0016):** GBP form (period defaults to last month; same period replaces; empty = unknown, never 0; rating 1–5; typed-by remembered per browser) and a typed map grid (keyword, date, 5×5 or 7×7, spacing, area name only: anything with a digit is refused, so no street address or ZIP). Grid colours: green 1–3, amber 4–7, red 8+, grey = not found / 20+. Avg rank = average over the points where the business was found (Whitespark's own ARP comes with the CSV). Both feed Overview cards, the Sources popover and the Baseline cards; each has "All months / All scans" with Remove (confirm). Actions live in `api/metrics/[action].ts` (`local`, `gbp-save`, `gbp-delete`, `map-save`, `map-delete`): still 12 functions. Whitespark CSV import waits for Angel's sample.
+
 ## Baseline (Day 3)
 - **Save baseline** copies the current numbers of each source **with their own dates** into `seo_baselines` +
   `seo_baseline_values` (a frozen copy: re-pulling Google later never changes it). Each source card shows "Saved · date"

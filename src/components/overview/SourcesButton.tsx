@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGoogleSetup } from '../../hooks/useGoogle'
 import { useRankings } from '../../hooks/useRankings'
+import { useLocal } from '../../hooks/useLocal'
+import { periodLabel } from '../../lib/local'
 import { BTN_GHOST, BTN_LINK } from '../../lib/ui'
 import type { ClientDetail } from '../../types/seo'
 
@@ -17,6 +19,9 @@ export default function SourcesButton({ client: c, onChangeGoogle }: { client: C
   const btn = useRef<HTMLButtonElement>(null)
   const link = useGoogleSetup(c.siteId).data?.link ?? null
   const ranks = useRankings(c.siteId).data
+  const local = useLocal(c.siteId).data
+  const grid = local?.grids[0]
+  const gbp = local?.gbp[0]
 
   useEffect(() => {
     if (!open) return
@@ -46,8 +51,8 @@ export default function SourcesButton({ client: c, onChangeGoogle }: { client: C
     ranks?.latest
       ? { name: 'Semrush', note: `CSV · positions from ${short(ranks.latest)}`, state: 'on' }
       : { name: 'Semrush', note: 'No rankings CSV yet', state: 'off' },
-    { name: 'Whitespark', note: 'No map grid yet', state: 'off' },
-    { name: 'GBP', note: 'Not typed in yet', state: 'off' },
+    grid ? { name: 'Whitespark', note: `Typed in · scan ${short(grid.scannedOn)}`, state: 'on' } : { name: 'Whitespark', note: 'No map grid yet', state: 'off' },
+    gbp ? { name: 'GBP', note: `Typed in · ${periodLabel(gbp.periodFrom, gbp.periodTo)}`, state: 'on' } : { name: 'GBP', note: 'Not typed in yet', state: 'off' },
   ]
   const on = list.filter((s) => s.state === 'on' || s.state === 'warn').length
 

@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -377,4 +377,26 @@ export function commitRankCsv(siteId: string, fileName: string, base64: string):
 /** Latest positions vs the previous CSV date, biggest moves, swapped pages. */
 export function getRankings(siteId: string): Promise<RankingsOverview> {
   return call(`/api/metrics/rankings?site=${encodeURIComponent(siteId)}`)
+}
+
+// ---- Phase 2d · GBP (typed monthly) + Whitespark map grid (typed) ----------------------------------------------
+
+export function getLocal(siteId: string): Promise<LocalState> {
+  return call('/api/metrics/local?site=' + encodeURIComponent(siteId))
+}
+
+export function saveGbp(siteId: string, input: GbpInput): Promise<{ snapshot: GbpSnapshot }> {
+  return call('/api/metrics/gbp-save', json({ siteId, ...input }))
+}
+
+export function deleteGbp(siteId: string, id: string): Promise<{ ok: true }> {
+  return call('/api/metrics/gbp-delete', json({ siteId, id }))
+}
+
+export function saveMapGrid(siteId: string, input: MapGridInput): Promise<{ grid: MapGrid }> {
+  return call('/api/metrics/map-save', json({ siteId, ...input }))
+}
+
+export function deleteMapGrid(siteId: string, id: string): Promise<{ ok: true }> {
+  return call('/api/metrics/map-delete', json({ siteId, id }))
 }

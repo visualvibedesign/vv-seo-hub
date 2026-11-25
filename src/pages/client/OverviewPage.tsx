@@ -8,6 +8,7 @@ import { useNotes } from '../../hooks/useNotes'
 import { useGoogleSetup } from '../../hooks/useGoogle'
 import ConnectGoogle from '../../components/overview/ConnectGoogle'
 import RankingsCard from '../../components/overview/RankingsCard'
+import { GbpCard, MapGridCard } from '../../components/overview/LocalCards'
 import SourcesButton from '../../components/overview/SourcesButton'
 import GoogleNumbers from '../../components/overview/GoogleNumbers'
 import { LinkEditor, OpenButton } from '../../components/client/AccountParts'
@@ -76,26 +77,8 @@ export default function OverviewPage() {
       <RankingsCard client={c} />
 
       <div className="grid grid-cols-2 items-start gap-4 [@media(max-width:760px)]:grid-cols-1">
-        <Panel title="Map grid" sub="Whitespark · CSV or screenshot" right={<Soon>Phase 2</Soon>}>
-          <div className="grid max-w-[240px] grid-cols-5 gap-2" aria-hidden="true">
-            {Array.from({ length: 25 }, (_, i) => (
-              <span key={i} className="aspect-square rounded-full border border-dashed border-vv-lavender bg-vv-lavender-50" />
-            ))}
-          </div>
-          <p className="m-0 text-[13px] text-vv-body">No scan yet. The 5×5 grid for the main service and city shows here, with the average rank and points in the top 3.</p>
-        </Panel>
-        <Panel title="Google Business Profile" sub="Typed in once a month" right={<Soon>Phase 2</Soon>}>
-          <div className="grid grid-cols-2 gap-3">
-            {['Profile views', 'Calls', 'Direction requests', 'Website clicks'].map((l) => (
-              <div key={l} className="rounded-[14px] bg-vv-pink-100 p-3">
-                <div className="text-[22px] font-bold">
-                  <Dash />
-                </div>
-                <div className="text-[12px] text-vv-body">{l}</div>
-              </div>
-            ))}
-          </div>
-        </Panel>
+        <MapGridCard siteId={c.siteId} />
+        <GbpCard siteId={c.siteId} />
       </div>
 
       <Panel

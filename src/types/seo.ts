@@ -850,3 +850,46 @@ export interface RankingsOverview {
   /** Tracked keywords not ranking yet, biggest volume first */
   opportunities: { keyword: string; volume: string | null; kd: string | null }[]
 }
+
+// ---- Phase 2d · GBP numbers (typed monthly) + Whitespark map grid (typed now, CSV later) ----------------------
+
+export interface GbpSnapshot {
+  id: string
+  periodFrom: string
+  periodTo: string
+  views: number | null
+  calls: number | null
+  directions: number | null
+  websiteClicks: number | null
+  reviews: number | null
+  rating: number | null
+  newestReviewOn: string | null
+  typedBy: string | null
+  note: string | null
+  updatedAt: string
+}
+
+export type GbpInput = Omit<GbpSnapshot, 'id' | 'updatedAt'>
+
+export interface MapGrid {
+  id: string
+  keyword: string
+  scannedOn: string
+  gridSize: number
+  spacing: string | null
+  /** A town / area name only, never an address */
+  centerLabel: string | null
+  source: 'csv' | 'typed' | 'screenshot'
+  /** ranks[row][col]: 1–20, null = not found / 20+ */
+  ranks: (number | null)[][]
+  createdAt: string
+}
+
+export type MapGridInput = Pick<MapGrid, 'keyword' | 'scannedOn' | 'gridSize' | 'spacing' | 'centerLabel' | 'ranks'>
+
+export interface LocalState {
+  /** Newest period first */
+  gbp: GbpSnapshot[]
+  /** Newest scan first */
+  grids: MapGrid[]
+}
