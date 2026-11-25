@@ -112,6 +112,8 @@ Approved by Alexia.
 
 ## Phase 1 · Clients, keywords, templates, guide, uploads + auto-fill (Sam Days 1–2)
 
+> **Status (Nov 26, 2026): built**, merged to `main` locally. Changed on the way: each client has two areas, the **Client Overview** (results + quick access: Overview, Baseline, Results, Site check, Site connection, Notes & links) and the **Strategy Builder** (Days 1, 2, 4, 5, 6, 7, 8–9); the hub sidebar is Overview · Clients · Templates · Settings. Whole client Sheet (.xlsx) import, Sam's Guide import, Claude auto-fill (Day 1 + Day 2), Delete client. Checklist: `docs/phase-1-checklist.md`.
+
 **Already built (local, branch `phase-1`):**
 - Step 1: database (12 `seo_` tables)
 - Step 2: sign-in
@@ -172,6 +174,8 @@ Then build step by step after I approve, tell me what to test on localhost, and 
 ---
 
 ## Phase 2 · Baseline, reports, Day 10 review + site connection (Sam Days 3 + 10, Vibe SEO 1.3.0)
+
+> **Plan (Nov 26): `docs/phase-2-plan.md`** (Google numbers, rankings, map grid, GBP → Overview, Baseline, Results; site connection after phase 4). SQL draft `0016_seo_phase2.sql`, not run. The table list below is the original idea; the plan has the final one.
 
 **Screens:**
 - Baseline + reports (`Reports`)
