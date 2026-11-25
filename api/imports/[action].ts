@@ -5,8 +5,11 @@
 //   GET  /api/imports/file?site=<site id>&id=<import id>              -> { url } (60-second download link)
 //   GET  /api/imports/delete-check?site=<site id>&id=<import id>      -> DeleteImportCheck (counts for the confirm)
 //   POST /api/imports/delete   { siteId, importId }                   -> { keywordsRemoved, fileRemoved }
+//   POST /api/imports/sams-preview { siteId, fileName, base64 }       -> { plan } (Sam's Guide dry run, nothing saved)
+//   POST /api/imports/sams-apply   { siteId, fileName, base64, replace } -> { importId, plan } (only on Apply)
 import { DatabaseError } from '../../server/clients/supabase.js'
 import { checkDeleteImport, commitImport, deleteImport, ImportInputError, listImports, previewImport, rawFileUrl } from '../../server/services/importService.js'
+import { applySamsGuide, decodeSheet, planSamsGuide, SamsGuideInputError } from '../../server/services/samsGuideService.js'
 import { requireSession } from '../../server/utils/auth.js'
 
 function actionOf(request: Request) {
@@ -35,6 +38,15 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       const file = typeof body.file?.base64 === 'string' ? { base64: body.file.base64, type: typeof body.file.type === 'string' ? body.file.type : 'text/csv' } : null
       return Response.json(await commitImport(body.payload, file))
     }
+    if (method === 'POST' && (action === 'sams-preview' || action === 'sams-apply')) {
+      const body = (await request.json().catch(() => ({}))) as { siteId?: unknown; fileName?: unknown; base64?: unknown; replace?: unknown }
+      const siteId = String(body.siteId ?? '')
+      const file = decodeSheet(body.base64)
+      if (action === 'sams-preview') return Response.json({ plan: await planSamsGuide(siteId, file.text) })
+      const replace = Array.isArray(body.replace) ? body.replace.filter((x): x is string => typeof x === 'string').slice(0, 500) : []
+      const fileName = typeof body.fileName === 'string' && body.fileName ? body.fileName.slice(0, 200) : 'sams-guide.csv'
+      return Response.json(await applySamsGuide(siteId, file, fileName, replace))
+    }
     if (method === 'GET' && action === 'list') {
       return Response.json({ imports: await listImports(params.get('site') ?? '') })
     }
@@ -50,6 +62,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
+    if (err instanceof SamsGuideInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof ImportInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof DatabaseError) return Response.json({ error: 'database', detail: err.message }, { status: 500 })
     throw err

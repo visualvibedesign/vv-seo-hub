@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import ImportHistory from '../../components/import/ImportHistory'
+import SamsGuideImport from '../../components/import/SamsGuideImport'
 import { useClientContext } from '../../components/layout/ClientLayout'
 import { Spinner } from '../../components/ui/Loading'
 import { useCommitImport, usePreviewImport } from '../../hooks/useImports'
@@ -145,6 +146,7 @@ export default function ImportPage() {
       {step === 'source' && (
         <SourceStep source={source} setSource={setSource} onFile={onFile} reading={reading} />
       )}
+      {step === 'source' && <SamsGuideImport client={c} />}
 
       {step === 'match' && parsed && (
         <MatchStep

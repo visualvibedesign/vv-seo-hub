@@ -295,7 +295,7 @@ function AiRun({ siteId, task, hasRow, sends, emptyText }: { siteId: string; tas
       ) : (
         <div className="flex flex-col gap-2 rounded-xl border border-solid border-vv-line bg-vv-lavender-50 p-3 text-[14px] text-vv-ink">
           <span>
-            <strong>{shown.items}</strong> keyword{shown.items === 1 ? '' : 's'} · {shown.model} · ~{(shown.inputTokens + shown.outputTokens).toLocaleString('en-US')} tokens · about <strong>{formatUsd(shown.costUsd)}</strong>
+            <strong>{shown.items}</strong> keyword{shown.items === 1 ? '' : 's'}{shown.total > shown.items ? ` (first ${shown.items} of ${shown.total.toLocaleString('en-US')}: run again for the next)` : ''} · {shown.model} · ~{(shown.inputTokens + shown.outputTokens).toLocaleString('en-US')} tokens · about <strong>{formatUsd(shown.costUsd)}</strong>
           </span>
           <span className="text-[13px] text-vv-body">{sends} Results wait here as Ready to review; nothing changes until you approve.</span>
           <span className="flex flex-wrap gap-2">

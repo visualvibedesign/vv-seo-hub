@@ -482,3 +482,36 @@ export interface AutofillDecision {
   /** For "needs a look": the option picked. */
   value?: string
 }
+
+// ---- Sam's Guide sheet import (migration 0011) ------------------------------------------------------------
+
+/** Something the sheet and SEO Hub disagree on. `replaceable` = Angel can tick "replace" (key goes back on Apply). */
+export interface SamsGuideConflict {
+  key: string
+  kind: 'matrix' | 'page' | 'competitor' | 'volume' | 'later'
+  text: string
+  replaceable: boolean
+}
+
+/** The dry run: what Apply would do. Nothing is saved until Angel clicks Apply. */
+export interface SamsGuidePlan {
+  sheetClient: string | null
+  sameClient: boolean
+  /** When this client's Sam's Guide was already imported (one import per client). */
+  alreadyImported: string | null
+  counts: Record<string, number>
+  conflicts: SamsGuideConflict[]
+  newKeywords: { keyword: string; from: string[] }[]
+  heldBack: { keyword: string; why: string }[]
+  /** Empty fields only, values as written. */
+  fills: { keyword: string; isNew: boolean; semrush?: number; kp?: string; kd?: number; cpc?: number }[]
+  matrix: { id: string; cell: string; state: 'target' | 'pending' | 'n_a'; primary: string | null; backups: string[]; note: string; action: string }[]
+  track: { keyword: string; already: boolean }[]
+  pages: { name: string; url: string | null; category: string; status: 'live' | 'planned'; existing: boolean; from: string; keywords: { keyword: string; role: 'primary' | 'secondary'; action: string }[] }[]
+  later: { keyword: string; type: string; status: 'later' | 'rejected'; action: string }[]
+  /** "More areas" rows: one note added to the client (not keywords). null = none, or already there. */
+  areaNote: string | null
+  competitors: { code: string; name: string | null; written: string; action: string }[]
+  skipped: { line: number; section: string; why: string }[]
+  notUnderstood: { line: number; section: string; text: string }[]
+}

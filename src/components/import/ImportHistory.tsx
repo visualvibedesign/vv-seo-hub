@@ -51,7 +51,8 @@ export default function ImportHistory({ siteId }: { siteId: string }) {
     }
   }
 
-  const reportLabel = (r: ImportReport) => REPORTS.find((x) => x.report === r)?.label ?? r
+  const OTHER: Record<string, string> = { sams_guide: 'Sam’s Guide sheet', clusters: 'Clusters (sheet)' }
+  const reportLabel = (r: ImportReport) => REPORTS.find((x) => x.report === r)?.label ?? OTHER[r] ?? r
   const c = check?.data
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 

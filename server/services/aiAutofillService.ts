@@ -22,7 +22,13 @@ export interface AiEstimate {
   costUsd: number
   /** Nothing to send (e.g. every keyword already has an intent). */
   empty: boolean
+  /** Keywords that qualify; a run sends at most AI_MAX_ITEMS of them (run again for the next ones). */
+  total: number
 }
+
+/** One Claude call per run, at most this many keywords (keeps the answer inside one call's output limit). */
+export const AI_MAX_ITEMS = 300
+const cap = (all: KeywordLite[]) => ({ list: all.slice(0, AI_MAX_ITEMS), total: all.length })
 
 /** Which seo_autofill kind each Claude task saves as. */
 const KIND: Partial<Record<AiTask, AutofillKind>> = { intent: 'intent', services: 'services_ai', triage: 'triage' }
@@ -39,6 +45,8 @@ type Unmatched = { keywordId: string; keyword: string }[]
 /** A prepared run: what goes to Claude, and how its answer becomes suggestions. */
 interface Prepared<T extends z.ZodType> {
   list: KeywordLite[]
+  /** How many keywords qualified before the per-run cap (AI_MAX_ITEMS). */
+  total: number
   system: string
   user: string
   schema: T
@@ -99,12 +107,17 @@ const IntentOut = z.object({ items: z.array(z.object({ id: z.number().int(), int
 
 async function prepIntent(c: ClientRow): Promise<Prepared<typeof IntentOut>> {
   // Only where Semrush left intent empty (keywordsOf doesn't load intent: fetch the ids that need it).
-  const empty = new Set(
-    (must(await db().from('seo_keywords').select('id').eq('client_id', c.id).is('intent', null), 'Loading keywords') as { id: string }[]).map((r) => r.id),
-  )
-  const list = (await candidates(c)).filter((k) => empty.has(k.id))
+  // Paged: a client can have thousands of keywords (PostgREST returns at most 1,000 rows per request).
+  const empty = new Set<string>()
+  for (let from = 0; ; from += 1000) {
+    const part = must(await db().from('seo_keywords').select('id').eq('client_id', c.id).is('intent', null).order('id').range(from, from + 999), 'Loading keywords') as { id: string }[]
+    for (const r of part) empty.add(r.id)
+    if (part.length < 1000) break
+  }
+  const { list, total } = cap((await candidates(c)).filter((k) => empty.has(k.id)))
   return {
     list,
+    total,
     system: INTENT_SYSTEM,
     user: `Keywords (id | keyword):\n${list.map((k, i) => `${i + 1} | ${k.keyword}`).join('\n')}`,
     schema: IntentOut,
@@ -131,10 +144,11 @@ const ServicesOut = z.object({ items: z.array(z.object({ id: z.number().int(), s
 async function prepServices(c: ClientRow): Promise<Prepared<typeof ServicesOut>> {
   const [kws, svc, words, triaged] = await Promise.all([candidates(c), servicesOf(c), templateWords(c), triagedIds(c.id)])
   // Keywords on the triage list (competitor, neighbourhood, off-topic) aren't sent: run "No-rule keywords" first.
-  const list = kws.filter((k) => !k.serviceId && !triaged.has(k.id) && serviceOptions(k.keyword, svc, words).length === 0)
+  const { list, total } = cap(kws.filter((k) => !k.serviceId && !triaged.has(k.id) && serviceOptions(k.keyword, svc, words).length === 0))
   const vol = await volumes(list.map((k) => k.id))
   return {
     list: svc.length ? list : [],
+    total: svc.length ? total : 0,
     system: SERVICES_SYSTEM,
     user:
       `Services (number | service | category):\n${svc.map((s, i) => `${i + 1} | ${s.name} | ${s.category}`).join('\n')}\n\n` +
@@ -181,12 +195,13 @@ async function prepTriage(c: ClientRow): Promise<Prepared<typeof TriageOut>> {
   // Keywords naming the client itself stay out (brand words, or the business name / domain): never a competitor.
   const brand = { brandWords: c.brand_words ?? [], name: c.name, siteUrl: c.site_url }
   // Keywords with one of the client's service names in them clearly fit: not sent either.
-  const list = kws.filter(
-    (k) => k.status === 'keep' && !k.role && roleOptions(k.keyword, words).length === 0 && !isOwnBrand(k.keyword, brand) && !hasServiceName(k.keyword, svc),
+  const { list, total } = cap(
+    kws.filter((k) => k.status === 'keep' && !k.role && roleOptions(k.keyword, words).length === 0 && !isOwnBrand(k.keyword, brand) && !hasServiceName(k.keyword, svc)),
   )
   const vol = await volumes(list.map((k) => k.id))
   return {
     list,
+    total,
     system: TRIAGE_SYSTEM,
     user:
       `Services: ${svc.map((s) => s.name).join(', ') || '-'}\nAreas: ${scope.activeAreas.join(', ') || '-'}\n\n` +
@@ -248,10 +263,10 @@ export async function estimate(siteId: string, task: AiTask): Promise<AiEstimate
   const p = await prepare(c, task)
   const t = AI_TASKS[task]
   const items = p.list.length
-  if (!items) return { task, model: MODEL_LABEL(task), items: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, empty: true }
+  if (!items) return { task, model: MODEL_LABEL(task), items: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, empty: true, total: 0 }
   const inputTokens = (await countInputTokens(t.model, p.system, p.user)) + 400 // + the output schema
   const outputTokens = t.outBase + t.outPerItem * items // thinking + answer, a generous guess
-  return { task, model: MODEL_LABEL(task), items, inputTokens, outputTokens, costUsd: costUsd(t.model, inputTokens, outputTokens), empty: false }
+  return { task, model: MODEL_LABEL(task), items, inputTokens, outputTokens, costUsd: costUsd(t.model, inputTokens, outputTokens), empty: false, total: p.total }
 }
 
 export async function run(siteId: string, task: AiTask): Promise<AutofillRow[]> {

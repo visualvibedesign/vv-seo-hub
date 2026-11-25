@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, Industry } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, Industry, SamsGuidePlan } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -199,6 +199,8 @@ export interface AiEstimate {
   outputTokens: number
   costUsd: number
   empty: boolean
+  /** Keywords that qualify; one run sends at most `items` of them. */
+  total: number
 }
 
 /** What a Claude run would send and cost (free token count; nothing runs, nothing saved). */
@@ -214,6 +216,18 @@ export function runAi(siteId: string, task: AiTask): Promise<{ rows: AutofillRow
 /** Approve / reject rows of one suggestion. */
 export function decideAutofill(siteId: string, autofillId: string, decisions: AutofillDecision[]): Promise<{ rows: AutofillRow[] }> {
   return call('/api/autofill/decide', json({ siteId, autofillId, decisions }))
+}
+
+// ---- Sam's Guide sheet import --------------------------------------------------------------
+
+/** Dry run: what the import would do (nothing saved). */
+export function previewSamsGuide(siteId: string, fileName: string, base64: string): Promise<{ plan: SamsGuidePlan }> {
+  return call('/api/imports/sams-preview', json({ siteId, fileName, base64 }))
+}
+
+/** Apply (only on Angel's click). `replace` = conflict keys ticked. */
+export function applySamsGuide(siteId: string, fileName: string, base64: string, replace: string[]): Promise<{ importId: string; plan: SamsGuidePlan }> {
+  return call('/api/imports/sams-apply', json({ siteId, fileName, base64, replace }))
 }
 
 // ---- Bulk add clients from CSV ---------------------------------------------------------------

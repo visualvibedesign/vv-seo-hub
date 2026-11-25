@@ -1,4 +1,12 @@
-# Sam's Guide sheet import: plan (not built)
+# Sam's Guide sheet import
+
+**Status (Nov 25):** built (Keywords › Import → "Import a Sam's Guide tab"), migration 0011 ran. Angel's answers:
+missing keywords are created "from Sheet"; Page 3 → Later only (no role), Rejected type → Rejected; "More areas" rows are
+not keywords: one note on the client (client Notes field until Notes & links exists); KP "no data" → "No data";
+"n/a" vs a number is a disagreement (nothing filled, listed); an existing matrix primary is kept unless "replace" is
+ticked. One Sam's Guide import per client (delete it in Import history to import again).
+Deleting that import removes the keywords it created (and their matrix / page links). Pages, cells, competitors and
+the client note stay.
 
 One-time import of a client's "Sam's Guide" tab (exported as CSV) into SEO Hub. Works for any client's sheet:
 nothing about Visual Vibe or Anassa is in the code. **Dry run first; nothing is saved until Angel clicks Apply.**
