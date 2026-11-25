@@ -39,6 +39,8 @@ export const ACCOUNTS: { kind: AccountKind; label: string; hint: string; core: b
   { kind: 'google_ads', label: 'Google Ads / Keyword Planner', hint: 'If used', core: false, home: 'https://ads.google.com/aw/keywordplanner/home' },
   { kind: 'ai_visibility', label: 'AI visibility tool', hint: 'Optional', core: false },
 ]
+/** Two-letter icon per account tool (plain initials would clash: Clarity / Cloudflare, GA4 / Google Ads). */
+export const ACCOUNT_ICON: Record<AccountKind, string> = { gsc: 'SC', ga4: 'GA', gbp: 'GB', semrush: 'SR', whitespark: 'WS', clarity: 'MC', domain_dns: 'DN', hosting: 'HO', platform: 'WP', cloudflare: 'CF', google_ads: 'KP', ai_visibility: 'AI' }
 export const ACCOUNT_KINDS = ACCOUNTS.map((a) => a.kind)
 export const CORE_ACCOUNT_KINDS = ACCOUNTS.filter((a) => a.core).map((a) => a.kind)
 
@@ -95,7 +97,8 @@ export const OVERVIEW_SECTIONS: ClientSection[] = [
   { key: 'overview', label: 'Overview', path: '', live: true, tag: '', area: 'overview' },
   { key: 'baseline', label: 'Baseline', path: 'baseline', live: true, tag: 'P2', area: 'overview' },
   { key: 'results', label: 'Results', path: 'results', live: true, tag: 'P2', area: 'overview' },
-  { key: 'site', label: 'Site connection', path: 'site', live: false, tag: 'Plugin', area: 'overview' },
+  { key: 'site-check', label: 'Site check', path: 'site-check', live: true, tag: 'P3', area: 'overview' },
+  { key: 'site', label: 'Site connection', path: 'site', live: true, tag: 'Plugin', area: 'overview' },
   { key: 'notes', label: 'Notes & links', path: 'notes', live: true, tag: '', area: 'overview' },
   { key: 'conversions', label: 'Conversions', path: 'conversions', live: false, tag: 'Later', area: 'overview' },
 ]

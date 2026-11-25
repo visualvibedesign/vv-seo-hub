@@ -37,6 +37,7 @@ const ICON: Record<string, NavIconName> = {
   overview: 'overview',
   baseline: 'reports',
   results: 'review',
+  'site-check': 'seo',
   strategy: 'plan',
   setup: 'settings',
   guide: 'plan',

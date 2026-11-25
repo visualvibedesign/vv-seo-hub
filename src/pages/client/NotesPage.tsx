@@ -6,11 +6,11 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { Bone, Spinner } from '../../components/ui/Loading'
 import { useAddNote, useDeleteLink, useDeleteNote, useEditNote, useMoveEarlier, useNotes, useSaveLink } from '../../hooks/useNotes'
 import { ApiError } from '../../lib/api'
-import { ACCOUNTS, accountOpenUrl } from '../../lib/clientSetup'
+import { ACCOUNT_ICON, ACCOUNTS, accountOpenUrl } from '../../lib/clientSetup'
 import { GUIDE, stepDay } from '../../lib/guide'
 import { AUTHOR_MAX, LINK_LABEL_MAX, LINK_NOTE_MAX, NOTE_KIND_LABEL, NOTE_KINDS, NOTE_MAX, linkInitials, linkProblem, noteProblem, rememberAuthor, savedAuthor, shortLink } from '../../lib/notes'
 import { BTN_GHOST, BTN_LIME, BTN_LINK, CARD, CARD_TITLE, FIELD, LABEL, PILL, siteLabel } from '../../lib/ui'
-import type { AccountKind, ClientDetail, ClientLink, ClientNote, NoteKind } from '../../types/seo'
+import type { ClientDetail, ClientLink, ClientNote, NoteKind } from '../../types/seo'
 
 // Site › Notes & links (/clients/{site id}/notes), design docs/design/Notes.png.
 // Links: the website, the client's account links (same rows as Overview › Accounts, not stored twice) and extra links
@@ -71,8 +71,6 @@ function Row({ icon, label, sub, wrap = false, children }: { icon: string; label
   )
 }
 
-/** Fixed two-letter icons for the account tools (initials alone would clash: Clarity / Cloudflare, GA4 / Google Ads). */
-const ACCOUNT_ICON: Partial<Record<AccountKind, string>> = { gsc: 'SC', ga4: 'GA', gbp: 'GB', semrush: 'SR', whitespark: 'WS', clarity: 'MC', domain_dns: 'DN', hosting: 'HO', platform: 'WP', cloudflare: 'CF', google_ads: 'KP', ai_visibility: 'AI' }
 
 function LinksCard({ client: c, links }: { client: ClientDetail; links: ClientLink[] }) {
   const [adding, setAdding] = useState(false)
@@ -106,7 +104,7 @@ function LinksCard({ client: c, links }: { client: ClientDetail; links: ClientLi
           <ExtraLink key={l.id} siteId={c.siteId} link={l} />
         ))}
         {accounts.map(({ def, a, url }) => (
-          <Row key={def.kind} icon={ACCOUNT_ICON[def.kind] ?? linkInitials(def.label)} label={def.label} sub={a.link ? shortLink(a.link) : 'Tool’s main page · client link not added yet'}>
+          <Row key={def.kind} icon={ACCOUNT_ICON[def.kind]} label={def.label} sub={a.link ? shortLink(a.link) : 'Tool’s main page · client link not added yet'}>
             <OpenButton url={url} label={def.label} />
           </Row>
         ))}

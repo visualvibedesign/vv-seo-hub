@@ -39,10 +39,11 @@ const router = createBrowserRouter([
             children: [
               // Overview area
               { index: true, lazy: page(() => import('./pages/client/OverviewPage')) },
-              { path: 'baseline', lazy: page(() => import('./pages/client/OverviewStepPage')) },
-              { path: 'results', lazy: page(() => import('./pages/client/OverviewStepPage')) },
+              { path: 'baseline', lazy: page(() => import('./pages/client/BaselinePage')) },
+              { path: 'results', lazy: page(() => import('./pages/client/ResultsPage')) },
+              { path: 'site-check', lazy: page(() => import('./pages/client/SiteCheckPage')) },
               { path: 'notes', lazy: page(() => import('./pages/client/NotesPage')) },
-              { path: 'site', lazy: page(() => import('./pages/client/ComingSoonPage')) },
+              { path: 'site', lazy: page(() => import('./pages/client/ConnectionPage')) },
               { path: 'conversions', lazy: page(() => import('./pages/client/ComingSoonPage')) },
               // Strategy Builder
               { path: 'strategy', lazy: page(() => import('./pages/client/StrategyHomePage')) },
