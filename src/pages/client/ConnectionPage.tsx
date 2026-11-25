@@ -24,7 +24,7 @@ export default function ConnectionPage() {
 
       <section className={`${CARD} !gap-4 !rounded-[24px] !border-dashed !border-vv-lavender !p-6 phone:!p-5`} aria-labelledby="cn-h">
         <div className="flex flex-wrap items-center gap-3">
-          <span className={`${PILL} bg-vv-pink-100 text-vv-pill-red-ink`}>Not connected</span>
+          <span className={`${PILL} bg-vv-pink-100 text-vv-pink-ink`}>Not connected</span>
           <span className="text-[13px] text-vv-body">No check-in yet</span>
         </div>
         <h2 id="cn-h" className="m-0 font-display text-[26px] font-semibold leading-tight">
