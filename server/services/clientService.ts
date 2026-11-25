@@ -2,7 +2,8 @@
 // Tables: seo_clients, seo_client_categories, seo_client_services, seo_client_areas, seo_client_accounts.
 // No address is ever stored (there is no column for it).
 import { z } from 'zod'
-import { ACCOUNT_KINDS, AREA_CODES, CATEGORY_CODES, CORE_ACCOUNT_KINDS, DEFAULT_FAQ_NAME, INDUSTRY_KEYS } from '../../src/lib/clientSetup.js'
+import { ACCOUNT_KINDS, AREA_CODES, CATEGORY_CODES, CORE_ACCOUNT_KINDS, DEFAULT_FAQ_NAME } from '../../src/lib/clientSetup.js'
+import { checkIndustry, IndustryInputError } from './industryService.js'
 import { GUIDE_STEPS } from '../../src/lib/guide.js'
 import type {
   AccountKind,
@@ -211,7 +212,8 @@ const InputSchema = z.object({
   success12mo: text(2000),
   notes: text(4000),
   status: z.enum(['active', 'paused', 'archived']),
-  industry: z.enum(INDUSTRY_KEYS as [ClientIndustry, ...ClientIndustry[]]).nullable().default(null),
+  // Any key from seo_industries (checked against the list on save).
+  industry: z.string().regex(/^[a-z0-9_]{2,40}$/).nullable().default(null),
   categories: z
     .array(
       z.object({
@@ -294,6 +296,12 @@ const orNull = (s: string) => (s ? s : null)
 /** Creates or updates a client. Returns its (possibly new) site id. */
 export async function saveClient(raw: unknown, existingSiteId?: string): Promise<{ siteId: string }> {
   const input = validate(raw)
+  try {
+    await checkIndustry(input.industry)
+  } catch (err) {
+    if (err instanceof IndustryInputError) throw new ClientInputError(err.message)
+    throw err
+  }
   let site: SiteIdCheck
   try {
     site = await checkSiteId(input.siteUrl, existingSiteId)

@@ -2,7 +2,7 @@
 // Applying a template stores a COPY (snapshot) on the client: editing the template later never changes it.
 // Applying never creates keywords or changes exported numbers.
 import { z } from 'zod'
-import { INDUSTRY_KEYS } from '../../src/lib/clientSetup.js'
+import { checkIndustry, IndustryInputError } from './industryService.js'
 import type { ClientIndustry, Template, TemplateInput, TemplateItem, TemplateKind } from '../../src/types/seo.js'
 import { db, must } from '../clients/supabase.js'
 import { clientRow } from './clientService.js'
@@ -71,7 +71,7 @@ const InputSchema = z.object({
   kind: z.enum(KINDS as [TemplateKind, ...TemplateKind[]]),
   name: z.string().trim().min(1, 'Name the template.').max(80),
   samStep: z.number().int().min(0).max(8),
-  industry: z.enum(INDUSTRY_KEYS as [ClientIndustry, ...ClientIndustry[]]).nullable(),
+  industry: z.string().regex(/^[a-z0-9_]{2,40}$/).nullable(), // any key from seo_industries (checked on save)
   description: z.string().trim().max(300),
   items: z.array(ItemSchema).max(200),
 })
@@ -82,6 +82,12 @@ export async function saveTemplate(raw: unknown): Promise<Template> {
   if (!p.success) throw new TemplateInputError(p.error.issues[0]?.message ?? 'That template isn’t right.')
   const t: TemplateInput = p.data
   if (!t.items.length) throw new TemplateInputError('Add at least one line (a pattern, word, rule or step).')
+  try {
+    await checkIndustry(t.industry)
+  } catch (err) {
+    if (err instanceof IndustryInputError) throw new TemplateInputError(err.message)
+    throw err
+  }
   const fields = { kind: t.kind, name: t.name, sam_step: t.samStep, industry: t.industry, description: t.description }
 
   let id = t.id

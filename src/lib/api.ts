@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow } from '../types/seo'
+import type { AutofillDecision, AutofillRow, Industry } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -214,6 +214,21 @@ export function runAi(siteId: string, task: AiTask): Promise<{ rows: AutofillRow
 /** Approve / reject rows of one suggestion. */
 export function decideAutofill(siteId: string, autofillId: string, decisions: AutofillDecision[]): Promise<{ rows: AutofillRow[] }> {
   return call('/api/autofill/decide', json({ siteId, autofillId, decisions }))
+}
+
+// ---- Industries (migration 0009) ------------------------------------------------------------
+
+export function getIndustries(): Promise<{ industries: Industry[] }> {
+  return call('/api/industries/list')
+}
+
+/** Adds an industry (same name as an existing one → that one comes back). */
+export function addIndustry(label: string, hint = ''): Promise<{ industry: Industry }> {
+  return call('/api/industries/add', json({ label, hint }))
+}
+
+export function renameIndustry(key: string, label: string, hint = ''): Promise<{ industry: Industry }> {
+  return call('/api/industries/rename', json({ key, label, hint }))
 }
 
 /** Stores a copy of the template on the client. */

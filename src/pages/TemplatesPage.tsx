@@ -5,7 +5,8 @@ import { Bone, Spinner } from '../components/ui/Loading'
 import { useClient, useClients } from '../hooks/useClients'
 import { useApplyTemplate, useTemplates } from '../hooks/useTemplates'
 import { ApiError } from '../lib/api'
-import { INDUSTRIES } from '../lib/clientSetup'
+import { IndustrySelect, NewIndustryForm } from '../components/client/IndustryPicker'
+import { useIndustryLabel } from '../hooks/useIndustries'
 import { stepDay } from '../lib/guide'
 import { fill, fillSearch, seedsFor, varsFromClient, WORD_GROUP_LABEL } from '../lib/templates'
 import { BTN_GHOST, BTN_LIME, CARD, FIELD, PILL } from '../lib/ui'
@@ -32,6 +33,8 @@ export default function TemplatesPage() {
   const [params, setParams] = useSearchParams()
   const industry = (params.get('industry') ?? '') as ClientIndustry | ''
   const list = visible(q.data ?? [], industry)
+  const [adding, setAdding] = useState(false)
+  const industryLabel = useIndustryLabel()
   const selected = list.find((t) => t.id === params.get('t')) ?? list[0]
   const set = (k: string, v: string) => {
     const next = new URLSearchParams(params)
@@ -61,20 +64,33 @@ export default function TemplatesPage() {
         <HeaderTools>
           <label className="flex items-center gap-2 text-[15px] font-semibold text-vv-ink">
             Industry
-            <select className={`${FIELD} w-auto rounded-full`} value={industry} onChange={(e) => set('industry', e.target.value)}>
-              <option value="">All industries</option>
-              {INDUSTRIES.map((i) => (
-                <option key={i.key} value={i.key}>
-                  {i.label}
-                </option>
-              ))}
-            </select>
+            <IndustrySelect className={`${FIELD} w-auto rounded-full`} value={industry || null} onChange={(k) => set('industry', k ?? '')} empty="All industries (generic)" />
           </label>
+          <button type="button" className={BTN_GHOST} onClick={() => setAdding(true)} disabled={adding}>
+            Add industry
+          </button>
           <Link to={`/templates/new${industry ? `?industry=${industry}` : ''}`} className={BTN_LIME}>
             + New template
           </Link>
         </HeaderTools>
       </header>
+
+      {adding && (
+        <NewIndustryForm
+          cta="Add industry"
+          onCancel={() => setAdding(false)}
+          onDone={(i) => {
+            setAdding(false)
+            set('industry', i.key)
+          }}
+        />
+      )}
+      {industry && q.isSuccess && !(q.data ?? []).some((t) => t.industry === industry) && (
+        <p className="m-0 rounded-2xl bg-vv-lavender-50 px-4 py-3 text-[14px] text-vv-body">
+          {industryLabel(industry)} has no versions of its own, so clients in it use these generic templates with their own services, areas, scope and brand words. Make a
+          version with “+ New template” only when the rules miss words for this type of business.
+        </p>
+      )}
 
       {q.isPending && (
         <div aria-busy="true" className="grid grid-cols-[minmax(0,2fr)_minmax(0,1.3fr)] gap-6 [@media(max-width:1100px)]:grid-cols-1">
@@ -133,6 +149,7 @@ export default function TemplatesPage() {
 }
 
 function Detail({ t }: { t: Template }) {
+  const industryLabel = useIndustryLabel()
   const clients = (useClients().data ?? []).filter((c) => c.status !== 'archived')
   const [siteId, setSiteId] = useState(t.applied[0]?.siteId ?? clients[0]?.siteId ?? '')
   const pick = siteId || clients[0]?.siteId || ''
@@ -160,7 +177,7 @@ function Detail({ t }: { t: Template }) {
         </h2>
         <p className="m-0 text-[16px] text-vv-body">{t.description}</p>
         <span className="text-[13px] text-vv-muted">
-          {t.industry ? INDUSTRIES.find((i) => i.key === t.industry)?.label : 'All industries'}
+          {t.industry ? industryLabel(t.industry) : 'All industries (generic)'}
           {t.builtIn ? ' · built in' : ''}
         </span>
       </div>

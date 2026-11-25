@@ -6,7 +6,8 @@ import HeaderTools from '../components/layout/HeaderTools'
 import { Spinner } from '../components/ui/Loading'
 import { useSaveClient } from '../hooks/useClients'
 import { ApiError } from '../lib/api'
-import { ACCOUNTS, ACCOUNT_STATUS_LABEL, INDUSTRIES } from '../lib/clientSetup'
+import IndustryPicker from '../components/client/IndustryPicker'
+import { ACCOUNTS, ACCOUNT_STATUS_LABEL } from '../lib/clientSetup'
 import { BTN_GHOST, BTN_LIME, CARD, CARD_TITLE, FIELD, LABEL } from '../lib/ui'
 import type { AccountKind, AccountStatus } from '../types/seo'
 
@@ -165,27 +166,9 @@ export default function AddClientPage() {
               Pick a template
             </legend>
             <p className="m-0 -mt-2 text-sm text-vv-muted">
-              The industry template is saved on the client. Seed keywords and checklists from templates come with the Templates step.
+              The industry is saved on the client. If it has its own template versions they’re used; otherwise the generic templates, with this client’s own services and areas.
             </p>
-            <div className="grid grid-cols-2 gap-3 phone:grid-cols-1">
-              {INDUSTRIES.map((i) => {
-                const on = f.industry === i.key
-                return (
-                  <label
-                    key={i.key}
-                    className={`flex cursor-pointer flex-col gap-1 rounded-2xl border-[1.5px] border-solid p-4 ${
-                      on ? 'border-vv-purple bg-vv-lavender-50' : 'border-vv-field-line bg-vv-surface hover:bg-vv-lavender-50'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2.5">
-                      <input type="radio" name="industry" className="h-5 w-5 accent-vv-purple" checked={on} onChange={() => set('industry', i.key)} />
-                      <span className="text-[16px] font-bold text-vv-ink">{i.label}</span>
-                    </span>
-                    <span className="pl-[30px] text-sm text-vv-body">{i.hint}</span>
-                  </label>
-                )
-              })}
-            </div>
+            <IndustryPicker value={f.industry} onChange={(k) => set('industry', k)} />
           </fieldset>
         )}
 

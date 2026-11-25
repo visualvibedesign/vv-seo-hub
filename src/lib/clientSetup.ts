@@ -1,15 +1,7 @@
 // Fixed lists for client setup (Sam's Day 1), shared by the pages and the server.
-import type { AccountKind, AccountStatus, AreaCode, CategoryCode, ClientIndustry } from '../types/seo.js'
+import type { AccountKind, AccountStatus, AreaCode, CategoryCode } from '../types/seo.js'
 
-/** Industry templates (wizard step 2). What each fills in comes with the Templates step. */
-export const INDUSTRIES: { key: ClientIndustry; label: string; hint: string }[] = [
-  { key: 'waxing_beauty', label: 'Waxing & beauty salon', hint: 'Waxing, brows, lashes, facials.' },
-  { key: 'med_spa', label: 'Med spa', hint: 'Injectables, laser, skin treatments.' },
-  { key: 'home_services', label: 'Home services', hint: 'Contractors, cleaning, repairs, service-area businesses.' },
-  { key: 'blank', label: 'Blank', hint: 'Start empty and fill everything in by hand.' },
-]
-export const INDUSTRY_KEYS = INDUSTRIES.map((i) => i.key)
-export const industryLabel = (k: ClientIndustry | null) => INDUSTRIES.find((i) => i.key === k)?.label ?? null
+// Industries are a database list (seo_industries, migration 0009): src/hooks/useIndustries.ts.
 
 /** An area's state code, or the client's main state when the area has none ("" only if both are empty). */
 export const areaState = (area: { state?: string | null } | null | undefined, clientState: string | null | undefined) => (area?.state || clientState || '').trim()

@@ -6,7 +6,8 @@ import { Spinner } from '../../components/ui/Loading'
 import StatCard from '../../components/ui/StatCard'
 import { useSaveAccount } from '../../hooks/useClients'
 import { useGuide } from '../../hooks/useGuide'
-import { ACCOUNTS, ACCOUNT_STATUS_LABEL, industryLabel } from '../../lib/clientSetup'
+import { ACCOUNTS, ACCOUNT_STATUS_LABEL } from '../../lib/clientSetup'
+import { useIndustryLabel } from '../../hooks/useIndustries'
 import { GUIDE, GUIDE_STEPS, stepDay } from '../../lib/guide'
 import { BTN_GHOST, BTN_LIME, BTN_LINK, CARD, CARD_TITLE, FIELD, PILL, PILL_TODO, siteLabel, splitAccent } from '../../lib/ui'
 import type { AccountStatus, ClientAccount, ClientDetail, GuideStatus } from '../../types/seo'
@@ -16,6 +17,7 @@ import type { AccountStatus, ClientAccount, ClientDetail, GuideStatus } from '..
 // Not faked: the number cards stay "—" until Baseline + reports (phase 2) has real dated numbers.
 
 export default function OverviewPage() {
+  const industryLabel = useIndustryLabel()
   const c = useClientContext()
   const [lead, accent] = splitAccent(c.name)
   const current = c.guide.current

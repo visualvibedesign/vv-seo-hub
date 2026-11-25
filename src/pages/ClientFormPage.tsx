@@ -7,9 +7,9 @@ import { Bone, Spinner } from '../components/ui/Loading'
 import { useClient, useSaveClient } from '../hooks/useClients'
 import { ApiError } from '../lib/api'
 import { domainName } from '../lib/autofillRules'
-import { INDUSTRIES } from '../lib/clientSetup'
+import { IndustrySelect } from '../components/client/IndustryPicker'
 import { BTN_GHOST, BTN_LIME, CARD, CARD_TITLE, FIELD, LABEL } from '../lib/ui'
-import type { ClientDetail, ClientIndustry, ClientStatus } from '../types/seo'
+import type { ClientDetail, ClientStatus } from '../types/seo'
 
 // Edit client (/clients/:siteId/edit): everything on one page. Adding a client is the 4-step wizard
 // (AddClientPage, /clients/new). There is NO address field on purpose.
@@ -111,14 +111,7 @@ function EditForm({ existing }: { existing: ClientDetail }) {
           </label>
           <label className={LABEL}>
             Industry template
-            <select className={FIELD} value={f.industry ?? ''} onChange={(e) => set('industry', (e.target.value || null) as ClientIndustry | null)}>
-              <option value="">No template yet</option>
-              {INDUSTRIES.map((i) => (
-                <option key={i.key} value={i.key}>
-                  {i.label}
-                </option>
-              ))}
-            </select>
+            <IndustrySelect value={f.industry} onChange={(k) => set('industry', k)} empty="No industry yet" />
           </label>
           <label className={LABEL}>
             Status

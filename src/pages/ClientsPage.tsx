@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import HeaderTools from '../components/layout/HeaderTools'
 import { Bone } from '../components/ui/Loading'
 import { useClients } from '../hooks/useClients'
-import { industryLabel } from '../lib/clientSetup'
+import { useIndustryLabel } from '../hooks/useIndustries'
 import { GUIDE, GUIDE_STEPS, stepDay } from '../lib/guide'
 import { needsYouItems } from '../lib/needsYou'
 import { BTN_LIME, CARD, FIELD, PILL, PILL_DONE, PILL_TODO, PILL_WAITING, siteLabel } from '../lib/ui'
@@ -30,6 +30,7 @@ const STATUS_LABEL: Record<ClientStatus, string> = { active: 'Active', paused: '
 const needsYou = (c: ClientSummary): string | null => needsYouItems(c)[0]?.title ?? null
 
 export default function ClientsPage() {
+  const industryLabel = useIndustryLabel()
   const q = useClients()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')

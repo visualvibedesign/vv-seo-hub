@@ -52,7 +52,16 @@ export interface ClientAccount {
 }
 
 /** Industry template picked in the Add client wizard (seo_clients.industry, migration 0002). */
-export type ClientIndustry = 'waxing_beauty' | 'med_spa' | 'home_services' | 'blank'
+export type ClientIndustry = string
+
+/** One industry from seo_industries (migration 0009). Angel adds more; none needs its own template versions. */
+export interface Industry {
+  key: ClientIndustry
+  label: string
+  hint: string | null
+  sort: number
+  builtIn: boolean
+}
 
 export interface ClientCounts {
   keywords: number

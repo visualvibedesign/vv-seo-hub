@@ -5,7 +5,7 @@ import { Bone, Spinner } from '../components/ui/Loading'
 import { useClient, useClients } from '../hooks/useClients'
 import { useSaveTemplate, useTemplates } from '../hooks/useTemplates'
 import { ApiError } from '../lib/api'
-import { INDUSTRIES } from '../lib/clientSetup'
+import { IndustrySelect } from '../components/client/IndustryPicker'
 import { GUIDE } from '../lib/guide'
 import { fill, fillSearch, stateName, TEMPLATE_KINDS, VARIABLES, varsFromClient, WORD_GROUP_LABEL } from '../lib/templates'
 import { BTN_GHOST, BTN_LIME, CARD, CARD_TITLE, FIELD, LABEL } from '../lib/ui'
@@ -155,14 +155,7 @@ function Editor({ existing }: { existing?: Template }) {
             </label>
             <label className={LABEL}>
               Industry
-              <select className={FIELD} value={industry} onChange={(e) => setIndustry(e.target.value as ClientIndustry | '')}>
-                <option value="">All industries</option>
-                {INDUSTRIES.map((i) => (
-                  <option key={i.key} value={i.key}>
-                    {i.label}
-                  </option>
-                ))}
-              </select>
+              <IndustrySelect value={industry || null} onChange={(k) => setIndustry(k ?? '')} empty="All industries (generic)" />
             </label>
             <label className={`${LABEL} col-span-2 phone:col-span-1`}>
               Description

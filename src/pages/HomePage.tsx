@@ -4,7 +4,7 @@ import { Bone } from '../components/ui/Loading'
 import StatCard from '../components/ui/StatCard'
 import { useClients } from '../hooks/useClients'
 import { useTemplates } from '../hooks/useTemplates'
-import { industryLabel } from '../lib/clientSetup'
+import { useIndustryLabel } from '../hooks/useIndustries'
 import { GUIDE, GUIDE_STEPS, stepLabel } from '../lib/guide'
 import { needsYouItems, type NeedsYouItem } from '../lib/needsYou'
 import { BTN_GHOST, BTN_LIME, CARD, CARD_TITLE, PILL, siteLabel } from '../lib/ui'
@@ -184,6 +184,7 @@ function SeoOverview({ clients, pending }: { clients: ClientSummary[]; pending: 
 }
 
 function RecentCard({ client: c }: { client: ClientSummary }) {
+  const industryLabel = useIndustryLabel()
   const done = new Set(c.guide.doneSteps)
   const where = [siteLabel(c.siteUrl), [c.city, c.state].filter(Boolean).join(', '), industryLabel(c.industry) && `Template: ${industryLabel(c.industry)}`]
     .filter(Boolean)
