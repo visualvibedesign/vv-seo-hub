@@ -1,28 +1,29 @@
-# Next session (written Nov 26, 2026)
+# Next session (written Nov 26, 2026, end of day)
 
 ## Where we are
-- **Phase 1 is built** and merged into `main` **locally** (not pushed, not deployed). Work continues on `redesign`.
-- Phase 1 checklist (`docs/phase-1-checklist.md`): §1–§3 run and passed; §5–§8 tested earlier the same day; a quick §4
-  (one KP CSV + the Anassa .xlsx with the wrong-client tick, Sam's Guide counts, delete undo) and §9 (archive + delete
-  the test clients) are the last hand steps. Found #1–#5 all fixed (see the Found table).
-- Migrations 0001–0015 run. **0016 (phase 2) is a draft, not run.**
+- **Phase 2a–2d are on `main` and pushed** (merge `7db7ee9`, Nov 26): Vercel deploys it to Production. Work continues
+  on the `phase-2` branch; push to `phase-2` for a Preview, `main` only when Angel says.
+  - 2a: connect Search Console + GA4 per client (service account, key in env only).
+  - 2b: daily pull (Vercel cron 09:00 UTC, Production only) + "Update numbers"; Overview KPI tiles, Search performance
+    chart (impressions pink / clicks purple), GA4 organic traffic, top searches / pages.
+  - 2c: Semrush Position Tracking CSV (Overview › Keyword rankings › Upload CSV, or Baseline › Semrush). Change uses the
+    export's `_difference` columns (vs the period start). Card: stacked bar, rings (visibility, local pack, AI
+    overview), opportunities, badges with tooltips, no emoji (inline Lucide-shape icons in `src/components/ui/Icon.tsx`).
+  - 2d: GBP typed monthly (+ optional Profile views breakdown → donut) and the Whitespark map grid typed in (area name
+    only, digits refused). Sources popover + Baseline cards read both.
+- Test client: **Visual Vibe Design** (only client). Anassa was deleted; re-add her later from her .xlsx.
+- Migrations 0001–0016 run. **0017 (GBP views breakdown) written, NOT run yet**: Angel runs it in the SQL Editor, then
+  mark it in `docs/migrations-log.md`. Until then the 4 breakdown boxes give a clear "needs 0017" message.
 - 12 server functions (Vercel Hobby cap). New API work = a new action in an existing `api/<group>/[action].ts`.
 
 ## Start here
 1. Read `CLAUDE.md`, `docs/BUILD-ROADMAP.md`, `docs/phase-2-plan.md`, `docs/migrations-log.md`.
-2. Phase 2 needs Angel's answers first (`docs/phase-2-plan.md` › Decisions): Google service account vs OAuth,
-   a Whitespark sample, GBP typed, daily cron, folding `api/health.ts` into `api/auth` to stay at 12 functions.
-3. Then show 0016 again, Angel runs it, build step 2a. One step per message, tell Angel what to test, commit locally.
+2. Ask whether 0017 has run; test the GBP breakdown + donut on Visual Vibe.
+3. Whitespark CSV import: waiting for Angel's sample export + screenshot.
+4. Next step in the plan: **2e Baseline** (Save baseline / start a new one, six cards with dates, "Baseline vs now" on
+   the Overview), then 2f Results.
 
-## Client areas (since Nov 26)
-- `/clients/{id}` = **Client Overview** (results + quick access): Overview, Baseline (Day 3), Results (Day 10 +
-  monthly), Site check, Site connection, Notes & links.
-- `/clients/{id}/strategy/…` = **Strategy Builder** (the work): Days 1, 2, 4, 5, 6, 7, 8–9. Old addresses redirect
-  (`legacyClientPath` in `src/lib/clientSetup.ts`). Guide step numbers never change (they're stored).
-- Hub: Overview · Clients · Templates · Settings (Industries, Claude usage, Automation).
-
-## Standing rules (short)
-- Never push, merge to a remote or deploy without Angel. Local commits only.
-- SQL: show it, Angel runs it, log it in `docs/migrations-log.md`. Data fixes go through the app, not one-off SQL.
-- Works for any client (test client = Visual Vibe Design since Nov 26; Anassa deleted, re-added later from her .xlsx). No fake numbers, no addresses, links only (never logins).
-- Claude output is "Ready to review" until approved; every call logged in `seo_ai_log`.
+## Rules to keep
+- Works for any client; never hard-code a client. No fake numbers: empty = "—" / unknown, never 0.
+- Supabase connector read-only; any write SQL shown first, Angel runs it.
+- Light + dark mode, phone width, no emoji in the UI.
