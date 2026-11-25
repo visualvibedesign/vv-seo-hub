@@ -515,6 +515,12 @@ async function decideSetup(c: ClientRow, row: Row, decisions: AutofillDecision[]
     }
     item.decision = applied ? 'approved' : 'skipped'
   }
+  // The pasted text is never stored: a decided suggestion drops the short quote it was shown with (item + option).
+  for (const i of items)
+    if (i.decision && i.setup) {
+      i.setup.quote = ''
+      i.options = i.options.map((o) => ({ ...o, rule: o.rule.replace(/\s*·\s*“[^”]*”/g, '') }))
+    }
   const open = items.some((i) => !i.decision)
   must(
     await db()
