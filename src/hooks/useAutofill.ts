@@ -1,6 +1,6 @@
 // Auto-fill suggestions for one client (TanStack Query).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { decideAutofill, estimateAi, getAutofill, runAi, runAutofillRules } from '../lib/api'
+import { decideAutofill, estimateAi, getAutofill, retireStaleAutofill, runAi, runAutofillRules } from '../lib/api'
 import type { AiTask } from '../lib/aiModels'
 import type { AutofillDecision } from '../types/seo'
 
@@ -33,4 +33,10 @@ export function useDecide(siteId: string) {
       for (const key of [['keywords', siteId], ['matrix', siteId], ['guide', siteId], ['client', siteId], ['clients']]) void qc.invalidateQueries({ queryKey: key })
     },
   })
+}
+
+/** Retire open lists that point to removed keywords (the server counts again first). */
+export function useRetireStale(siteId: string) {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: () => retireStaleAutofill(siteId), onSuccess: (data) => qc.setQueryData(['autofill', siteId], data) })
 }

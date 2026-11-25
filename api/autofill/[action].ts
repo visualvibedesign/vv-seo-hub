@@ -5,7 +5,7 @@
 //   POST /api/autofill/estimate { siteId, task }                  -> { estimate } (count_tokens: free, nothing saved)
 //   POST /api/autofill/run-ai { siteId, task }                    -> { rows }  (one Claude call, logged; Ready to review)
 import { DatabaseError } from '../../server/clients/supabase.js'
-import { AutofillInputError, decide, listAutofill, runDay2Rules } from '../../server/services/autofillService.js'
+import { AutofillInputError, decide, listAutofill, retireStale, runDay2Rules } from '../../server/services/autofillService.js'
 import { estimate, run } from '../../server/services/aiAutofillService.js'
 import { AiCallError } from '../../server/services/aiService.js'
 import { AiConfigError } from '../../server/clients/anthropic.js'
@@ -33,6 +33,12 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     if (method === 'POST' && action === 'run-rules') {
       const body = (await request.json().catch(() => ({}))) as { siteId?: unknown }
       return Response.json({ rows: await runDay2Rules(String(body.siteId ?? '')) })
+    }
+    if (method === 'GET' && action === 'stale') return Response.json(await retireStale(new URL(request.url).searchParams.get('site') ?? '', false))
+    if (method === 'POST' && action === 'retire-stale') {
+      const body = (await request.json().catch(() => ({}))) as { siteId?: unknown }
+      await retireStale(String(body.siteId ?? ''), true)
+      return Response.json({ rows: await listAutofill(String(body.siteId ?? '')) })
     }
     if (method === 'POST' && action === 'decide') return Response.json({ rows: await decide(await request.json().catch(() => null)) })
     // Claude tasks: estimate first (shown to Angel), then run only on Angel's click.

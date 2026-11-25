@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Spinner } from '../ui/Loading'
-import { useAutofill, useDecide, useEstimateAi, useRunAi, useRunRules } from '../../hooks/useAutofill'
+import { useAutofill, useDecide, useEstimateAi, useRetireStale, useRunAi, useRunRules } from '../../hooks/useAutofill'
 import { formatUsd, type AiTask } from '../../lib/aiModels'
 import type { AiEstimate } from '../../lib/api'
 import { ApiError } from '../../lib/api'
@@ -48,7 +48,11 @@ export default function Day2Autofill({ client: c }: { client: ClientDetail }) {
     }
   }
   const err = (e: unknown) => (e ? (e instanceof ApiError && e.detail ? e.detail : 'Couldn’t save. Try again.') : '')
-  const error = err(run.error) || err(decide.error)
+  const retire = useRetireStale(c.siteId)
+  const error = err(run.error) || err(decide.error) || err(retire.error)
+  // Open lists that point to keywords removed since (a deleted import): counted first, retired on click.
+  const stale = rows.filter((r) => r.status === 'ready' && (r.gone ?? 0) > 0)
+  const staleGone = stale.reduce((n, r) => n + (r.gone ?? 0), 0)
 
   /** One kind: its row, its Review panel when open, and (for Claude kinds) the estimate → run box. */
   const kind = (k: AutofillKind, title: string, what: string, label: (v: string) => string, extra?: { pill?: (v: string) => string; ai?: { task: AiTask; sends: string; empty: string } }) => {
@@ -88,6 +92,17 @@ export default function Day2Autofill({ client: c }: { client: ClientDetail }) {
           </button>
         </div>
       </div>
+      {stale.length > 0 && (
+        <div role="status" className="mb-2 flex flex-wrap items-center gap-2 rounded-xl bg-vv-orange-100 px-3 py-2 text-[14px] text-vv-orange-ink">
+          <span>
+            {stale.length} open list{stale.length === 1 ? '' : 's'} ({stale.map((r) => r.kind.replace('_', ' ')).join(', ')}) point to <strong>{staleGone.toLocaleString('en-US')}</strong> keywords that were removed since. They’re left out of the counts and Approve skips them. Retire these lists (kept, marked replaced), then run again for fresh ones.
+          </span>
+          <button type="button" className={`${BTN_GHOST} min-h-9 px-4 text-[13px]`} disabled={retire.isPending} onClick={() => retire.mutate()}>
+            {retire.isPending && <Spinner />}
+            Retire {stale.length} list{stale.length === 1 ? '' : 's'}
+          </button>
+        </div>
+      )}
       {error && (
         <p role="alert" className="m-0 mb-2 rounded-xl bg-vv-red-100 px-3 py-2 text-[14px] font-semibold text-vv-red">
           {error}

@@ -4,7 +4,7 @@
 import { z } from 'zod'
 import { scopeHit, suggestRoles, suggestScope, suggestServices, type KeywordLite, type ScopeWords, type ServiceRef, type Words } from '../../src/lib/autofillRules.js'
 import type { AutofillDecision, AutofillItem, AutofillKind, AutofillRow, AutofillStatus, KeywordRole } from '../../src/types/seo.js'
-import { db, must } from '../clients/supabase.js'
+import { db, must, pagedRows } from '../clients/supabase.js'
 import { clientRow, type ClientRow } from './clientService.js'
 
 export class AutofillInputError extends Error {}
@@ -43,7 +43,28 @@ async function client(siteId: string): Promise<ClientRow> {
   return c
 }
 
-/** The latest (not superseded) suggestion per kind for a client. */
+/** All of a client's keyword ids right now (paged; a client can have thousands). */
+async function liveKeywordIds(clientId: string): Promise<Set<string>> {
+  const ids = new Set<string>()
+  for await (const r of pagedRows<{ id: string }>((from, to) => db().from('seo_keywords').select('id').eq('client_id', clientId).order('id').range(from, to), 'Loading keywords')) ids.add(r.id)
+  return ids
+}
+
+/** Open (ready) suggestions of a client and how many of their keywords no longer exist (e.g. removed with a deleted import). */
+async function openWithGone(clientId: string): Promise<{ row: Row; gone: number }[]> {
+  const rows = must(await db().from('seo_autofill').select(COLS).eq('client_id', clientId).eq('status', 'ready'), 'Loading auto-fill') as Row[]
+  if (!rows.length) return []
+  const live = await liveKeywordIds(clientId)
+  return rows.map((row) => {
+    const refs = new Set([...(row.payload.items ?? []), ...(row.payload.unmatched ?? [])].map((i) => i.keywordId))
+    return { row, gone: [...refs].filter((id) => !live.has(id)).length }
+  })
+}
+
+/**
+ * The latest (not superseded) suggestion per kind for a client. Keywords that no longer exist (removed with a deleted
+ * import) are left out of the open lists and their counts, and the row says how many were left out ("stale").
+ */
 export async function listAutofill(siteId: string): Promise<AutofillRow[]> {
   const c = await client(siteId)
   const rows = must(
@@ -52,7 +73,31 @@ export async function listAutofill(siteId: string): Promise<AutofillRow[]> {
   ) as Row[]
   const latest = new Map<AutofillKind, Row>()
   for (const r of rows) if (!latest.has(r.kind)) latest.set(r.kind, r)
-  return [...latest.values()].map(toRow)
+  const out = [...latest.values()].map(toRow)
+  if (!out.some((r) => r.status === 'ready')) return out
+  const live = await liveKeywordIds(c.id)
+  return out.map((r) => {
+    if (r.status !== 'ready') return r
+    const items = r.items.filter((i) => live.has(i.keywordId))
+    const unmatched = r.unmatched.filter((u) => live.has(u.keywordId))
+    const gone = new Set([...r.items, ...r.unmatched].filter((i) => !live.has(i.keywordId)).map((i) => i.keywordId)).size
+    if (!gone) return r
+    const open = items.filter((i) => !i.decision).length
+    return { ...r, items, unmatched, gone, summary: `${open} open on current keywords · ${unmatched.length} left as they are · ${gone} removed since (deleted import), not counted` }
+  })
+}
+
+/**
+ * Stale open suggestions: lists that point to keywords that no longer exist. `apply` = mark those lists superseded
+ * (kept, not deleted; "Run again" makes a fresh one). Without `apply` it only counts (the dry run).
+ */
+export async function retireStale(siteId: string, apply: boolean): Promise<{ lists: number; gone: number; kinds: string[] }> {
+  const c = await client(siteId)
+  const stale = (await openWithGone(c.id)).filter((x) => x.gone > 0)
+  if (apply && stale.length) {
+    must(await db().from('seo_autofill').update({ status: 'superseded' }).in('id', stale.map((x) => x.row.id)).eq('status', 'ready'), 'Retiring stale suggestions')
+  }
+  return { lists: stale.length, gone: stale.reduce((n, x) => n + x.gone, 0), kinds: stale.map((x) => x.row.kind) }
 }
 
 /** The client's scope words + active area names (scope words are [] until migration 0008 runs). */

@@ -216,6 +216,16 @@ export function runAi(siteId: string, task: AiTask): Promise<{ rows: AutofillRow
   return call('/api/autofill/run-ai', json({ siteId, task }))
 }
 
+/** Open suggestion lists that point to removed keywords (count only). */
+export function getStaleAutofill(siteId: string): Promise<{ lists: number; gone: number; kinds: string[] }> {
+  return call(`/api/autofill/stale?site=${encodeURIComponent(siteId)}`)
+}
+
+/** Marks those lists replaced (kept, not deleted); run again for fresh ones. */
+export function retireStaleAutofill(siteId: string): Promise<{ rows: AutofillRow[] }> {
+  return call('/api/autofill/retire-stale', json({ siteId }))
+}
+
 /** Approve / reject rows of one suggestion. */
 export function decideAutofill(siteId: string, autofillId: string, decisions: AutofillDecision[]): Promise<{ rows: AutofillRow[] }> {
   return call('/api/autofill/decide', json({ siteId, autofillId, decisions }))

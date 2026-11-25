@@ -480,6 +480,8 @@ export interface AutofillRow {
   appliedCount: number | null
   createdAt: string
   decidedAt: string | null
+  /** Open list only: how many of its keywords no longer exist (left out of items / counts). */
+  gone?: number
 }
 
 export interface AutofillDecision {

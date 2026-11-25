@@ -13,6 +13,7 @@ import { z } from 'zod'
 import { keywordKey, looksLikeAddress, parseCpc, parseKd, parseRole, parseVolume, sourceOf } from '../../src/lib/importRules.js'
 import type { DeleteImportCheck, ImportDifference, ImportPayload, ImportPreview, ImportRecord, ImportRow, NumberField } from '../../src/types/seo.js'
 import { db, DatabaseError, must, pagedRows } from '../clients/supabase.js'
+import { retireStale } from './autofillService.js'
 
 export class ImportInputError extends Error {}
 
@@ -475,6 +476,8 @@ export async function deleteImport(siteId: string, importId: string): Promise<{ 
   }
   // 2. The import itself: its remaining history rows (on keywords that stay) go with it
   must(await db().from('seo_imports').delete().eq('id', imp.id), 'Removing the import')
+  // 2b. Open auto-fill lists that pointed to the removed keywords are now stale: retire them (kept, marked replaced)
+  if (remove.length) await retireStale(siteId, true)
   // 3. The raw file (last: if this fails, the data is already consistent and the file is just left over)
   let fileRemoved = false
   if (imp.storage_path) {
