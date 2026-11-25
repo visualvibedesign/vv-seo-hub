@@ -97,7 +97,8 @@ export default function SamsGuideImport({ client: c }: { client: ClientDetail })
   )
 }
 
-function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuidePlan; client: ClientDetail; ticks: Set<string>; setTicks: (s: Set<string>) => void }) {
+/** The Sam's Guide dry run (also shown for a Sam's Guide tab in a whole-Sheet import). */
+export function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuidePlan; client: ClientDetail; ticks: Set<string>; setTicks: (s: Set<string>) => void }) {
   const toggle = (k: string) => {
     const next = new Set(ticks)
     if (next.has(k)) next.delete(k)
@@ -226,11 +227,11 @@ function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuidePlan; cl
   )
 }
 
-function Act({ a }: { a: string }) {
+export function Act({ a }: { a: string }) {
   return <span className={`${tone(a)} whitespace-normal`}>{a}</span>
 }
 
-function Fold({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
+export function Fold({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
   return (
     <details open={open} className="group rounded-2xl border border-solid border-vv-line px-3 py-2">
       <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between text-[14px] font-semibold text-vv-ink [&::-webkit-details-marker]:hidden">
@@ -244,7 +245,7 @@ function Fold({ title, open, children }: { title: string; open?: boolean; childr
   )
 }
 
-function Table({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
+export function Table({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
   if (!rows.length) return <p className="m-0 text-[13px] text-vv-muted">None</p>
   return (
     <div className="max-h-[420px] overflow-auto">

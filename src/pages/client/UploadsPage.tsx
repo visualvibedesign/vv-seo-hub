@@ -10,6 +10,7 @@ import { useAutofill } from '../../hooks/useAutofill'
 import Day1Autofill from '../../components/autofill/Day1Autofill'
 import ErrorBoundary from '../../components/ui/ErrorBoundary'
 import Day2Autofill from '../../components/autofill/Day2Autofill'
+import ClientSheetImport from '../../components/import/ClientSheetImport'
 import { ApiError } from '../../lib/api'
 import { areaState, CORE_ACCOUNT_KINDS } from '../../lib/clientSetup'
 import { guessFilter, REPORTS, sourceOf } from '../../lib/importRules'
@@ -83,6 +84,11 @@ export default function UploadsPage() {
             </p>
           </div>
         </div>
+      )}
+      {day.live && day.key === 'day2' && (
+        <ErrorBoundary name="Client Sheet import" resetKey={day.key}>
+          <ClientSheetImport client={c} />
+        </ErrorBoundary>
       )}
     </>
   )

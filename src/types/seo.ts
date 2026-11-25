@@ -169,7 +169,7 @@ export interface SiteIdCheck {
 // ---- CSV imports (phase 1, step 4) ---------------------------------------------------
 
 export type ImportSource = 'kp' | 'semrush' | 'sheet'
-export type ImportReport = 'kp_ideas' | 'kp_volumes' | 'keyword_magic' | 'keyword_overview' | 'keyword_gap' | 'master_db'
+export type ImportReport = 'kp_ideas' | 'kp_volumes' | 'keyword_magic' | 'keyword_overview' | 'keyword_gap' | 'master_db' | 'clusters' | 'sams_guide' | 'competitors' | 'client_sheet'
 
 /** Fields a CSV column can be matched to. */
 export type ImportField = 'keyword' | 'volume' | 'kd' | 'cpc' | 'intent' | 'segment' | 'role' | 'service' | 'kp'
@@ -249,6 +249,9 @@ export interface ImportRecord {
   rowsSkipped: number
   totals: { segment: string; volume: string }[]
   hasFile: boolean
+  note: string | null
+  /** The .xlsx this tab import came from (whole-Sheet import). */
+  parentImportId: string | null
   createdAt: string
 }
 
@@ -265,6 +268,10 @@ export interface DeleteImportCheck {
   /** of the removed: ones used in the matrix or clusters */
   removedInUse: number
   hasFile: boolean
+  /** An .xlsx: how many tab imports go with it. */
+  tabImports: number
+  /** Plain-English extras for the confirm (e.g. pages from a Clusters tab stay). */
+  notes: string[]
 }
 
 // ---- Keyword database (phase 1, step 5) ----------------------------------------------
@@ -583,4 +590,56 @@ export interface NotesState {
   links: ClientLink[]
   /** The old one-box notes (Edit client → Notes), shown as "Earlier notes" until moved. */
   earlier: string | null
+}
+
+// ---- Whole client Sheet (.xlsx) import (migration 0015, docs/client-sheet-import-plan.md) ----------------------
+
+export type SheetTabKind = 'master_db' | 'sams_guide' | 'clusters' | 'competitors' | 'unused'
+
+/** One name from a Competitors tab. key = what Angel ticks to approve a new one. */
+export interface SheetCompetitor {
+  key: string
+  written: string
+  name: string | null
+  code: string | null
+  action: string
+  /** New name with a free code: saved only if ticked. */
+  approvable: boolean
+}
+
+export interface SheetClusterPage {
+  category: string
+  name: string
+  url: string | null
+  priority: 'high' | 'medium' | 'low' | null
+  status: PageStatus
+  primary: string | null
+  keywords: number
+}
+
+export interface SheetTabPlan {
+  name: string
+  kind: SheetTabKind
+  /** How it was recognised, or why it isn't used. */
+  why: string
+  rows: number
+  /** Set when this tab won't be applied (the reason). */
+  blocked: string | null
+  masterDb?: ImportPreview
+  samsGuide?: SamsGuidePlan
+  clusters?: { pages: SheetClusterPage[]; unmatched: { page: string; role: string; keyword: string }[]; onTwoPages: { keyword: string; kept: string; skipped: string }[] }
+  competitors?: SheetCompetitor[]
+}
+
+/** The whole-Sheet dry run. Nothing is saved until Apply. Tabs apply in this order: Master DB, Sam's Guide, Clusters, Competitors. */
+export interface SheetPlan {
+  fileName: string
+  tabs: SheetTabPlan[]
+  /** Keywords Sam's Guide Top 10 and the Clusters tab put on different pages (Clusters wins). */
+  crossCheck: { keyword: string; samsGuide: string; clusters: string }[]
+}
+
+export interface SheetApplyResult {
+  importId: string | null
+  tabs: { name: string; kind: SheetTabKind; status: 'applied' | 'skipped' | 'failed' | 'not_run'; message: string }[]
 }

@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -241,6 +241,18 @@ export function previewSamsGuide(siteId: string, fileName: string, base64: strin
 /** Apply (only on Angel's click). `replace` = conflict keys ticked. */
 export function applySamsGuide(siteId: string, fileName: string, base64: string, replace: string[]): Promise<{ importId: string; plan: SamsGuidePlan }> {
   return call('/api/imports/sams-apply', json({ siteId, fileName, base64, replace }))
+}
+
+// ---- Whole client Sheet (.xlsx), migration 0015 ------------------------------------------------
+
+/** Dry run of every tab (nothing saved). The server reads the .xlsx itself (values only). */
+export function previewSheet(siteId: string, fileName: string, base64: string): Promise<{ plan: SheetPlan }> {
+  return call('/api/imports/sheet-preview', json({ siteId, fileName, base64 }))
+}
+
+/** Apply (only on Angel's click). replace = Sam's Guide conflicts ticked; competitors = new names ticked. */
+export function applySheet(siteId: string, fileName: string, base64: string, replace: string[], competitors: string[]): Promise<SheetApplyResult> {
+  return call('/api/imports/sheet-apply', json({ siteId, fileName, base64, replace, competitors }))
 }
 
 // ---- Bulk add clients from CSV ---------------------------------------------------------------

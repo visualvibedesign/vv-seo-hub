@@ -49,7 +49,14 @@ interface Mention {
 }
 
 /** Everything the dry run shows + what Apply needs (ids). Read-only. */
-async function build(c: ClientRow, csvText: string) {
+/** Whole-Sheet import options: pagesFromClusters = a Clusters tab in the same file decides pages (Angel, Nov 25). */
+export interface SamsGuideOptions {
+  pagesFromClusters?: boolean
+  /** The .xlsx this tab came from (seo_imports.parent_import_id, migration 0015). */
+  parentImportId?: string
+}
+
+async function build(c: ClientRow, csvText: string, opts: SamsGuideOptions = {}) {
   const g: SamsGuide = parseSamsGuide(csvText)
   if (!g.register.length && !g.pages.length) throw new SamsGuideInputError('This doesn’t look like a Sam’s Guide tab: no Page 2 register or Page 5 Top 10 found.')
 
@@ -270,6 +277,12 @@ async function build(c: ClientRow, csvText: string) {
     return { code: x.code, name: bad ? null : x.name, written: x.written, action }
   })
 
+  // A Clusters tab in the same Sheet decides pages: Sam's Guide Top 10 is shown, but adds no pages or page keywords.
+  if (opts.pagesFromClusters) {
+    for (let i = conflicts.length - 1; i >= 0; i--) if (conflicts[i].kind === 'page') conflicts.splice(i, 1)
+    for (const p of planPages) p.keywords = p.keywords.map((k) => ({ ...k, action: 'Skipped: the Clusters tab decides pages' }))
+  }
+
   const plan: SamsGuidePlan = {
     sheetClient: g.clientName,
     sameClient: !g.clientName || g.clientName.toLowerCase() === c.name.toLowerCase(),
@@ -282,7 +295,7 @@ async function build(c: ClientRow, csvText: string) {
       fills: fills.length,
       matrixCells: matrix.length,
       track: track.filter((t) => !t.already).length,
-      pages: planPages.filter((p) => p.categoryId).length,
+      pages: opts.pagesFromClusters ? 0 : planPages.filter((p) => p.categoryId).length,
       pageKeywords: planPages.filter((p) => p.categoryId).reduce((n, p) => n + p.keywords.filter((k) => k.action === 'Add').length, 0),
       later: later.filter((l) => /^(Set|Create)/.test(l.action)).length,
       competitors: competitors.filter((x) => x.action === 'Save name only').length,
@@ -305,8 +318,8 @@ async function build(c: ClientRow, csvText: string) {
   return { plan, g, c, byKey, mentions, held, matrix, planPages, laterRows, cells, pagesWithPrimary, areaNote: plan.areaNote }
 }
 
-export async function planSamsGuide(siteId: string, csvText: string): Promise<SamsGuidePlan> {
-  return (await build(await client(siteId), csvText)).plan
+export async function planSamsGuide(siteId: string, csvText: string, opts: SamsGuideOptions = {}): Promise<SamsGuidePlan> {
+  return (await build(await client(siteId), csvText, opts)).plan
 }
 
 const MAX_BYTES = 1024 * 1024
@@ -324,9 +337,9 @@ export function decodeSheet(base64: unknown): { bytes: Buffer; text: string } {
  * Undo on failure: the new keywords, the import record and the raw file are removed (everything else only fills
  * empty fields, so running it again is safe).
  */
-export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text: string }, fileName: string, replace: string[]): Promise<{ importId: string; plan: SamsGuidePlan }> {
+export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text: string }, fileName: string, replace: string[], opts: SamsGuideOptions = {}): Promise<{ importId: string; plan: SamsGuidePlan }> {
   const c = await client(siteId)
-  const b = await build(c, file.text)
+  const b = await build(c, file.text, opts)
   const { plan } = b
   if (plan.alreadyImported) throw new SamsGuideInputError('This client already has a Sam’s Guide import. Delete it in Import history first to import again.')
   if (!plan.sameClient) throw new SamsGuideInputError(`This sheet is for “${plan.sheetClient}”, not ${c.name}.`)
@@ -347,6 +360,7 @@ export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text
         rows_merged: plan.counts.existingKeywords,
         rows_skipped: plan.counts.heldBack,
         note: 'Sam’s Guide sheet',
+        ...(opts.parentImportId ? { parent_import_id: opts.parentImportId } : {}),
       })
       .select('id')
       .single(),
@@ -439,7 +453,7 @@ export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text
 
     // 7. Pages + their keywords (#1 = primary); a keyword on another page moves only if ticked
     let sort = 0
-    for (const p of b.planPages) {
+    for (const p of opts.pagesFromClusters ? [] : b.planPages) {
       if (!p.categoryId) continue
       let pageId = p.pageId
       if (!pageId) {

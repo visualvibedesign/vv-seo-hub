@@ -1,4 +1,4 @@
-# Import a client Sheet (.xlsx): plan (not built)
+# Import a client Sheet (.xlsx): built Nov 26 (migration 0015)
 
 An **extra** way in. It doesn't replace anything. These three paths all keep working:
 1. **Raw exports** (Semrush / KP CSVs): the main path for new clients, no Sheet needed.
@@ -55,3 +55,13 @@ Paste a Google Sheet link instead of a file (Google Sheets API, read-only). Same
 - **Library:** OK if pinned, well-known, reads values only and passes `npm audit`. **Not** the old npm `xlsx`
   (SheetJS) package. Pick and audit it at build time, and show Angel the choice first.
 - **Sample .xlsx:** Angel adds it to `test-data/` later. Build only after it's there.
+
+## As built (Nov 26)
+- **Reader:** `src/lib/xlsx.ts`, our own values-only reader on **fflate 0.8.3** (pinned; 0.8.2 failed `npm audit`). Unzips only the workbook, its relationships, the sheets and shared strings. Guards: 3 MB file, 30 MB unzipped (checked before unzipping), 40 tabs, 20,000 rows, 300 columns. Shared / inline / rich-text strings, XML entities, booleans, errors, formula results (cached value). Text stays text ("1K–10K"); numbers as plain text ("390.0" → "390").
+- **The server reads the .xlsx** (not the browser): the dry run and Apply read the same bytes, nothing from the browser is trusted, and a 3 MB file still fits Vercel's 4.5 MB request limit.
+- **API:** `sheet-preview` / `sheet-apply` in `api/imports/[action].ts` (no new server function: 12-function Hobby cap).
+- **Clusters wins pages:** with a Clusters tab, Sam's Guide Top 10 adds no pages (option `pagesFromClusters`); differences are listed. The Clusters importer still refuses a client that already has pages.
+- **Master DB from a Sheet** never replaces filled numbers (no "use the new numbers").
+- **Competitors tab:** first table's first column, names only; the client itself skipped; matched ignoring capitals, punctuation and LLC / Inc / Co endings; new names get the next free code C5–C9 and are saved only if ticked.
+- **Import history:** the .xlsx is one row (`client_sheet`); each applied tab is its own row with "From <file>". Deleting the .xlsx deletes its tab imports (keyword counts worked out over all of them). Pages from a Clusters tab stay; competitor names a Competitors tab added are removed.
+- **Known gap (follow-up):** the Sam's Guide parser doesn't yet read Anassa's layout fully (Home register row, a Domain column in Direct competitors, Page 3 Type merged down the rows): 37 lines "not understood" in the dry run. Nothing wrong is saved; it's listed.

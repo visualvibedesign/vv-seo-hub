@@ -7,9 +7,13 @@
 //   POST /api/imports/delete   { siteId, importId }                   -> { keywordsRemoved, fileRemoved }
 //   POST /api/imports/sams-preview { siteId, fileName, base64 }       -> { plan } (Sam's Guide dry run, nothing saved)
 //   POST /api/imports/sams-apply   { siteId, fileName, base64, replace } -> { importId, plan } (only on Apply)
+//   POST /api/imports/sheet-preview { siteId, fileName, base64 }      -> { plan } (whole client Sheet .xlsx dry run, nothing saved)
+//   POST /api/imports/sheet-apply   { siteId, fileName, base64, replace, competitors } -> SheetApplyResult (only on Apply)
+// (One file for every import action: the app stays within Vercel Hobby's 12 server functions.)
 import { DatabaseError } from '../../server/clients/supabase.js'
 import { checkDeleteImport, commitImport, deleteImport, ImportInputError, listImports, previewImport, rawFileUrl } from '../../server/services/importService.js'
 import { applySamsGuide, decodeSheet, planSamsGuide, SamsGuideInputError } from '../../server/services/samsGuideService.js'
+import { applySheet, previewSheet, SheetInputError } from '../../server/services/sheetImportService.js'
 import { requireSession } from '../../server/utils/auth.js'
 
 function actionOf(request: Request) {
@@ -47,6 +51,13 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       const fileName = typeof body.fileName === 'string' && body.fileName ? body.fileName.slice(0, 200) : 'sams-guide.csv'
       return Response.json(await applySamsGuide(siteId, file, fileName, replace))
     }
+    if (method === 'POST' && (action === 'sheet-preview' || action === 'sheet-apply')) {
+      const body = (await request.json().catch(() => ({}))) as { siteId?: unknown; fileName?: unknown; base64?: unknown; replace?: unknown; competitors?: unknown }
+      const siteId = String(body.siteId ?? '')
+      if (action === 'sheet-preview') return Response.json({ plan: await previewSheet(siteId, body.fileName, body.base64) })
+      const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 500) : [])
+      return Response.json(await applySheet(siteId, body.fileName, body.base64, list(body.replace), list(body.competitors)))
+    }
     if (method === 'GET' && action === 'list') {
       return Response.json({ imports: await listImports(params.get('site') ?? '') })
     }
@@ -62,6 +73,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
+    if (err instanceof SheetInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof SamsGuideInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof ImportInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof DatabaseError) return Response.json({ error: 'database', detail: err.message }, { status: 500 })
