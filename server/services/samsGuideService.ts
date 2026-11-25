@@ -164,7 +164,7 @@ async function build(c: ClientRow, csvText: string) {
     const primaryKey = r.primary ? keywordKey(r.primary) : null
     let action: string
     if (!r.primary) action = `${state === 'n_a' ? 'N/A' : 'Pending'}${r.variants.length ? ' + backups' : ''}`
-    else if (!current) action = 'Set primary + backups'
+    else if (!current) action = 'Set primary (role Primary if empty) + backups'
     else if (current === primaryKey) action = 'Same primary: add missing backups'
     else {
       action = 'Conflict: keeps the current primary unless you tick replace'
@@ -426,6 +426,8 @@ export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text
         must(await db().from('seo_matrix_keywords').delete().eq('cell_id', cellId).eq('keyword_id', primaryId!), 'Saving the matrix')
         must(await db().from('seo_matrix_keywords').insert({ cell_id: cellId, keyword_id: primaryId!, kind: 'primary', sort: 0 }), 'Saving the matrix')
         have.add(primaryId!)
+        // The sheet's primaries are Angel's own picks: the keyword gets the Primary role (only if it has none yet).
+        must(await db().from('seo_keywords').update({ role: 'primary' }).eq('id', primaryId!).is('role', null), 'Setting the Primary role')
       }
       const backups = m.backups.map((k) => ids.get(keywordKey(k))).filter((x): x is string => !!x && !have.has(x) && x !== primaryId)
       if (backups.length) must(await db().from('seo_matrix_keywords').insert([...new Set(backups)].map((keyword_id, i) => ({ cell_id: cellId, keyword_id, kind: 'backup', sort: i + 1 }))), 'Saving the matrix')

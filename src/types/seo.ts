@@ -397,7 +397,8 @@ export interface ClusterPage {
   category: CategoryCode
   name: string
   url: string | null
-  priority: 'high' | 'medium' | 'low'
+  /** null = not set yet (shown as "Medium (default)"; migration 0012). */
+  priority: 'high' | 'medium' | 'low' | null
   status: PageStatus
   why: string | null
   ideas: string[]

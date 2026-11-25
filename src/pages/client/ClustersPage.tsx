@@ -11,11 +11,14 @@ import type { CategoryCode, ClusterKeyword, ClusterPage, ClientDetail, PageStatu
 // Category, Page, Priority, Primary keyword, Volume · KD, Secondary + FAQ, Why). A keyword sits on one page only.
 // Read-only for now: page editing comes with Sitemap + hotspots (phase 3).
 
-const PRIORITY: Record<ClusterPage['priority'], string> = {
+const PRIORITY: Record<NonNullable<ClusterPage['priority']>, string> = {
   high: `${PILL} bg-vv-lavender text-vv-ink`,
   medium: `${PILL} bg-vv-lavender-100 text-vv-purple-ink`,
   low: `${PILL} bg-vv-st-todo text-vv-st-todo-ink`,
 }
+/** Not set yet (an import with no priority column): shown as Medium, marked as the default so Angel sets it. */
+const priorityPill = (p: ClusterPage['priority']) =>
+  p ? { cls: PRIORITY[p], text: p[0].toUpperCase() + p.slice(1) } : { cls: `${PILL} border border-dashed border-vv-lavender bg-transparent text-vv-purple-ink`, text: 'Medium (default)' }
 const STATUS: Record<PageStatus, { cls: string; text: string }> = {
   live: { cls: `${PILL} bg-vv-green-100 text-vv-green-ink`, text: 'Live' },
   scheduled: { cls: `${PILL} bg-vv-st-waiting text-vv-st-waiting-ink`, text: 'Not live yet' },
@@ -101,7 +104,9 @@ function PageRow({ page: p, client: c }: { page: ClusterPage; client: ClientDeta
           </a>
         )}
         <span className="flex flex-wrap gap-1.5">
-          <span className={PRIORITY[p.priority]}>{p.priority[0].toUpperCase() + p.priority.slice(1)}</span>
+          <span className={priorityPill(p.priority).cls} title={p.priority ? undefined : 'No priority set yet (not in the imported sheet)'}>
+            {priorityPill(p.priority).text}
+          </span>
           <span className={STATUS[p.status].cls}>{STATUS[p.status].text}</span>
         </span>
       </div>
@@ -141,7 +146,7 @@ function PageRow({ page: p, client: c }: { page: ClusterPage; client: ClientDeta
 }
 
 function volKd(k: ClusterKeyword): string {
-  const v = k.semrushVolume === null ? (k.kpVolume ? `KP ${k.kpVolume}` : 'no data') : `${num(k.semrushVolume)}/mo`
+  const v = k.semrushVolume === null ? (k.kpVolume ? `KP ${k.kpVolume}` : 'No data') : `${num(k.semrushVolume)}/mo`
   return k.kd === null ? v : `${v} · KD ${k.kd}`
 }
 

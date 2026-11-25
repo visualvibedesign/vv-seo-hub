@@ -140,7 +140,7 @@ function Grid({ matrix, open, onOpen }: { matrix: MatrixState; open: { category:
 
 function volumes(k: MatrixKeyword | KeywordItem): string {
   const sem = k.semrushVolume === null ? '—' : num(k.semrushVolume)
-  const kp = !k.kpVolume ? '—' : /^no data$/i.test(k.kpVolume) ? 'no data' : k.kpVolume
+  const kp = !k.kpVolume ? '—' : /^no data$/i.test(k.kpVolume) ? 'No data' : k.kpVolume
   return `Semrush ${sem} · KP ${kp}`
 }
 
