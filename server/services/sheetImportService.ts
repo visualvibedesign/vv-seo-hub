@@ -8,7 +8,7 @@
 import Papa from 'papaparse'
 import { isOwnBrand } from '../../src/lib/autofillRules.js'
 import { autoMatch, cleanKeyword, keywordKey, looksLikeAddress } from '../../src/lib/importRules.js'
-import { competitorName, parseSamsGuide } from '../../src/lib/samsGuide.js'
+import { competitorKey, competitorName, parseSamsGuide, sameCompetitor } from '../../src/lib/samsGuide.js'
 import { readXlsx, XlsxError, XLSX_MAX_BYTES, type XlsxTab } from '../../src/lib/xlsx.js'
 import type { ImportPayload, ImportRow, SheetApplyResult, SheetCompetitor, SheetPlan, SheetTabKind, SheetTabPlan } from '../../src/types/seo.js'
 import { db, DatabaseError, must } from '../clients/supabase.js'
@@ -23,7 +23,7 @@ const BUCKET = 'seo-imports'
 const XLSX_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 const ORDER: SheetTabKind[] = ['master_db', 'sams_guide', 'clusters', 'competitors']
 const KIND_LABEL: Record<SheetTabKind, string> = { master_db: 'Master Keyword Database', sams_guide: 'Sam’s Guide', clusters: 'Clusters', competitors: 'Competitors', unused: 'Not used yet' }
-const FREE_CODES = ['C5', 'C6', 'C7', 'C8', 'C9']
+const CODES = ['C1', 'C2', 'C3', 'C4', 'C5', 'C6', 'C7', 'C8', 'C9'] // new names fill empty C1–C4 first, then C5–C9
 
 // ---- Reading -----------------------------------------------------------------------------------------------
 
@@ -94,17 +94,6 @@ function masterPayload(siteId: string, fileName: string, rows: string[][], at: n
   return { siteId, source: 'sheet', report: 'master_db', fileName, location: '', filter: '', columnMap: map, totals: [], rows: out, useNew: [], allowAddresses: [] }
 }
 
-/** "Acme Plumbing, LLC" / "ACME plumbing co." → "acme plumbing": capitals, punctuation and company endings ignored. */
-export function companyKey(name: string): string {
-  const words = name
-    .toLowerCase()
-    .replace(/&/g, ' and ')
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean)
-  while (words.length > 1 && /^(llc|inc|co|corp|corporation|ltd|limited|company|pllc|llp|lp|plc)$/.test(words[words.length - 1])) words.pop()
-  return words.join(' ')
-}
-
 /** Competitors tab: the first table's first column, names only, until the first blank row. */
 function competitorNames(rows: string[][], at: number): string[] {
   const out: string[] = []
@@ -117,19 +106,19 @@ function competitorNames(rows: string[][], at: number): string[] {
 }
 
 function planCompetitors(c: ClientRow, written: string[], taken: Map<string, string>): SheetCompetitor[] {
-  const byKey = new Map([...taken].map(([code, name]) => [companyKey(name), code]))
-  const free = FREE_CODES.filter((code) => !taken.has(code))
-  const seen = new Set<string>()
+  const free = CODES.filter((code) => !taken.has(code))
+  const seen: string[] = []
   return written.map((w) => {
     const name = competitorName(w)
-    const key = companyKey(name)
+    const key = competitorKey(name)
     const base = { key: `comp:${key}`, written: w, name: name || null, code: null as string | null, approvable: false }
     if (!name || !key) return { ...base, name: null, action: 'Skipped: no name' }
     if (/\(us\)/i.test(w) || isOwnBrand(name, { brandWords: c.brand_words ?? [], name: c.name, siteUrl: c.site_url })) return { ...base, action: 'Skipped: the client itself' }
     if (looksLikeAddress(name)) return { ...base, name: null, action: 'Refused: looks like an address' }
-    if (seen.has(key)) return { ...base, action: 'Skipped: listed twice' }
-    seen.add(key)
-    const have = byKey.get(key)
+    if (seen.some((x) => sameCompetitor(x, name))) return { ...base, action: 'Skipped: listed twice' }
+    seen.push(name)
+    // Same competitor ignoring capitals, punctuation, https / www and LLC / Inc / Co ("Breezy Rose Beauty" = breezyrosebeauty.com)
+    const have = [...taken].find(([, n]) => sameCompetitor(n, name))?.[0]
     if (have) return { ...base, code: have, action: `Already there (${have})` }
     const code = free.shift()
     if (!code) return { ...base, action: 'No room: C1–C9 are all used' }

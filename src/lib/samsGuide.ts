@@ -100,7 +100,7 @@ function splitKeywords(text: string): { keyword: string; volume: SheetVolume }[]
     .split(/\s*;\s*|\s+\/\s+/)
     .filter(Boolean)
     .map(keywordWithVolume)
-    .filter((k) => k.keyword)
+    .filter((k) => k.keyword && !/^(n\/?a|none|none yet|-|—|–)$/i.test(k.keyword)) // "N/A (no close variants with data)" is not a keyword
 }
 
 /** "Home (/)" → "/"; "visualvibedesign.com/brand-design" → host + "/brand-design"; "None yet" → null. */
@@ -108,10 +108,52 @@ export function parsePageNow(text: string): RegisterRow['pageNow'] {
   const written = clean(text)
   const inBrackets = written.match(/\((\/[^)]*)\)/)
   if (inBrackets) return { path: inBrackets[1], host: null, written }
+  if (/^home(\s+page)?\b/i.test(written)) return { path: '/', host: null, written } // "Home page (H1: …)"
   const url = written.match(/^(?:https?:\/\/)?(?:www\.)?([a-z0-9.-]+\.[a-z]{2,})(\/\S*)?$/i)
   if (url) return { path: url[2] || '/', host: url[1].toLowerCase(), written }
   if (/^\/\S*$/.test(written)) return { path: written, host: null, written }
   return { path: null, host: null, written }
+}
+
+/** "https://www.Example.com/x" → "example.com" (a competitor written as a domain). null = not a domain. */
+export function domainOf(text: string): string | null {
+  const m = clean(text)
+    .toLowerCase()
+    .match(/^(?:[a-z]+:\/\/)?(?:www\.)?([a-z0-9-]+(?:\.[a-z0-9-]+)+)(?:[/?#]\S*)?$/)
+  return m ? m[1] : null
+}
+
+const COMPANY_END = /^(llc|inc|co|corp|corporation|ltd|limited|company|pllc|llp|lp|plc)$/
+
+/**
+ * A competitor's match key, for any client: capitals, punctuation, https / www and endings like LLC / Inc / Co ignored.
+ * A domain counts by its name part: "breezyrosebeauty.com" → "breezyrosebeauty" = "Breezy Rose Beauty".
+ */
+export function competitorKey(name: string): string {
+  const d = domainOf(name)
+  if (d) {
+    const labels = d.split('.')
+    labels.pop() // .com / .net / .uk …
+    if (labels.length > 1 && /^(co|com|org|net)$/.test(labels[labels.length - 1])) labels.pop() // .co.uk
+    return labels[labels.length - 1] ?? ''
+  }
+  const words = name
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+  while (words.length > 1 && COMPANY_END.test(words[words.length - 1])) words.pop()
+  return words.join('')
+}
+
+/** Same competitor? Same key, or one key inside the other (6+ letters: "bluevelvet" / "bluevelvetspa.com"). */
+export function sameCompetitor(a: string, b: string): boolean {
+  const x = competitorKey(a)
+  const y = competitorKey(b)
+  if (!x || !y) return false
+  if (x === y) return true
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x]
+  return short.length >= 6 && long.includes(short)
 }
 
 /** Competitor name only: drop "(…)" / "[…]" (addresses, notes). */
@@ -147,6 +189,7 @@ export function parseSamsGuide(text: string): SamsGuide {
   let section: Section = 'intro'
   let header: string[] | null = null
   let page: PageTop | null = null
+  let lastType = ''
   const filled = (r: string[]) => r.filter((c) => clean(c)).length
 
   rows.forEach((r, i) => {
@@ -157,6 +200,7 @@ export function parseSamsGuide(text: string): SamsGuide {
       section = sec
       header = null
       page = null
+      lastType = ''
       if (SKIP_WHY[sec]) out.skipped.push({ line, section: first, why: SKIP_WHY[sec]! })
       return
     }
@@ -175,7 +219,8 @@ export function parseSamsGuide(text: string): SamsGuide {
 
     if (section === 'page2') {
       const id = get('id')
-      const m = id.match(/^(home|s[1-9])(?:\s*-\s*(a[1-9])|\s+hub)$/i)
+      // "S1-A2", "S1 hub", "Home-A1", or a bare "Home" (= Home-A1; the home page row if the sheet also has a Home-A1)
+      const m = id.match(/^(home|s[1-9])(?:\s*-\s*(a[1-9])|\s+hub)$/i) ?? (/^home$/i.test(id) ? ['Home', 'Home', 'A1'] : null)
       if (!m) return void out.notUnderstood.push({ line, section: 'Page 2', text: r.filter(Boolean).join(' | ') })
       const primaryText = get('primary')
       const pending = /^pending$/i.test(primaryText)
@@ -197,15 +242,22 @@ export function parseSamsGuide(text: string): SamsGuide {
       })
     } else if (section === 'competitors') {
       const code = clean(r[col(h, '#')] ?? r[0])
-      const written = get('name')
+      // A Name column, or a Domain / Website column: then the domain is the name ("europeanwaxcenter.com").
+      const byName = col(h, 'name') >= 0
+      const written = byName ? get('name') : get('domain', 'website', 'site', 'url')
       if (!/^c\d$/i.test(code) || !written) return void out.notUnderstood.push({ line, section: 'Competitors', text: r.filter(Boolean).join(' | ') })
-      const name = competitorName(written)
+      const bare = competitorName(written)
+      const name = byName ? bare : (domainOf(bare) ?? bare)
       out.competitors.push({ line, code: code.toUpperCase(), name: name || null, written })
     } else if (section === 'page3') {
-      const type = get('type')
-      const why = get('use', 'why')
+      // Merged Type cells: the type carries down to the rows below until a new one appears.
+      const type = get('type') || lastType
+      lastType = type
+      // A type that says where its keyword is ("Next pages (target keyword)"): keyword = the Use / why column, why = the page.
+      const target = /target keyword/i.test(type) && !!get('use', 'why')
+      const why = target ? get('keyword') : get('use', 'why')
       const status = /^reject/i.test(type) ? 'rejected' : 'later'
-      const kws = splitKeywords(get('keyword'))
+      const kws = splitKeywords(target ? get('use', 'why') : get('keyword'))
       if (!type || !kws.length) return void out.notUnderstood.push({ line, section: 'Page 3', text: r.filter(Boolean).join(' | ') })
       for (const k of kws) out.later.push({ line, type, keyword: k.keyword, volume: k.volume, why, status })
     } else if (section === 'page5') {
@@ -220,5 +272,7 @@ export function parseSamsGuide(text: string): SamsGuide {
       ;(page as PageTop).keywords.push({ line, rank, keyword, volume: parseVolume(get('volume')) })
     }
   })
+  // A bare "Home" next to a real Home-A1 row is the home page row (a hub row), not a second Home-A1.
+  for (const r of out.register) if (/^home$/i.test(r.id) && out.register.some((x) => x !== r && x.category === 'Home' && x.area === 'A1')) Object.assign(r, { area: null, hub: true })
   return out
 }

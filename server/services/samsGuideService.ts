@@ -11,7 +11,7 @@
 //   * competitors C1–C4: names only (brackets / addresses stripped, never stored)
 //   * one Sam's Guide import per client (delete it in Import history to import again); the raw CSV is kept untouched
 import { looksLikeAddress, keywordKey } from '../../src/lib/importRules.js'
-import { parseSamsGuide, type RegisterRow, type SamsGuide, type SheetVolume } from '../../src/lib/samsGuide.js'
+import { parseSamsGuide, sameCompetitor, type RegisterRow, type SamsGuide, type SheetVolume } from '../../src/lib/samsGuide.js'
 import type { SamsGuideConflict, SamsGuidePlan } from '../../src/types/seo.js'
 import { DatabaseError, db, must } from '../clients/supabase.js'
 import { clientRow, type ClientRow } from './clientService.js'
@@ -270,7 +270,7 @@ async function build(c: ClientRow, csvText: string, opts: SamsGuideOptions = {})
     const bad = !x.name || looksLikeAddress(x.name)
     const ex = comps.find((y) => y.code === x.code)
     let action = bad ? 'Refused: still looks like an address' : 'Save name only'
-    if (!bad && ex && ex.name !== x.name) {
+    if (!bad && ex && !sameCompetitor(ex.name, x.name!)) {
       action = `Conflict: ${x.code} is “${ex.name}” now: kept unless you tick replace`
       conflicts.push({ key: `comp:${x.code}`, kind: 'competitor', text: `${x.code} is “${ex.name}” now; the sheet says “${x.name}”.`, replaceable: true })
     } else if (!bad && ex) action = 'No change (same name)'
