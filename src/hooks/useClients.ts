@@ -31,7 +31,7 @@ export function useSaveClient() {
 export function useSaveAccount(siteId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (a: { kind: AccountKind; status: AccountStatus; nextAction: string; note: string }) => saveAccount(siteId, a),
+    mutationFn: (a: { kind: AccountKind; status: AccountStatus; nextAction: string; note: string; link?: string }) => saveAccount(siteId, a),
     onSuccess: ({ account }) => {
       // Pending accounts feed the guide's auto-tick and the counts on All clients.
       void qc.invalidateQueries({ queryKey: ['guide', siteId] })

@@ -2,7 +2,7 @@
 // Tables: seo_clients, seo_client_categories, seo_client_services, seo_client_areas, seo_client_accounts.
 // No address is ever stored (there is no column for it).
 import { z } from 'zod'
-import { ACCOUNT_KINDS, AREA_CODES, CATEGORY_CODES, CORE_ACCOUNT_KINDS, DEFAULT_FAQ_NAME } from '../../src/lib/clientSetup.js'
+import { ACCOUNTS, ACCOUNT_KINDS, accountLinkProblem, AREA_CODES, CATEGORY_CODES, CORE_ACCOUNT_KINDS, DEFAULT_FAQ_NAME } from '../../src/lib/clientSetup.js'
 import { checkIndustry, IndustryInputError } from './industryService.js'
 import { GUIDE_STEPS } from '../../src/lib/guide.js'
 import type {
@@ -55,7 +55,8 @@ export type ClientRow = {
 type CategoryRow = { id: string; client_id: string; code: CategoryCode; name: string; in_matrix: boolean; sort: number }
 type ServiceRow = { id: string; client_id: string; category_id: string; name: string; sort: number }
 type AreaRow = { id: string; code: AreaCode; name: string | null; state: string | null; status: AreaStatus }
-type AccountRow = { id: string; kind: AccountKind; status: AccountStatus; next_action: string | null; note: string | null; updated_at: string }
+type AccountRow = { id: string; kind: AccountKind; status: AccountStatus; next_action: string | null; note: string | null; link?: string | null; updated_at: string }
+const toAccount = (a: AccountRow): ClientAccount => ({ id: a.id, kind: a.kind, status: a.status, nextAction: a.next_action, note: a.note, link: a.link ?? null, updatedAt: a.updated_at })
 
 const byCode = <T extends { code: string }>(order: readonly string[]) => (a: T, b: T) => order.indexOf(a.code) - order.indexOf(b.code)
 
@@ -171,7 +172,7 @@ export async function clientDetail(c: ClientRow): Promise<ClientDetail> {
   const accountList: ClientAccount[] = (must(accounts, 'Loading the account checklist') as AccountRow[])
     .filter((a) => ACCOUNT_KINDS.includes(a.kind))
     .sort((a, b) => ACCOUNT_KINDS.indexOf(a.kind) - ACCOUNT_KINDS.indexOf(b.kind))
-    .map((a) => ({ id: a.id, kind: a.kind, status: a.status, nextAction: a.next_action, note: a.note, updatedAt: a.updated_at }))
+    .map(toAccount)
   return {
     ...summaryOf(c),
     idealClient: c.ideal_client,
@@ -225,7 +226,7 @@ const InputSchema = z.object({
     .length(5),
   areas: z.array(z.object({ code: z.enum(['A1', 'A2', 'A3']), name: text(80), state: text(40), status: z.enum(['active', 'n_a']) })).length(3),
   accounts: z
-    .array(z.object({ kind: z.enum(ACCOUNT_KINDS as [AccountKind, ...AccountKind[]]), status: z.enum(['ready', 'pending', 'n_a']) }))
+    .array(z.object({ kind: z.enum(ACCOUNT_KINDS as [AccountKind, ...AccountKind[]]), status: z.enum(['ready', 'pending', 'n_a']), link: z.string().max(500).optional() }))
     .max(ACCOUNT_KINDS.length)
     .optional(),
   outOfScopeWords: z.array(text(60)).max(100).optional(),
@@ -288,10 +289,15 @@ function validate(raw: unknown): ClientInput {
     if (a.status === 'active' && !a.name) throw new ClientInputError(`Name area ${a.code}, or mark it N/A.`)
   }
   if (input.areas.find((a) => a.code === 'A1')?.status !== 'active') throw new ClientInputError('A1 is the main area: give it a name.')
+  for (const a of input.accounts ?? []) {
+    const problem = a.link ? accountLinkProblem(a.link) : ''
+    if (problem) throw new ClientInputError(`${ACCOUNT_LABEL(a.kind)} link: ${problem}`)
+  }
   return input
 }
 
 const orNull = (s: string) => (s ? s : null)
+const ACCOUNT_LABEL = (k: AccountKind) => ACCOUNTS.find((a) => a.kind === k)?.label ?? k
 
 /** Creates or updates a client. Returns its (possibly new) site id. */
 export async function saveClient(raw: unknown, existingSiteId?: string): Promise<{ siteId: string }> {
@@ -395,7 +401,9 @@ async function createClient(input: ClientInput, fields: Record<string, unknown>)
           ACCOUNT_KINDS.map((kind, i) => ({
             client_id: created.id,
             kind,
-            status: input.accounts?.find((a) => a.kind === kind)?.status ?? 'pending',
+            // Ready by default: one agency account covers most tools; Angel sets Pending when something's missing.
+            status: input.accounts?.find((a) => a.kind === kind)?.status ?? 'ready',
+            ...(input.accounts?.find((a) => a.kind === kind)?.link?.trim() ? { link: input.accounts.find((a) => a.kind === kind)!.link!.trim() } : {}),
             sort: i,
           })),
         ),
@@ -471,6 +479,8 @@ const AccountSchema = z.object({
   status: z.enum(['ready', 'pending', 'n_a']),
   nextAction: text(300),
   note: text(500),
+  /** Left out = unchanged; '' = remove (Open goes back to the tool's main page). */
+  link: z.string().max(500).optional(),
 })
 
 export async function saveAccount(siteId: string, raw: unknown): Promise<ClientAccount> {
@@ -479,7 +489,11 @@ export async function saveAccount(siteId: string, raw: unknown): Promise<ClientA
   const c = await clientRow(siteId)
   if (!c) throw new ClientInputError('That client no longer exists.')
   const a = parsed.data
-  const values = { status: a.status, next_action: orNull(a.nextAction), note: orNull(a.note) }
+  if (a.link !== undefined) {
+    const problem = accountLinkProblem(a.link)
+    if (problem) throw new ClientInputError(problem)
+  }
+  const values = { status: a.status, next_action: orNull(a.nextAction), note: orNull(a.note), ...(a.link !== undefined ? { link: orNull(a.link.trim()) } : {}) }
   // Rows are made with the client; insert only if one is somehow missing. (The unique index is partial,
   // so PostgREST can't upsert on it.)
   const updated = must(
@@ -496,5 +510,5 @@ export async function saveAccount(siteId: string, raw: unknown): Promise<ClientA
         .single(),
       'Saving the account checklist',
     ) as AccountRow)
-  return { id: row.id, kind: row.kind, status: row.status, nextAction: row.next_action, note: row.note, updatedAt: row.updated_at }
+  return toAccount(row)
 }

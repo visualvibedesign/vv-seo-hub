@@ -85,7 +85,7 @@ export function saveClient(client: ClientInput, siteId?: string): Promise<{ site
 
 export function saveAccount(
   siteId: string,
-  account: { kind: AccountKind; status: AccountStatus; nextAction: string; note: string },
+  account: { kind: AccountKind; status: AccountStatus; nextAction: string; note: string; link?: string },
 ): Promise<{ account: ClientAccount }> {
   return call('/api/clients/account', json({ siteId, account }))
 }

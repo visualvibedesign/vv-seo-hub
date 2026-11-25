@@ -48,6 +48,8 @@ export interface ClientAccount {
   status: AccountStatus
   nextAction: string | null
   note: string | null
+  /** This client's own page in the tool (migration 0010). Links only, never logins. */
+  link: string | null
   updatedAt: string
 }
 
@@ -124,7 +126,7 @@ export interface ClientInput {
   categories: { code: CategoryCode; name: string; services: { id?: string; name: string }[] }[]
   areas: { code: AreaCode; name: string; state: string; status: AreaStatus }[]
   /** Add client only (wizard step 4): starting status per account. Edits happen on the Overview checklist. */
-  accounts?: { kind: AccountKind; status: AccountStatus }[]
+  accounts?: { kind: AccountKind; status: AccountStatus; link?: string }[]
   /** Edit client only (migration 0008). Left out = unchanged. */
   outOfScopeWords?: string[]
   neighbourhoodWords?: string[]

@@ -7,7 +7,8 @@ import { Spinner } from '../components/ui/Loading'
 import { useSaveClient } from '../hooks/useClients'
 import { ApiError } from '../lib/api'
 import IndustryPicker from '../components/client/IndustryPicker'
-import { ACCOUNTS, ACCOUNT_STATUS_LABEL } from '../lib/clientSetup'
+import { LinkEditor, OpenButton } from '../components/client/AccountParts'
+import { ACCOUNTS, ACCOUNT_STATUS_LABEL, accountOpenUrl } from '../lib/clientSetup'
 import { BTN_GHOST, BTN_LIME, CARD, CARD_TITLE, FIELD, LABEL } from '../lib/ui'
 import type { AccountKind, AccountStatus } from '../types/seo'
 
@@ -25,8 +26,10 @@ export default function AddClientPage() {
   const [reached, setReached] = useState<Step>(0)
   const [f, setF] = useState<FormState>(emptyForm)
   const [accounts, setAccounts] = useState<Record<AccountKind, AccountStatus>>(
-    () => Object.fromEntries(ACCOUNTS.map((a) => [a.kind, 'pending'])) as Record<AccountKind, AccountStatus>,
+    // Ready by default (one agency account covers most tools); set Pending only when something's missing.
+    () => Object.fromEntries(ACCOUNTS.map((a) => [a.kind, 'ready'])) as Record<AccountKind, AccountStatus>,
   )
+  const [links, setLinks] = useState<Partial<Record<AccountKind, string>>>({})
   const [error, setError] = useState('')
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setF((s) => ({ ...s, [k]: v }))
   const site = useSiteCheck(f.siteUrl)
@@ -67,7 +70,7 @@ export default function AddClientPage() {
     // Last step: save, then open the guide.
     setError('')
     try {
-      const client = { ...toInput(f), accounts: ACCOUNTS.map((a) => ({ kind: a.kind, status: accounts[a.kind] })) }
+      const client = { ...toInput(f), accounts: ACCOUNTS.map((a) => ({ kind: a.kind, status: accounts[a.kind], ...(links[a.kind] ? { link: links[a.kind] } : {}) })) }
       const res = await save.mutateAsync({ client })
       navigate(`/clients/${res.siteId}/guide`)
     } catch (err) {
@@ -194,16 +197,14 @@ export default function AddClientPage() {
               <h2 id="wiz-h" className={CARD_TITLE}>
                 Accounts
               </h2>
-              <p className="m-0 text-sm text-vv-muted">What’s ready today. Status only: never passwords or keys. You can change these later on the client’s Overview.</p>
+              <p className="m-0 text-sm text-vv-muted">Everything starts as Ready. Set Pending only if something’s missing. Open goes to the tool; paste this client’s own page if you have it. Links and status only, never usernames or passwords. You can change these later on the client’s Overview.</p>
             </div>
-            <AccountList list={ACCOUNTS.filter((a) => a.core)} accounts={accounts} setAccounts={setAccounts} />
-            <details className="group">
-              <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 text-[15px] font-semibold text-vv-purple-deep [&::-webkit-details-marker]:hidden">
-                More accounts ({ACCOUNTS.filter((a) => !a.core).length})
-                <span className="text-[13px] font-normal text-vv-muted">optional, they don’t count toward “accounts pending”</span>
-              </summary>
-              <AccountList list={ACCOUNTS.filter((a) => !a.core)} accounts={accounts} setAccounts={setAccounts} />
-            </details>
+            <AccountList list={ACCOUNTS.filter((a) => a.core)} accounts={accounts} setAccounts={setAccounts} links={links} setLinks={setLinks} siteUrl={site.check?.siteUrl ?? ''} />
+            <div className="flex flex-col gap-0.5 border-0 border-t border-solid border-vv-line pt-3">
+              <h3 className="m-0 text-[15px] font-bold text-vv-ink">More accounts ({ACCOUNTS.filter((a) => !a.core).length})</h3>
+              <span className="text-[13px] text-vv-muted">Optional. They don’t count toward “accounts pending”.</span>
+            </div>
+            <AccountList list={ACCOUNTS.filter((a) => !a.core)} accounts={accounts} setAccounts={setAccounts} links={links} setLinks={setLinks} siteUrl={site.check?.siteUrl ?? ''} />
           </>
         )}
       </section>
@@ -242,7 +243,23 @@ export default function AddClientPage() {
 
 type AccountMap = Record<AccountKind, AccountStatus>
 
-function AccountList({ list, accounts, setAccounts }: { list: typeof ACCOUNTS; accounts: AccountMap; setAccounts: (f: (x: AccountMap) => AccountMap) => void }) {
+type LinkMap = Partial<Record<AccountKind, string>>
+
+function AccountList({
+  list,
+  accounts,
+  setAccounts,
+  links,
+  setLinks,
+  siteUrl,
+}: {
+  list: typeof ACCOUNTS
+  accounts: AccountMap
+  setAccounts: (f: (x: AccountMap) => AccountMap) => void
+  links: LinkMap
+  setLinks: (f: (x: LinkMap) => LinkMap) => void
+  siteUrl: string
+}) {
   return (
     <ul className="m-0 flex list-none flex-col p-0">
       {list.map((a) => (
@@ -250,7 +267,10 @@ function AccountList({ list, accounts, setAccounts }: { list: typeof ACCOUNTS; a
           <span className="flex min-w-0 flex-col">
             <span className="text-[15px] font-semibold text-vv-ink">{a.label}</span>
             {a.hint && <span className="text-[13px] text-vv-muted">{a.hint}</span>}
+            <LinkEditor value={links[a.kind] ?? ''} label={a.label} onSave={(link) => setLinks((x) => ({ ...x, [a.kind]: link }))} />
           </span>
+          <span className="flex flex-none flex-wrap items-center gap-2">
+          <OpenButton url={accountOpenUrl(a.kind, links[a.kind], siteUrl)} label={a.label} />
           <span role="radiogroup" aria-label={`${a.label} status`} className="inline-flex gap-1 rounded-full bg-vv-lavender-50 p-1">
             {(['ready', 'pending', 'n_a'] as AccountStatus[]).map((st) => {
               const on = accounts[a.kind] === st
@@ -267,6 +287,7 @@ function AccountList({ list, accounts, setAccounts }: { list: typeof ACCOUNTS; a
                 </button>
               )
             })}
+          </span>
           </span>
         </li>
       ))}

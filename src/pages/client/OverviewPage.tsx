@@ -6,7 +6,9 @@ import { Spinner } from '../../components/ui/Loading'
 import StatCard from '../../components/ui/StatCard'
 import { useSaveAccount } from '../../hooks/useClients'
 import { useGuide } from '../../hooks/useGuide'
-import { ACCOUNTS, ACCOUNT_STATUS_LABEL } from '../../lib/clientSetup'
+import { LinkEditor, OpenButton } from '../../components/client/AccountParts'
+import { ApiError } from '../../lib/api'
+import { ACCOUNTS, ACCOUNT_STATUS_LABEL, accountOpenUrl } from '../../lib/clientSetup'
 import { useIndustryLabel } from '../../hooks/useIndustries'
 import { GUIDE, GUIDE_STEPS, stepDay } from '../../lib/guide'
 import { BTN_GHOST, BTN_LIME, BTN_LINK, CARD, CARD_TITLE, FIELD, PILL, PILL_TODO, siteLabel, splitAccent } from '../../lib/ui'
@@ -161,12 +163,12 @@ function serviceLine(names: string[]): string {
   return names.length > 3 ? `${names.slice(0, 3).join(', ')} + ${names.length - 3} more` : names.join(', ')
 }
 
-/** The 6 core accounts (count toward "pending" + the guide tick), then "More accounts" folded. */
+/** The 6 core accounts (count toward "pending" + the guide tick), then "More accounts", both always shown. Each row opens the tool. */
 function AccountsCard({ client: c }: { client: ClientDetail }) {
   const rows = (core: boolean) =>
     ACCOUNTS.filter((d) => d.core === core).flatMap((def) => {
       const a = c.accounts.find((x) => x.kind === def.kind)
-      return a ? [<AccountRow key={def.kind} siteId={c.siteId} account={a} label={def.label} />] : []
+      return a ? [<AccountRow key={def.kind} siteId={c.siteId} siteUrl={c.siteUrl} account={a} label={def.label} />] : []
     })
   const core = c.accounts.filter((a) => ACCOUNTS.find((d) => d.kind === a.kind)?.core)
   const ready = core.filter((a) => a.status === 'ready').length
@@ -184,18 +186,13 @@ function AccountsCard({ client: c }: { client: ClientDetail }) {
       </div>
       <ul className="m-0 flex list-none flex-col p-0">{rows(true)}</ul>
       {more.length > 0 && (
-        <details className="group border-0 border-t border-solid border-vv-line pt-2">
-          <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between text-[14px] font-semibold text-vv-purple-deep [&::-webkit-details-marker]:hidden">
-            More accounts ({more.length})
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="transition-transform group-open:rotate-180">
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </summary>
+        <div className="flex flex-col border-0 border-t border-solid border-vv-line pt-3">
+          <h3 className="m-0 text-[14px] font-bold text-vv-ink">More accounts ({more.length})</h3>
           <p className="m-0 pb-1 text-[12px] text-vv-muted">Optional. They don’t count toward “accounts pending”.</p>
           <ul className="m-0 flex list-none flex-col p-0">{more}</ul>
-        </details>
+        </div>
       )}
-      <p className="m-0 text-[13px] text-vv-muted">Status and next step only. Never passwords or keys here.</p>
+      <p className="m-0 text-[13px] text-vv-muted">Links and status only. Never usernames or passwords.</p>
     </section>
   )
 }
@@ -206,26 +203,21 @@ const STATUS_STYLE: Record<AccountStatus, string> = {
   n_a: 'border-vv-st-todo bg-vv-st-todo text-vv-st-todo-ink',
 }
 
-/** Name + status pill (a select), and a "next step" line for anything not ready. */
-function AccountRow({ siteId, account, label }: { siteId: string; account: ClientAccount; label: string }) {
+/** Name + Open (client link, else the tool's main page) + status pill, a client-link field, and a "next step" line for anything not ready. */
+function AccountRow({ siteId, siteUrl, account, label }: { siteId: string; siteUrl: string; account: ClientAccount; label: string }) {
   const save = useSaveAccount(siteId)
   const [next, setNext] = useState(account.nextAction ?? '')
   const [open, setOpen] = useState(false)
-  const send = (status: AccountStatus, nextAction: string) => save.mutate({ kind: account.kind, status, nextAction, note: account.note ?? '' })
+  const send = (status: AccountStatus, nextAction: string, link?: string) => save.mutate({ kind: account.kind, status, nextAction, note: account.note ?? '', ...(link !== undefined ? { link } : {}) })
   const showNext = account.status !== 'ready' && (open || !!next)
+  const saveError = save.error instanceof ApiError && save.error.detail ? save.error.detail : ''
 
   return (
     <li className="flex flex-col gap-1.5 border-0 border-t border-solid border-vv-line py-2 first:border-t-0">
       <div className="flex items-center justify-between gap-3">
-        <span className="flex min-w-0 items-baseline gap-2">
-          <span className="min-w-0 truncate text-[15px] font-medium">{label}</span>
-          {account.status !== 'ready' && !showNext && (
-            <button type="button" onClick={() => setOpen(true)} aria-label={`Add a next step for ${label}`} className={`${BTN_LINK} min-h-6 flex-none text-[12px]`}>
-              + Next step
-            </button>
-          )}
-        </span>
+        <span className="min-w-0 flex-1 text-[15px] font-medium leading-snug">{label}</span>
         <span className="flex flex-none items-center gap-2">
+          <OpenButton url={accountOpenUrl(account.kind, account.link, siteUrl)} label={label} />
           <span className="w-4 text-vv-muted" aria-live="polite">
             {save.isPending ? <Spinner /> : save.isError ? <span title="Couldn’t save" className="font-bold text-vv-red">!</span> : null}
           </span>
@@ -243,6 +235,14 @@ function AccountRow({ siteId, account, label }: { siteId: string; account: Clien
           </select>
         </span>
       </div>
+      <div className="flex flex-wrap items-baseline gap-x-4">
+        <LinkEditor value={account.link ?? ''} label={label} busy={save.isPending} onSave={(link) => send(account.status, next, link)} />
+        {account.status !== 'ready' && !showNext && (
+          <button type="button" onClick={() => setOpen(true)} aria-label={`Add a next step for ${label}`} className={`${BTN_LINK} min-h-6 flex-none text-[12px]`}>
+            + Next step
+          </button>
+        )}
+      </div>
       {showNext ? (
         <input
           aria-label={`${label} next step`}
@@ -258,6 +258,7 @@ function AccountRow({ siteId, account, label }: { siteId: string; account: Clien
           onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
         />
       ) : null}
+      {saveError && <span className="text-[12px] font-semibold text-vv-red">{saveError}</span>}
     </li>
   )
 }

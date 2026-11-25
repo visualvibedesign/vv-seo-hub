@@ -25,22 +25,50 @@ export const DEFAULT_FAQ_NAME = 'FAQ & help pages'
  * `core` = the context pack's checklist (GSC, GA4, GBP, Semrush, Whitespark, Clarity): only these count toward
  * "accounts pending" and the guide's accounts tick (Angel, Nov 25). The rest sit under "More accounts".
  */
-export const ACCOUNTS: { kind: AccountKind; label: string; hint: string; core: boolean }[] = [
-  { kind: 'gsc', label: 'Search Console', hint: 'Domain property', core: true },
-  { kind: 'ga4', label: 'GA4', hint: 'Goal: generate leads', core: true },
-  { kind: 'gbp', label: 'Google Business Profile', hint: 'Manager access', core: true },
-  { kind: 'semrush', label: 'Semrush', hint: 'Position Tracking, US (national), ~10 keywords', core: true },
-  { kind: 'whitespark', label: 'Whitespark', hint: 'Geogrid: top 1–3 services, main city', core: true },
-  { kind: 'clarity', label: 'Clarity', hint: 'Check privacy/consent first', core: true },
+export const ACCOUNTS: { kind: AccountKind; label: string; hint: string; core: boolean; home?: string }[] = [
+  { kind: 'gsc', label: 'Search Console', hint: 'Domain property', core: true, home: 'https://search.google.com/search-console' },
+  { kind: 'ga4', label: 'GA4', hint: 'Goal: generate leads', core: true, home: 'https://analytics.google.com/' },
+  { kind: 'gbp', label: 'Google Business Profile', hint: 'Manager access', core: true, home: 'https://business.google.com/' },
+  { kind: 'semrush', label: 'Semrush', hint: 'Position Tracking, US (national), ~10 keywords', core: true, home: 'https://www.semrush.com/projects/' },
+  { kind: 'whitespark', label: 'Whitespark', hint: 'Geogrid: top 1–3 services, main city', core: true, home: 'https://app.whitespark.ca/' },
+  { kind: 'clarity', label: 'Clarity', hint: 'Check privacy/consent first', core: true, home: 'https://clarity.microsoft.com/projects' },
   { kind: 'domain_dns', label: 'Domain / DNS', hint: 'For Search Console TXT verification', core: false },
   { kind: 'hosting', label: 'Hosting', hint: '', core: false },
   { kind: 'platform', label: 'Website platform', hint: 'WordPress + Vibe Admin / Vibe SEO', core: false },
-  { kind: 'cloudflare', label: 'Cloudflare', hint: 'If used', core: false },
-  { kind: 'google_ads', label: 'Google Ads / Keyword Planner', hint: 'If used', core: false },
+  { kind: 'cloudflare', label: 'Cloudflare', hint: 'If used', core: false, home: 'https://dash.cloudflare.com/' },
+  { kind: 'google_ads', label: 'Google Ads / Keyword Planner', hint: 'If used', core: false, home: 'https://ads.google.com/aw/keywordplanner/home' },
   { kind: 'ai_visibility', label: 'AI visibility tool', hint: 'Optional', core: false },
 ]
 export const ACCOUNT_KINDS = ACCOUNTS.map((a) => a.kind)
 export const CORE_ACCOUNT_KINDS = ACCOUNTS.filter((a) => a.core).map((a) => a.kind)
+
+/**
+ * Where "Open" goes: the client's own saved link, else the tool's main page (`home`). Website platform falls back
+ * to the client's site. Null = nothing to open yet (Domain / DNS, Hosting, AI visibility until a link is saved).
+ */
+export function accountOpenUrl(kind: AccountKind, link: string | null | undefined, siteUrl: string): string | null {
+  if (link) return link
+  if (kind === 'platform') return siteUrl || null
+  return ACCOUNTS.find((a) => a.kind === kind)?.home ?? null
+}
+
+/** A per-client account link: '' = fine (none). Links only, never logins: https, no user:pass@, no secrets in it. */
+export function accountLinkProblem(raw: string): string {
+  const s = raw.trim()
+  if (!s) return ''
+  if (s.length > 500) return 'That link is too long (500 characters max).'
+  let u: URL
+  try {
+    u = new URL(s)
+  } catch {
+    return 'That doesn’t look like a link. Paste the full address (https://…).'
+  }
+  if (u.protocol !== 'https:') return 'Use an https:// link.'
+  if (u.username || u.password) return 'Links only: no username or password in it.'
+  if (/(pass(word)?|pwd|token|secret|api[_-]?key|access[_-]?key)=/i.test(u.search + u.hash)) return 'That link carries a password or key. Paste the plain page link instead.'
+  if (/\s/.test(s)) return 'A link can’t have spaces in it.'
+  return ''
+}
 
 export const ACCOUNT_STATUS_LABEL: Record<AccountStatus, string> = { ready: 'Ready', pending: 'Pending', n_a: 'N/A' }
 
