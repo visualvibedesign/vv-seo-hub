@@ -5,7 +5,6 @@ import { ApiError, saveGoogleLink, testGoogle } from '../../lib/api'
 import { BTN_GHOST, BTN_LIME, BTN_LINK, CARD, FIELD, LABEL, PILL } from '../../lib/ui'
 import type { ClientDetail, GoogleSetup, GoogleTestResult } from '../../types/seo'
 import { Spinner } from '../ui/Loading'
-import { Soon } from './OverviewParts'
 
 // Client Overview › Connect Search Console + GA4 (phase 2a). The agency's service account reads both (read-only);
 // its email is added once per client. Here: pick the properties, Test (7 days, nothing saved), Save the ids.
@@ -14,25 +13,13 @@ import { Soon } from './OverviewParts'
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError && e.detail ? e.detail : fallback)
 const num = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 1 })
 
-export default function ConnectGoogle({ client: c }: { client: ClientDetail }) {
+export default function ConnectGoogle({ client: c, open, setOpen }: { client: ClientDetail; open: boolean; setOpen: (v: boolean) => void }) {
   const q = useGoogleSetup(c.siteId)
-  const [open, setOpen] = useState(false)
   const s = q.data
   const linked = !!(s?.link?.gscProperty || s?.link?.ga4Property)
 
-  // Linked: one slim line (the numbers show below it); Change opens the same panel.
-  if (linked && !open && s?.link)
-    return (
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-vv-body">
-        <span className={`${PILL} bg-vv-green-100 text-vv-green-ink`}>Google linked</span>
-        <span>
-          Search Console <strong className="text-vv-ink">{s.link.gscProperty ?? '—'}</strong> · GA4 <strong className="text-vv-ink">{s.link.ga4Property ?? '—'}</strong>
-        </span>
-        <button type="button" className={`${BTN_LINK} min-h-8 text-[13px]`} onClick={() => setOpen(true)}>
-          Change
-        </button>
-      </div>
-    )
+  // Linked: nothing here (the Sources button shows the properties; its Change opens this panel).
+  if (linked && !open) return null
 
   return (
     <section className={`${CARD} !rounded-[20px] !border-dashed !border-vv-lavender !gap-2.5 !p-8 phone:!p-5 items-start`} aria-labelledby="ov-google">
@@ -57,7 +44,6 @@ export default function ConnectGoogle({ client: c }: { client: ClientDetail }) {
             {q.isPending && <Spinner />}
             {linked ? 'Change' : 'Connect Search Console + GA4'}
           </button>
-          {linked && <Soon>Daily numbers: step 2b</Soon>}
         </span>
       ) : s ? (
         <Panel client={c} setup={s} onClose={() => setOpen(false)} />

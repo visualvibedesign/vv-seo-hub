@@ -4,6 +4,7 @@
 //   POST /api/metrics/google-save { siteId, gscProperty, ga4Property, queryWords } -> { link }
 //   GET  /api/metrics/overview?site=<site id>&range=28d|3m|12m -> MetricsOverview (Search Console + GA4 numbers)
 //   POST /api/metrics/sync { siteId }                    -> MetricsSyncResult ("Update numbers")
+//   GET  /api/metrics/rankings?site=<site id>           -> RankingsOverview (Semrush Position Tracking CSV)
 //   GET  /api/metrics/cron                               -> daily pull for every linked client. Vercel Cron only:
 //        Authorization: Bearer <CRON_SECRET> (no login cookie); without CRON_SECRET set it always refuses.
 // (One file for every phase 2 action: the app stays within Vercel Hobby's 12 server functions.)
@@ -11,6 +12,7 @@ import { DatabaseError } from '../../server/clients/supabase.js'
 import { GoogleConfigError } from '../../server/clients/google.js'
 import { googleSetup, GoogleInputError, saveGoogleLink, testGoogle } from '../../server/services/googleService.js'
 import { metricsOverview, syncAll, syncClient } from '../../server/services/metricsService.js'
+import { rankingsOverview, RankInputError } from '../../server/services/rankService.js'
 import { requireSession } from '../../server/utils/auth.js'
 import { timingSafeEqual } from 'node:crypto'
 import type { MetricRange } from '../../src/types/seo.js'
@@ -52,6 +54,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       const range = (['28d', '3m', '12m'].includes(params.get('range') ?? '') ? params.get('range') : '28d') as MetricRange
       return Response.json(await metricsOverview(params.get('site') ?? '', range))
     }
+    if (method === 'GET' && action === 'rankings') return Response.json(await rankingsOverview(params.get('site') ?? ''))
     if (method === 'POST' && action === 'sync') {
       const body = (await request.json().catch(() => ({}))) as { siteId?: unknown }
       return Response.json(await syncClient(String(body.siteId ?? '')))
@@ -62,7 +65,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
-    if (err instanceof GoogleInputError || err instanceof GoogleConfigError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
+    if (err instanceof GoogleInputError || err instanceof GoogleConfigError || err instanceof RankInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof DatabaseError) return Response.json({ error: 'database', detail: err.message }, { status: 500 })
     throw err
   }

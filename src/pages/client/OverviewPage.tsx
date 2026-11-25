@@ -4,10 +4,11 @@ import { useClientContext } from '../../components/layout/ClientLayout'
 import { Spinner } from '../../components/ui/Loading'
 import { Dash, LilacTable, PageHead, Panel, Soon } from '../../components/overview/OverviewParts'
 import { useSaveAccount } from '../../hooks/useClients'
-import { useKeywords } from '../../hooks/useKeywords'
 import { useNotes } from '../../hooks/useNotes'
 import { useGoogleSetup } from '../../hooks/useGoogle'
 import ConnectGoogle from '../../components/overview/ConnectGoogle'
+import RankingsCard from '../../components/overview/RankingsCard'
+import SourcesButton from '../../components/overview/SourcesButton'
 import GoogleNumbers from '../../components/overview/GoogleNumbers'
 import { LinkEditor, OpenButton } from '../../components/client/AccountParts'
 import { ApiError } from '../../lib/api'
@@ -34,6 +35,7 @@ const COMPARE: { metric: string; source: string }[] = [
 
 export default function OverviewPage() {
   const c = useClientContext()
+  const [googleOpen, setGoogleOpen] = useState(false)
   return (
     <>
       <PageHead
@@ -62,17 +64,18 @@ export default function OverviewPage() {
         }
       >
         <Link to={strategyPath(c.siteId)} className={BTN_LIME}>
-          Strategy Builder →
+          Strategy Builder
         </Link>
       </PageHead>
 
-      <Sources client={c} />
+      <SourcesButton client={c} onChangeGoogle={() => setGoogleOpen(true)} />
 
-      <ConnectGoogle client={c} />
+      <ConnectGoogle client={c} open={googleOpen} setOpen={setGoogleOpen} />
       <LinkedNumbers siteId={c.siteId} />
 
-      <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] items-start gap-4 [@media(max-width:1200px)]:grid-cols-2 [@media(max-width:760px)]:grid-cols-1">
-        <Rankings client={c} />
+      <RankingsCard client={c} />
+
+      <div className="grid grid-cols-2 items-start gap-4 [@media(max-width:760px)]:grid-cols-1">
         <Panel title="Map grid" sub="Whitespark · CSV or screenshot" right={<Soon>Phase 2</Soon>}>
           <div className="grid max-w-[240px] grid-cols-5 gap-2" aria-hidden="true">
             {Array.from({ length: 25 }, (_, i) => (
@@ -129,65 +132,6 @@ export default function OverviewPage() {
 function LinkedNumbers({ siteId }: { siteId: string }) {
   const link = useGoogleSetup(siteId).data?.link
   return link && (link.gscProperty || link.ga4Property) ? <GoogleNumbers siteId={siteId} /> : null
-}
-
-const DOT: Record<'live' | 'soon' | 'part', string> = { live: 'bg-vv-green', soon: 'bg-vv-muted', part: 'bg-vv-purple' }
-
-/** Where each number comes from, and whether we have it yet (real state only). */
-function Sources({ client: c }: { client: ClientDetail }) {
-  const tracked = c.counts.tracked
-  const link = useGoogleSetup(c.siteId).data?.link ?? null
-  const pulled = link?.lastSyncAt ? `Connected · pulled ${new Date(link.lastSyncAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}${link.lastSyncOk === false ? ' (with errors)' : ''}` : 'Linked · not pulled yet'
-  const list: { name: string; note: string; dot: keyof typeof DOT }[] = [
-    { name: 'Search Console', note: link?.gscProperty ? pulled : 'Not connected', dot: link?.gscProperty ? (link.lastSyncOk === false ? 'soon' : 'live') : 'soon' },
-    { name: 'GA4', note: link?.ga4Property ? pulled : 'Not connected', dot: link?.ga4Property ? (link.lastSyncOk === false ? 'soon' : 'live') : 'soon' },
-    { name: 'Semrush', note: tracked ? `${tracked} keywords tracked · positions CSV in phase 2` : 'No keywords tracked yet', dot: tracked ? 'part' : 'soon' },
-    { name: 'Whitespark', note: 'No map grid yet', dot: 'soon' },
-    { name: 'GBP', note: 'Not typed in yet', dot: 'soon' },
-  ]
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[12px] font-semibold uppercase tracking-[0.05em] text-vv-body">Sources</span>
-      {list.map((s) => (
-        <span key={s.name} className="inline-flex items-center gap-1.5 rounded-full border border-solid border-vv-field-line bg-vv-surface px-3 py-1 text-[12px]">
-          <span aria-hidden="true" className={`h-2 w-2 rounded-full ${DOT[s.dot]}`} />
-          <strong>{s.name}</strong>
-          <span className="text-vv-body">{s.note}</span>
-        </span>
-      ))}
-    </div>
-  )
-}
-
-/** The keywords marked Track (real); their positions come from the Semrush Position Tracking CSV in phase 2. */
-function Rankings({ client: c }: { client: ClientDetail }) {
-  const q = useKeywords(c.siteId)
-  const tracked = (q.data ?? []).filter((k) => k.track && k.status === 'keep')
-  return (
-    <Panel title="Keyword rankings" sub={`Semrush Position Tracking · ${c.counts.tracked} tracked keywords`} right={<Soon>Positions in phase 2</Soon>}>
-      {q.isPending ? (
-        <Spinner />
-      ) : tracked.length === 0 ? (
-        <p className="m-0 text-[13px] text-vv-body">
-          No keywords tracked yet. Pick them in{' '}
-          <Link to={strategyPath(c.siteId, 'keywords/database')} className="font-semibold text-vv-purple-deep">
-            Database
-          </Link>{' '}
-          (Track).
-        </p>
-      ) : (
-        <ul className="m-0 flex list-none flex-col p-0">
-          {tracked.slice(0, 10).map((k) => (
-            <li key={k.id} className="flex justify-between gap-3 border-0 border-t border-solid border-vv-line py-2 text-[13px] first:border-t-0">
-              <span className="min-w-0 truncate">{k.keyword}</span>
-              <span className="flex-none text-vv-muted">position —</span>
-            </li>
-          ))}
-          {tracked.length > 10 && <li className="pt-1 text-[12px] text-vv-muted">+ {tracked.length - 10} more</li>}
-        </ul>
-      )}
-    </Panel>
-  )
 }
 
 const KIND_PILL: Record<NoteKind, string> = {

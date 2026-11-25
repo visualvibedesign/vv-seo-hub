@@ -322,7 +322,7 @@ function ClientNav({ siteId, clients, current, mini, onGo }: { siteId: string; c
               mini ? 'mx-auto h-[50px] w-[50px] px-0' : 'mx-1'
             }`}
           >
-            {mini ? <NavIcon name="plan" /> : <>Strategy Builder <span aria-hidden="true">→</span></>}
+            {mini ? <NavIcon name="plan" /> : 'Strategy Builder'}
           </Link>
         </>
       )}
@@ -412,7 +412,6 @@ function ClientSwitcher({ siteId, current, clients, onGo }: { siteId: string; cu
   }
 
   const name = current?.name ?? 'Loading…'
-  const sub = current ? stepLabel(current.guide.current) : ''
 
   return (
     <div ref={box} className="relative">
@@ -427,12 +426,6 @@ function ClientSwitcher({ siteId, current, clients, onGo }: { siteId: string; cu
         <Avatar name={current?.name ?? '?'} />
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="line-clamp-2 text-[14px] font-bold leading-tight text-vv-ink" title={name}>{name}</span>
-          {sub && (
-            <span className="flex items-center gap-1.5 truncate text-[13px] text-vv-body">
-              <span aria-hidden="true" className="h-1.5 w-1.5 flex-none rounded-full bg-vv-purple" />
-              <span className="truncate">{sub}</span>
-            </span>
-          )}
         </span>
         <span aria-hidden="true" className="inline-flex h-8 w-8 flex-none items-center justify-center rounded-[10px] bg-vv-lavender-100 text-vv-purple-deep">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">

@@ -782,3 +782,46 @@ export interface MetricsSyncResult {
   topRows: number
   errors: string[]
 }
+
+// ---- Phase 2c · Semrush Position Tracking (seo_rank_snapshots) ------------------------------------------------
+
+/** Dry run of a Position Tracking CSV (nothing saved). */
+export interface RankPlan {
+  /** The tracked domain as Semrush writes it, e.g. "*.anassabeauty.com/*" */
+  domain: string
+  /** Dates with positions in the file (YYYY-MM-DD), oldest first */
+  dates: string[]
+  /** Semrush period line, e.g. "20261117 - 20261118" */
+  period: string | null
+  keywords: number
+  /** Keywords that are already in this client's Database (the rest are listed, not created) */
+  matched: number
+  unmatched: string[]
+  /** For the newest date in the file */
+  latest: { date: string; ranked: number; top3: number; top10: number; avgPosition: number | null }
+  /** Rows already saved for these dates (an import of the same dates replaces them) */
+  replaces: number
+  /** Other domains in the file (competitors): not imported */
+  otherDomains: string[]
+}
+
+export interface RankRow {
+  keyword: string
+  position: number | null
+  prevPosition: number | null
+  landingUrl: string | null
+  /** The page that owns this keyword (Clusters), when it differs from the ranking URL */
+  swappedWith: { name: string; url: string } | null
+}
+
+export interface RankingsOverview {
+  /** null = no Position Tracking CSV yet */
+  latest: string | null
+  previous: string | null
+  lastImport: { fileName: string; at: string } | null
+  buckets: { label: string; now: number; prev: number | null }[]
+  moves: { keyword: string; from: number | null; to: number | null }[]
+  rows: RankRow[]
+  swapped: number
+  avgPosition: number | null
+}

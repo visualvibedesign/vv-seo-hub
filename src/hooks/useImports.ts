@@ -35,6 +35,7 @@ export function useDeleteImport(siteId: string) {
     mutationFn: (importId: string) => deleteImport(siteId, importId),
     onSuccess: async () => {
       await Promise.all([
+        qc.invalidateQueries({ queryKey: ['rankings', siteId] }),
         qc.invalidateQueries({ queryKey: ['imports', siteId] }),
         qc.invalidateQueries({ queryKey: ['client', siteId] }),
         qc.invalidateQueries({ queryKey: ['clients'] }),

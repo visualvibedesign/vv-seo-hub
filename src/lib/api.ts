@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -360,4 +360,21 @@ export function getMetricsOverview(siteId: string, range: MetricRange): Promise<
 /** "Update numbers": pull this client's Search Console + GA4 now. */
 export function syncMetrics(siteId: string): Promise<MetricsSyncResult> {
   return call('/api/metrics/sync', json({ siteId }))
+}
+
+// ---- Phase 2c · Semrush Position Tracking CSV ------------------------------------------------------------
+
+/** Dry run: what the CSV holds and what an import would do (nothing saved). */
+export function previewRankCsv(siteId: string, base64: string): Promise<{ plan: RankPlan }> {
+  return call('/api/imports/rank-preview', json({ siteId, base64 }))
+}
+
+/** Saves the rankings (same dates are replaced) and keeps the raw file. */
+export function commitRankCsv(siteId: string, fileName: string, base64: string): Promise<{ importId: string; plan: RankPlan }> {
+  return call('/api/imports/rank-commit', json({ siteId, fileName, base64 }))
+}
+
+/** Latest positions vs the previous CSV date, biggest moves, swapped pages. */
+export function getRankings(siteId: string): Promise<RankingsOverview> {
+  return call(`/api/metrics/rankings?site=${encodeURIComponent(siteId)}`)
 }

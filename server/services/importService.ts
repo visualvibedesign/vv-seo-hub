@@ -510,7 +510,7 @@ export async function checkDeleteImport(siteId: string, importId: string): Promi
     : (sg === imp ? imp.column_map?.samsGuide : await samsGuideAdded(sg.id))
       ? 'Sam’s Guide: the matrix primaries and backups, new matrix cells and competitor names it added are removed. Track, Later / Rejected statuses, pages and its note stay.'
       : 'Sam’s Guide (older import): what it added to the matrix wasn’t recorded, so the matrix stays as it is.'
-  const notes = [...all.map((x) => (x.report === 'clusters' ? 'Pages added from the Clusters tab stay (only the import record goes).' : x.report === 'competitors' ? 'Competitor names this import added are removed.' : '')), sgNote].filter(Boolean)
+  const notes = [...all.map((x) => (x.report === 'clusters' ? 'Pages added from the Clusters tab stay (only the import record goes).' : x.report === 'competitors' ? 'Competitor names this import added are removed.' : x.report === 'position_tracking' ? 'The rankings from this Position Tracking CSV are removed.' : '')), sgNote].filter(Boolean)
   return { fileName: imp.file_name, historyRows, keywordsRemoved: remove.length, keywordsKept: keep.length, removedWithEdits, removedInUse, hasFile: !!imp.storage_path, tabImports: children.length, notes: [...new Set(notes)] }
 }
 

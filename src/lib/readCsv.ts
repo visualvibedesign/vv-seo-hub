@@ -36,7 +36,7 @@ export async function readCsvFile(file: File): Promise<ParsedFile> {
   const titleLine = lines.slice(0, headerAt).join(' ').trim()
   // Semrush Position Tracking exports have a "Keyword" column too, but they're rankings, not keyword research.
   if (/report type:\s*position_tracking/i.test(titleLine) || /position_tracking/i.test(file.name)) {
-    throw new Error('This is a Semrush Position Tracking export (rankings). It goes in the baseline (phase 2), not the keyword import.')
+    throw new Error('This is a Semrush Position Tracking export (rankings). Upload it in the client Overview: Keyword rankings › Upload CSV (or Baseline › Semrush).')
   }
   const body = lines.slice(headerAt).join('\n')
   const delimiter = lines[headerAt].includes('\t') ? '\t' : ','
