@@ -6,6 +6,8 @@ import { Bone, Spinner } from '../../components/ui/Loading'
 import { useCommitImport, useImports, usePreviewImport } from '../../hooks/useImports'
 import { useKeywords } from '../../hooks/useKeywords'
 import { useMatrix } from '../../hooks/useMatrix'
+import { useAutofill } from '../../hooks/useAutofill'
+import Day2Autofill from '../../components/autofill/Day2Autofill'
 import { ApiError } from '../../lib/api'
 import { CORE_ACCOUNT_KINDS } from '../../lib/clientSetup'
 import { guessFilter, REPORTS, sourceOf } from '../../lib/importRules'
@@ -66,7 +68,7 @@ export default function UploadsPage() {
         <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-start gap-6 [@media(max-width:1100px)]:grid-cols-1">
           {day.key === 'day1' ? <Day1Needs client={c} /> : <Day2Needs client={c} />}
           <div className="flex min-w-0 flex-col gap-6">
-            <ClaudeFilled day={day.key} />
+            {day.key === 'day2' ? <Day2Autofill client={c} /> : <ClaudeFilled day={day.key} />}
             <NeedsYou client={c} day={day.key} />
             <p className="m-0 text-[14px] leading-normal text-vv-body">
               Claude never changes exported numbers, never invents volumes, reviews or facts, and nothing goes to the live site without your OK.
@@ -377,13 +379,6 @@ function QueueRow({ q, onImport, onSkip, busy }: { q: Queued; onImport: () => vo
 
 // ---- Right column ------------------------------------------------------------------------------
 
-const DAY2_FILLS = [
-  { title: 'Roles', what: 'Primary · Secondary · FAQ · Near me, using Sam’s rules' },
-  { title: 'Services', what: 'Each keyword matched to one of the client’s services' },
-  { title: 'Intent', what: 'Transactional, commercial, informational (only where Semrush left it empty)' },
-  { title: '3×3 matrix', what: 'Suggested primary + backups per cell, from volume and fit' },
-  { title: 'Clusters', what: 'Pages drafted, no keyword on two pages' },
-]
 const DAY1_FILLS = [
   { title: 'Services', what: 'Home + S1–S3 and their services, from the Services page' },
   { title: 'Areas', what: 'A1–A3 from the kickoff notes' },
@@ -391,7 +386,8 @@ const DAY1_FILLS = [
 ]
 
 function ClaudeFilled({ day }: { day: string }) {
-  const fills = day === 'day1' ? DAY1_FILLS : DAY2_FILLS
+  const fills = DAY1_FILLS
+  void day
   return (
     <section className={`${CARD} !gap-0 !p-7 phone:!p-5`} aria-labelledby="filled-h">
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
@@ -414,7 +410,7 @@ function ClaudeFilled({ day }: { day: string }) {
         ))}
       </ul>
       <p className="m-0 border-0 border-t border-solid border-vv-line pt-3.5 text-[14px] text-vv-body">
-        Auto-fill isn’t switched on yet: plain-code rules come in step 6b, the Claude parts in 6c. Everything it fills waits here as “Ready to review”.
+        Day 1 auto-fill reads pasted notes and the Services page, so it uses Claude: it comes in step 6c. Everything it fills waits here as “Ready to review”.
       </p>
     </section>
   )
@@ -423,8 +419,12 @@ function ClaudeFilled({ day }: { day: string }) {
 function NeedsYou({ client: c, day }: { client: ClientDetail; day: string }) {
   const kws = useKeywords(c.siteId)
   const matrix = useMatrix(c.siteId)
+  const autofill = useAutofill(c.siteId)
   if (day === 'day1') return null
   const all = (kws.data ?? []).filter((k) => k.status !== 'rejected')
+  // Keywords the service rules couldn't match, still without a service (set them by hand).
+  const stillNoService = new Set(all.filter((k) => !k.serviceId).map((k) => k.id))
+  const noServiceMatch = (autofill.data?.find((r) => r.kind === 'services')?.unmatched ?? []).filter((u) => stillNoService.has(u.keywordId))
   const cells = matrix.data?.rows.flatMap((r) => r.cells) ?? []
   const pendingCells = cells.filter((x) => x.state === 'pending').length
   const primNoKp = cells.filter((x) => x.primary && !x.primary.kpVolume).length
@@ -432,6 +432,13 @@ function NeedsYou({ client: c, day }: { client: ClientDetail; day: string }) {
     pendingCells > 0 && { text: `Pick the final primary for ${pendingCells} matrix cell${pendingCells === 1 ? '' : 's'}`, to: 'keywords' },
     primNoKp > 0 && { text: `Type KP ranges for ${primNoKp} matrix primar${primNoKp === 1 ? 'y' : 'ies'} with no range`, to: 'keywords/database' },
     all.filter((k) => !k.role).length > 0 && { text: `${all.filter((k) => !k.role).length} keywords need a role`, to: 'keywords/database' },
+    noServiceMatch.length > 0 && {
+      text: `${noServiceMatch.length} keyword${noServiceMatch.length === 1 ? '' : 's'} match no service (set by hand or reject): ${noServiceMatch
+        .slice(0, 3)
+        .map((u) => u.keyword)
+        .join(', ')}${noServiceMatch.length > 3 ? '…' : ''}`,
+      to: 'keywords/database',
+    },
     all.filter((k) => k.semrushVolume === null).length > 0 && {
       text: `${all.filter((k) => k.semrushVolume === null).length} keywords have no Semrush volume (bulk Keyword Overview)`,
       to: 'keywords/database',

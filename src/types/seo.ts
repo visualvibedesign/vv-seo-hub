@@ -393,3 +393,43 @@ export interface TemplateInput {
   description: string
   items: TemplateItem[]
 }
+
+// ---- Auto-fill (redesign step 6; migration 0006) ---------------------------------------------------------
+
+export type AutofillKind = 'setup_services' | 'setup_areas' | 'setup_kickoff' | 'roles' | 'services' | 'intent' | 'matrix' | 'clusters'
+export type AutofillStatus = 'ready' | 'approved' | 'rejected' | 'superseded'
+
+export interface AutofillOption {
+  value: string
+  rule: string
+}
+
+export interface AutofillItem {
+  keywordId: string
+  keyword: string
+  /** One option = a suggestion; more = "needs a look" (two rules disagree). */
+  options: AutofillOption[]
+  decision: 'approved' | 'rejected' | 'skipped' | null
+  applied?: string
+}
+
+export interface AutofillRow {
+  id: string
+  step: number
+  kind: AutofillKind
+  source: 'rules' | 'claude'
+  status: AutofillStatus
+  summary: string
+  items: AutofillItem[]
+  unmatched: { keywordId: string; keyword: string }[]
+  appliedCount: number | null
+  createdAt: string
+  decidedAt: string | null
+}
+
+export interface AutofillDecision {
+  keywordId: string
+  action: 'approve' | 'reject'
+  /** For "needs a look": the option picked. */
+  value?: string
+}

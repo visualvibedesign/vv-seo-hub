@@ -1,5 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
+import type { AutofillDecision, AutofillRow } from '../types/seo'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
 export class ApiError extends Error {
@@ -176,6 +177,22 @@ export function getTemplates(): Promise<{ templates: Template[] }> {
 /** Adds a template (no id) or saves an existing one. */
 export function saveTemplate(t: TemplateInput): Promise<{ template: Template }> {
   return call('/api/templates/save', json(t))
+}
+
+// ---- Auto-fill (redesign step 6) -----------------------------------------------------------
+
+export function getAutofill(siteId: string): Promise<{ rows: AutofillRow[] }> {
+  return call(`/api/autofill/list?site=${encodeURIComponent(siteId)}`)
+}
+
+/** Day 2 plain-code rules (roles + services): saved as Ready to review, nothing applied. */
+export function runAutofillRules(siteId: string): Promise<{ rows: AutofillRow[] }> {
+  return call('/api/autofill/run-rules', json({ siteId }))
+}
+
+/** Approve / reject rows of one suggestion. */
+export function decideAutofill(siteId: string, autofillId: string, decisions: AutofillDecision[]): Promise<{ rows: AutofillRow[] }> {
+  return call('/api/autofill/decide', json({ siteId, autofillId, decisions }))
 }
 
 /** Stores a copy of the template on the client. */
