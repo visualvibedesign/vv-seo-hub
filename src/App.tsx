@@ -26,8 +26,8 @@ const router = createBrowserRouter([
           { path: '/templates', lazy: page(() => import('./pages/TemplatesPage')) },
           { path: '/templates/new', lazy: page(() => import('./pages/TemplateEditorPage')) },
           { path: '/templates/:id/edit', lazy: page(() => import('./pages/TemplateEditorPage')) },
-          // Settings: Industries, Claude usage, Automation (built next). /automation is now a Settings card.
-          { path: '/settings', lazy: page(() => import('./pages/HubComingSoonPage')) },
+          // Settings: Industries, Claude usage, Automation (phase 5 card). /automation is now a Settings card.
+          { path: '/settings', lazy: page(() => import('./pages/SettingsPage')) },
           { path: '/automation', element: <Navigate to="/settings" replace /> },
           // Client setup (Strategy Builder › Day 1) is the client form: its own page frame (title, breadcrumb, save bar).
           { path: '/clients/:siteId/strategy/setup', lazy: page(() => import('./pages/ClientFormPage')) },

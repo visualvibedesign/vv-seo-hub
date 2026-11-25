@@ -162,7 +162,7 @@ export const HUB_SECTIONS: ClientSection[] = [
   { key: 'hub-overview', label: 'Overview', path: '/', live: true, tag: '' },
   { key: 'clients', label: 'Clients', path: '/clients', live: true, tag: '' },
   { key: 'templates', label: 'Templates', path: '/templates', live: true, tag: '' },
-  { key: 'settings', label: 'Settings', path: '/settings', live: false, tag: 'P1' },
+  { key: 'settings', label: 'Settings', path: '/settings', live: true, tag: '' },
 ]
 
 /** "Building now · phase 1", "Coming in phase 3", "Comes with the Vibe SEO plugin", "Coming later". */

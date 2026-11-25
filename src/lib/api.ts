@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -318,4 +318,11 @@ export function saveLink(l: { siteId: string; id?: string; label: string; url: s
 
 export function deleteLink(siteId: string, id: string): Promise<{ ok: true }> {
   return call('/api/notes/link-delete', json({ siteId, id }))
+}
+
+// ---- Settings ---------------------------------------------------------------------------------------
+
+/** Claude calls per client / month / task (estimates at call time). */
+export function getAiUsage(): Promise<{ usage: AiUsage }> {
+  return call('/api/autofill/usage')
 }

@@ -37,7 +37,7 @@ export const GUIDE: GuideStep[] = [
     day: 'Day 1',
     short: 'Setup',
     title: 'Client setup',
-    overview: { title: 'Client setup', blurb: 'services, areas, accounts' },
+    overview: { title: 'Client setup', blurb: 'services, areas, scope and brand words' },
     why: 'Know what matters before touching anything: the 3 services and areas that bring the most money.',
     tasks: [
       { key: 'services', label: 'Name Home + S1–S3 and the services under each', auto: true, hint: 'Ticks itself when Home and S1–S3 are named and S1–S3 each have a service.' },

@@ -643,3 +643,24 @@ export interface SheetApplyResult {
   importId: string | null
   tabs: { name: string; kind: SheetTabKind; status: 'applied' | 'skipped' | 'failed' | 'not_run'; message: string }[]
 }
+
+// ---- Settings › Claude usage (from seo_ai_log, migration 0006; estimates at call time) ---------------------------
+
+export interface AiUsageSum {
+  calls: number
+  failed: number
+  costUsd: number
+  inputTokens: number
+  outputTokens: number
+}
+
+export interface AiUsage {
+  /** "2026-11" (UTC) */
+  thisMonth: string
+  total: AiUsageSum
+  /** Newest first, up to 12. */
+  months: (AiUsageSum & { month: string })[]
+  tasks: (AiUsageSum & { task: string })[]
+  /** siteId null = the client was deleted (its calls still count). */
+  clients: { siteId: string | null; name: string; month: AiUsageSum; all: AiUsageSum; lastAt: string }[]
+}

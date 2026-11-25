@@ -4,9 +4,11 @@
 //   POST /api/autofill/decide { siteId, autofillId, decisions[] } -> { rows }  (approve / reject rows)
 //   POST /api/autofill/estimate { siteId, task }                  -> { estimate } (count_tokens: free, nothing saved)
 //   POST /api/autofill/run-ai { siteId, task }                    -> { rows }  (one Claude call, logged; Ready to review)
+//   GET  /api/autofill/usage                                       -> { usage: AiUsage } (Settings › Claude usage, read only)
 import { DatabaseError } from '../../server/clients/supabase.js'
 import { AutofillInputError, decide, listAutofill, retireStale, runDay2Rules } from '../../server/services/autofillService.js'
 import { estimate, run } from '../../server/services/aiAutofillService.js'
+import { aiUsage } from '../../server/services/aiUsageService.js'
 import { AiCallError } from '../../server/services/aiService.js'
 import { AiConfigError } from '../../server/clients/anthropic.js'
 import { AI_TASKS, type AiTask } from '../../src/lib/aiModels.js'
@@ -29,6 +31,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
   if (denied) return denied
   const action = actionOf(request)
   try {
+    if (method === 'GET' && action === 'usage') return Response.json({ usage: await aiUsage() })
     if (method === 'GET' && action === 'list') return Response.json({ rows: await listAutofill(new URL(request.url).searchParams.get('site') ?? '') })
     if (method === 'POST' && action === 'run-rules') {
       const body = (await request.json().catch(() => ({}))) as { siteId?: unknown }
