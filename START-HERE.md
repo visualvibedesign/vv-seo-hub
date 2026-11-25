@@ -1,54 +1,63 @@
 # SEO Hub – start here (for Angel)
 
+**Updated Nov 25, 2026. Website first, plugin later.**
+
 ## Folder setup
 ```
 Projects/
-├─ visual-vibe-dashboard/   ← HQ (already there)
-└─ vv-seo-hub/              ← this folder
-   ├─ START-HERE.md
-   ├─ CLAUDE.md
-   └─ docs/
-      ├─ seo-hub-context-pack.md
-      ├─ seo-hub-phases.md
-      ├─ local-seo-playbook.md
-      └─ vibe-seo-handoff-notes.md
+├─ visual-vibe-dashboard/   ← HQ (read only for SEO Hub)
+├─ vv-seo-hub/              ← SEO Hub app (this folder)
+│  ├─ START-HERE.md
+│  ├─ CLAUDE.md
+│  └─ docs/
+│     ├─ BUILD-ROADMAP.md        ← every phase, in order
+│     ├─ seo-hub-phases.md       ← SEO Hub phases in detail + prompts
+│     ├─ seo-hub-context-pack.md
+│     ├─ local-seo-playbook.md
+│     ├─ vibe-seo-plugin-plan.md
+│     ├─ vibe-seo-handoff-notes.md
+│     └─ design/                 ← exported design screens
+└─ vibe-seo/                ← Vibe SEO plugin (later, after SEO Hub phase 4)
 ```
 
-1. Make an empty, **private** GitHub repo called `vv-seo-hub` (no README).
-2. Open Claude Code in this folder and paste **Prompt 1**.
-3. Copy the Supabase URL + keys from HQ's `.env` into the new `.env` (never commit it).
-4. Check it on localhost, then paste **Prompt 2** (phase 1).
-5. Later prompts: copy them from `docs/seo-hub-phases.md`.
+## Where we are
+- Done: phase 0 portal in HQ, SEO Hub repo + Vercel, phase 1 steps 1–4 (database, sign-in, clients, CSV import) on branch `phase-1`, full design.
+- Now: redo phase 1 to match the design (keep what already matches), then phases 2 → 3 → 4.
+- Later: the Vibe SEO plugin + site connection (see `docs/BUILD-ROADMAP.md`).
 
-## Prompt 1 · project setup
+## Steps
+1. **Back up:** `git add -A` → `git commit -m "Backup before redesign"` → `git checkout -b redesign`.
+2. **Docs:** replace `CLAUDE.md`, `START-HERE.md` and `docs/` with the new files. Don't touch `src/`, `CONTEXT.md` or `.env.local`.
+3. **Design:** export the screens into `docs/design/` (Main, Clients, NewClient, Templates, TemplateEditor, Client, Guide, Autofill, Keywords, Notes, Sidebar).
+4. **Key:** add `ANTHROPIC_API_KEY=...` to `.env.local` (never committed).
+5. **Paste the audit prompt** below → read `docs/redesign-audit.md` → approve or adjust.
+6. **Paste the build prompt** → test each step on localhost (phone + dark mode) → "next".
+7. **Phase 1 done** (checklist in `docs/seo-hub-phases.md`) → only then say push for a Vercel preview → share with Alexia.
+8. **Phases 2, 3, 4:** prompts in `docs/seo-hub-phases.md`.
+
+## Prompt · audit (no code)
 ```
-This is the folder for SEO Hub. Read CLAUDE.md and everything in docs/ first, especially docs/seo-hub-phases.md (rules, phase 0, phase 1).
-The Visual Vibe HQ code is in ../visual-vibe-dashboard. Read it to copy its setup, styles, components and login check. Do NOT change anything in that folder.
+The plan changed. Read CLAUDE.md, docs/BUILD-ROADMAP.md, docs/seo-hub-phases.md, docs/seo-hub-context-pack.md, docs/local-seo-playbook.md and every screen in docs/design/. We build the website first; the site connection waits for the plugin.
 
-Set up the project only (no features yet):
-- same React + Vite setup as HQ
-- copy HQ's styles (fonts, colors, cards, buttons, sidebar) so it looks the same
-- .env.example with the Supabase keys needed (same Supabase project as HQ), and .env in .gitignore
-- a simple placeholder page in the HQ style that says "SEO Hub"
-- git init, connect to github.com/<my-account>/vv-seo-hub, but do NOT push yet
+Compare what's already built (database, sign-in, clients, CSV import, sidebar, styles) with the design, phases and logic. Make a table: Keep (already matches), Change (what and why), Remove (only if it conflicts), New (missing). Include the database tables and the SEO Hub logic (auto-fill rules vs Claude API, review/approve, templates, guide progress).
 
-Then run it on localhost and tell me how to check it. After that, wait for me to send the phase 1 prompt.
-```
-
-## Prompt 2 · phase 1
-```
-Phase 1 of SEO Hub: clients + keyword database + CSV import + 3×3 matrix + clusters (Sam Days 1–2).
-Read docs/seo-hub-context-pack.md, docs/seo-hub-phases.md (rules, phase 0 and phase 1), docs/local-seo-playbook.md (Days 1–2) and the Visual Vibe HQ code in ../visual-vibe-dashboard for its styles, components and login (read only).
-
-No design mockups. Build it directly in the Visual Vibe HQ style (reuse HQ's styles and components so both apps match).
-
-Step 1 (plan only, no code): which HQ styles/components to reuse, Supabase tables (same Supabase project as HQ, SEO tables kept separate, RLS on all), how sign-in works now (same team password) and later (HQ's shared vv_session cookie), folder structure, build steps.
-Step 2 (after I approve): build on a local branch, one step per message, and tell me what to test on localhost. Use Anassa's real data.
-Step 3: do NOT push, merge or deploy until I say so. When I say, push for a Vercel preview that is behind the team login.
-
-Rules: volumes exactly as exported, skip exact duplicates only, flag missing data, no private address field, team-only.
+Save it as docs/redesign-audit.md. Plan only, no code. Don't delete any data or tables without asking me.
 ```
 
-## Before going live
-- Ask Alexia: OK to use the same Supabase project as HQ?
-- Vercel: Add New → Project → import `vv-seo-hub`, add the same env keys, turn on password protection before sharing the link.
+## Prompt · build phase 1
+```
+Approved. Build phase 1 on the redesign branch following docs/redesign-audit.md and docs/seo-hub-phases.md › Phase 1, in this order:
+1. Layout + new sidebar (hub mode / client mode, foldable groups, client switcher)
+2. All clients + Add client wizard
+3. Client overview + step-by-step guide
+4. Keywords (database, 3×3 matrix, clusters, import) updated to the design
+5. Templates + editor
+6. Uploads + auto-fill (Day 1 + Day 2) with the Claude API
+7. Notes & links
+One step per message. After each: tell me what to test on localhost, then commit locally. Do NOT push, merge or deploy until I say so.
+```
+
+## Never
+- Push, merge or deploy until Angel says so.
+- Change Visual Vibe HQ or Vibe Admin. Log in to WordPress admin.
+- Delete data or tables without asking. Store a private address or keys in tables.

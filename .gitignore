@@ -31,3 +31,11 @@ dist-ssr
 # Playwright page checks
 playwright-report/
 test-results/
+
+# Client test files (real client data, local only)
+test-data/
+
+# The Vibe SEO plugin and its kit live next to this repo (../vibe-seo, ../vibe-seo-kit), never in it
+vibe-seo/
+vibe-seo-kit/
+*.zip

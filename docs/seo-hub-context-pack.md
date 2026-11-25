@@ -1,6 +1,6 @@
 # SEO Hub – Context Pack
 
-Everything Claude needs to know for the SEO Hub project. Updated Nov 20, 2026.
+Everything Claude needs to know for the SEO Hub project. Updated Nov 25, 2026. Order of every phase (SEO Hub + Vibe SEO): `BUILD-ROADMAP.md`.
 
 ## Who
 - **Angel**: Web Developer & SEO Support at Visual Vibe Design (remote, Cebu, Philippines). Builds sites in Elementor, manages Google Business Profiles, does keyword research and monthly SEO reporting. Owns SEO Hub and the Vibe SEO plugin.
@@ -15,16 +15,20 @@ Everything Claude needs to know for the SEO Hub project. Updated Nov 20, 2026.
 
 ## The project
 - **Goal:** an SEO dashboard web app ("SEO Hub"), like our project management app Visual Vibe HQ, but only for SEO. Strategy + implementation + later automation, for every SEO client.
-- **Stack:** React + Vite (same setup as HQ), Vercel, Supabase (same project as HQ), GitHub (repo `vv-seo-hub`), ClickUp API, Claude API, Slack. Team-only.
+- **Stack:** React + Vite (same setup as HQ), Vercel (`vv-seo-hub.vercel.app`), Supabase (same project as HQ), GitHub (`visualvibedesign/vv-seo-hub`), Claude API (from phase 1, same account as HQ), ClickUp API, Slack. Team-only.
 - **Login:** shared team password + signed `vv_session` cookie from HQ (no Supabase Auth, no user list). See Phase 0 in `seo-hub-phases.md`.
-- **Look:** same as Visual Vibe HQ (see Look below). No separate design mockups: build directly in the HQ style.
-- **Connects to client sites** through the **Vibe SEO** WordPress plugin (1.0.0, split out of Vibe Admin 1.38.0 by Alexia on Nov 19, 2026). Sites send a signed daily check-in to SEO Hub. Details: `vibe-seo-handoff-notes.md`. Built in phase 5.
-- **Status (Nov 20, 2026):** Alexia approved SEO Hub and the one-login portal. Portal (Phase 0) is being built inside HQ. Next: SEO Hub phase 1.
+- **Look:** same as Visual Vibe HQ (see Look below). The approved design canvas is the source of truth: https://claude.ai/artifact/8WkeSEz7sQxqm6NRV5Uu8H (export screens into `docs/design/` for Claude Code).
+- **How it works:** you upload, Claude fills, you approve. Each step lists the exact exports with "how to get this file" steps; plain code rules fill exact things, the **Claude API** (same Anthropic account as HQ) fills judgment and writing; everything is "Ready to review" until approved. New clients start from **templates** and follow a **step-by-step guide** of Sam's 10 days.
+- **Connects to client sites** through the **Vibe SEO** WordPress plugin (1.0.0, split out of Vibe Admin 1.38.0 by Alexia on Nov 19, 2026). Sites send a signed daily check-in to SEO Hub. Live version is Vibe SEO 1.2.0 (Alexia, Nov 21). Plan: 1.3.0 adds a per-site SEO Hub key + read-only page data (with SEO Hub phase 2), 1.4.0 applies approved pushes + redirects (with phase 5). Add only: nothing removed, Vibe Admin never changed. Details: `vibe-seo-plugin-plan.md`, `vibe-seo-handoff-notes.md`.
+- **Status (Nov 24, 2026):** portal live in HQ (SEO Hub card closed for now). SEO Hub repo + Vercel set up; phase 1 steps 1–4 built locally (database, sign-in, clients, CSV import). Vibe Admin 1.38.0 + Vibe SEO 1.0.0 tested on the staging site. Full design (phases 1–5) done. Nov 25: integration plan with Vibe SEO decided (see `vibe-seo-plugin-plan.md`), questions sent to Alexia. Next: rest of phase 1 (new sidebar, templates, guide, uploads + auto-fill).
 
 ## Key docs (links)
-- Full phase plan + prompts: `seo-hub-phases.md`
+- Master roadmap (both projects, in order): `BUILD-ROADMAP.md`
+- Full SEO Hub phase plan + prompts: `seo-hub-phases.md`
+- Vibe SEO plugin plan (releases, connection key): `vibe-seo-plugin-plan.md`
 - Vibe SEO plugin handoff (API, routes, release steps): `vibe-seo-handoff-notes.md` · live doc https://claude.ai/artifact/16FpwdrWz5JNpYroz1Mv28
-- Sam's full process: `local-seo-playbook.md`
+- Sam's full process: `local-seo-playbook.md` (Days 1–10)
+- SEO Hub design canvas (all screens): https://claude.ai/artifact/8WkeSEz7sQxqm6NRV5Uu8H
 - Strategy brief (Google Doc): https://docs.google.com/document/d/1oQejyg41v92z9VL2DMgCz0S0HlQuxk5hbAzSqsUdUYA/edit
 - Anassa data (example client sheet): https://docs.google.com/spreadsheets/d/1-2eOHF19IGriVokfAhJ_1Gdh7DHhjjOcBRzfCoxYMxA/edit
 - Old dashboard mockup (WordPress-admin look, for screen ideas only): https://claude.ai/artifact/5vJcmegarEA7wr6Jb4h1Mq
@@ -33,7 +37,7 @@ Everything Claude needs to know for the SEO Hub project. Updated Nov 20, 2026.
 ## Sam's process → SEO Hub steps (one flow per client)
 | Step | Sam day | What |
 | --- | --- | --- |
-| 0 Client setup | 1 | S1–S3 services, A1–A3 areas, ideal client, account checklist (GSC, GA4, GBP, Semrush, Whitespark, Clarity) |
+| 0 Client setup | 1 | S1–S3 services, A1–A3 areas, account checklist (GSC, GA4, GBP, Semrush, Whitespark, Clarity). Kickoff answers (12-month goal, USP, ideal client) are skipped at our agency |
 | 1 Keywords | 2 | KP + Semrush CSV import, master keyword database, 3×3 matrix (+ Home row), clusters |
 | 2 Baseline | 3 | Semrush Position Tracking CSV (US), Whitespark grid, GSC / GA4 / GBP numbers with dates |
 | 3 GBP check | 4 | Competitors (Maps, Pleper categories, reviews), Whitespark factors, business details (private address hidden) |
@@ -76,13 +80,13 @@ Everything Claude needs to know for the SEO Hub project. Updated Nov 20, 2026.
 ## Leave out
 Own rank tracking, Semrush API, GBP API (for now), client editing, live AI on every page, rebuilding Yoast, task management.
 
-## Build phases
+## Build phases (details in seo-hub-phases.md)
 0. One-login portal (inside HQ)
-1. Clients + keyword database + CSV import + 3×3 matrix (test with Anassa)
-2. Semrush ranking import + baseline vs results + GSC/GA4 API
-3. Sitemap + hotspots + keyword owner per page + page briefs
-4. GBP check, GBP care, link database
-5. Plugin connection (check-in API) + automation (Slack alerts, ClickUp tasks, Claude drafts)
+1. Clients, keywords, templates, step-by-step guide, uploads + Claude auto-fill (Days 1–2)
+2. Baseline, reports, monthly archive, Day 10 review, GSC/GA4 API, **Connect site + receive check-ins** (Days 3 + 10, with Vibe SEO 1.3.0); then a one-time import of the agency hub's data
+3. Pages: sitemap + hotspots, site plan + redirects queue, page briefs (Days 5–6)
+4. GBP check, GBP care, links (Days 4, 7, 8–9)
+5. Push to site + redirects (with Vibe SEO 1.4.0) + automation (Slack, weekly email, ClickUp)
 6. Later: read-only client report view (could replace Agency Analytics)
 
 ## Look (match Visual Vibe HQ)
