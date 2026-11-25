@@ -260,6 +260,7 @@ export async function rankingsOverview(siteId: string): Promise<RankingsOverview
     visibility: null,
     traffic: null,
     localPack: null,
+    aiOverview: null,
     opportunities: [],
   }
   const top = must(await db().from('seo_rank_snapshots').select('checked_on').eq('client_id', c.id).order('checked_on', { ascending: false }).limit(1), 'Loading rankings') as { checked_on: string }[]
@@ -386,6 +387,7 @@ export async function rankingsOverview(siteId: string): Promise<RankingsOverview
     visibility,
     traffic: hasTraffic ? { now: sum(rows.map((r) => r.traffic)), prev: null } : null,
     localPack: p?.has.serpType ? rows.filter((r) => r.serpType === 'local').length : null,
+    aiOverview: p?.has.serpType ? rows.filter((r) => (r.serpType ?? '').includes('ai overview')).length : null,
     opportunities,
   }
 }

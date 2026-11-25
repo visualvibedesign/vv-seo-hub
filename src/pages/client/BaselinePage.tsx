@@ -18,7 +18,7 @@ const SOURCES: { i: string; name: string; how: string; tone: Tone; nums: string[
   { i: 'SR', name: 'Semrush Position Tracking', how: 'CSV import · US national · numbers exactly as exported', tone: 'pink', nums: ['Avg position', 'In top 10', 'In top 3', 'In top 100'] },
   { i: 'SC', name: 'Search Console', how: 'Pulled from Google · last 28 days', tone: 'purple', nums: ['Impressions', 'Clicks', 'CTR', 'Avg position'] },
   { i: 'GA', name: 'GA4', how: 'Pulled from Google · organic search', tone: 'green', nums: ['Sessions', 'Users', 'Conversions', 'Avg time'] },
-  { i: 'GB', name: 'Google Business Profile', how: 'Typed in once a month · from GBP › Performance', tone: 'orange', nums: ['Profile views', 'Calls', 'Directions', 'Reviews'] },
+  { i: 'GB', name: 'Google Business Profile', how: 'Typed in once a month · from GBP › Performance', tone: 'orange', nums: ['Profile views', 'Calls', 'Directions', 'Reviews · rating'] },
   { i: 'WS', name: 'Whitespark map grid', how: 'CSV + screenshot · main service · 5×5', tone: 'purple', nums: ['Avg rank (found)', 'In top 3', 'Grid spacing', 'Grid'] },
   { i: 'PG', name: 'Site check snapshot', how: 'From the Site check tab · all live pages', tone: 'pink', nums: ['Site health', 'Pages', 'Problems', 'Mobile speed'] },
 ]
@@ -35,7 +35,7 @@ export default function BaselinePage() {
   /** Latest real numbers per source (until 2e saves a frozen copy). */
   const live: Record<string, { vals: (string | null)[]; date: string } | undefined> = {
     SR: ranks?.latest ? { vals: [0, 1, 2, 3].map((n) => semrushNum(ranks, n)), date: `Positions from ${long(ranks.latest)}` } : undefined,
-    GB: gbp ? { vals: [s(gbp.views), s(gbp.calls), s(gbp.directions), gbp.reviews === null ? null : `${gbp.reviews}${gbp.rating !== null ? ` · ★${gbp.rating.toFixed(1)}` : ''}`], date: `Typed in · ${periodLabel(gbp.periodFrom, gbp.periodTo)}` } : undefined,
+    GB: gbp ? { vals: [s(gbp.views), s(gbp.calls), s(gbp.directions), gbp.reviews === null ? null : `${gbp.reviews}${gbp.rating !== null ? ` · ${gbp.rating.toFixed(1)}` : ''}`], date: `Typed in · ${periodLabel(gbp.periodFrom, gbp.periodTo)}` } : undefined,
     WS: grid && gs ? { vals: [gs.avg === null ? null : gs.avg.toFixed(1), `${gs.top3} of ${gs.points}`, grid.spacing, `${grid.gridSize}×${grid.gridSize}`], date: `Scan ${long(grid.scannedOn)} · ${grid.keyword}` } : undefined,
   }
   return (

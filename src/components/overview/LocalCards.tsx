@@ -6,6 +6,7 @@ import { BTN_GHOST, BTN_LIME, BTN_LINK, FIELD, LABEL } from '../../lib/ui'
 import { gridStats, periodLabel } from '../../lib/local'
 import type { GbpInput, GbpSnapshot, MapGrid } from '../../types/seo'
 import ConfirmDialog from '../ui/ConfirmDialog'
+import Icon from '../ui/Icon'
 import { Bone, Spinner } from '../ui/Loading'
 import { Dash, Panel } from './OverviewParts'
 
@@ -104,7 +105,10 @@ export function GbpCard({ siteId }: { siteId: string }) {
           <p className="m-0 text-[13px] text-vv-body">
             {now ? (
               <>
-                {now.rating !== null && <strong className="text-vv-ink">★ {now.rating.toFixed(1)}</strong>}
+                {now.rating !== null && <strong className="inline-flex items-center gap-1 text-vv-ink">
+                    <Icon name="star" className="h-3.5 w-3.5 text-vv-orange-ink" fill />
+                    {now.rating.toFixed(1)}
+                  </strong>}
                 {now.rating !== null && now.reviews !== null && ' · '}
                 {now.reviews !== null && `${now.reviews} reviews`}
                 {now.newestReviewOn && ` · newest ${short(now.newestReviewOn)}`}

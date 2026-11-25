@@ -1,6 +1,7 @@
 import { useClientContext } from '../../components/layout/ClientLayout'
 import { Dash, GuideChecklist, LilacTable, PageHead, Panel, Soon } from '../../components/overview/OverviewParts'
 import { CARD } from '../../lib/ui'
+import Icon from '../../components/ui/Icon'
 
 // Client Overview › Results (/clients/{site id}/results): Day 10 + every month, each number compared with the baseline.
 // Design: docs/design/overview/Results.dc.html. Real now: the Day 10 checklist (same ticks as the guide). Wins, the
@@ -25,7 +26,10 @@ export default function ResultsPage() {
       <PageHead lead="Results," accent="month by month." sub="Day 10 + every month · each number compared with the baseline." />
 
       <section className={`${CARD} !rounded-[24px] !border-dashed !border-vv-lavender !gap-2 !p-6 items-start`} aria-label="Wins">
-        <span className="text-[12px] font-bold uppercase tracking-[0.06em] text-vv-purple-ink">✦ Wins</span>
+        <span className="flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.06em] text-vv-purple-ink">
+          <Icon name="sparkles" className="h-3.5 w-3.5" />
+          Wins
+        </span>
         <p className="m-0 font-display text-[24px] font-semibold leading-tight">The biggest wins show here once there’s a baseline and a month of numbers.</p>
         <Soon>Comes in phase 2</Soon>
       </section>

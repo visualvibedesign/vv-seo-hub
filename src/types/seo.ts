@@ -847,6 +847,8 @@ export interface RankingsOverview {
   traffic: { now: number; prev: number | null } | null
   /** Keywords whose result type is "local" (map pin); null = no type column */
   localPack: number | null
+  /** Keywords whose result type is "ai overview" (cited in Google's AI Overview); null = no type column */
+  aiOverview: number | null
   /** Tracked keywords not ranking yet, biggest volume first */
   opportunities: { keyword: string; volume: string | null; kd: string | null }[]
 }

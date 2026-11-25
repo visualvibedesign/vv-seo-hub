@@ -7,6 +7,7 @@ import { PILL } from '../../lib/ui'
 import type { ClientDetail, RankingsOverview, RankRow } from '../../types/seo'
 import { Bone } from '../ui/Loading'
 import { Panel } from './OverviewParts'
+import Icon, { type IconName } from '../ui/Icon'
 import RankImport from './RankImport'
 
 // Overview › Keyword rankings (phase 2c): the Semrush Position Tracking CSV, every number exactly as exported.
@@ -50,13 +51,67 @@ function Spark({ values, invert, className }: { values: (number | null)[]; inver
   )
 }
 
+const FEATURE_TIP: Record<string, string> = {
+  local: 'Shows in the Google Maps 3-pack for this search',
+  'ai overview': 'Cited in Google’s AI Overview for this search',
+}
+
+/** Small badge with a tooltip on hover and keyboard focus (title kept as a fallback). */
+function Tip({ tip, children, className }: { tip: string; children: ReactNode; className: string }) {
+  return (
+    <span tabIndex={0} title={tip} aria-label={tip} className={`group relative ${PILL} !px-2 !py-0.5 !text-[11px] outline-none focus-visible:ring-2 focus-visible:ring-vv-purple ${className}`}>
+      {children}
+      <span role="tooltip" className="pointer-events-none absolute left-0 top-full z-20 mt-1 hidden w-max max-w-[220px] whitespace-normal rounded-lg bg-vv-ink px-2.5 py-1.5 text-[12px] font-medium text-vv-surface shadow-lg group-hover:block group-focus:block">
+        {tip}
+      </span>
+    </span>
+  )
+}
+
 function Feature({ t }: { t: string | null }) {
   if (!t || t === 'organic') return null
-  if (t === 'local') return <span className={`${PILL} !px-2 !py-0.5 !text-[11px] bg-vv-pink-100 text-vv-pink-ink`} title="Shows in the local pack (map pin)">📍 Local pack</span>
+  if (t === 'local')
+    return (
+      <Tip tip={FEATURE_TIP.local} className="bg-vv-pink-100 text-vv-pink-ink">
+        <Icon name="map-pin" className="h-3 w-3" /> Local pack
+      </Tip>
+    )
+  const label = t.replace(/\b(ai)\b/i, 'AI').replace(/^./, (x) => x.toUpperCase())
   return (
-    <span className={`${PILL} !px-2 !py-0.5 !text-[11px] bg-vv-lavender-100 text-vv-purple-ink`} title={`Semrush result type: ${t}`}>
-      ✦ {t.replace(/\b(ai)\b/i, 'AI').replace(/^./, (x) => x.toUpperCase())}
-    </span>
+    <Tip tip={FEATURE_TIP[t] ?? `Semrush result type: ${label}`} className="bg-vv-lavender-100 text-vv-purple-ink">
+      <Icon name="sparkles" className="h-3 w-3" /> {label}
+    </Tip>
+  )
+}
+
+const SEGMENTS = ['bg-vv-seg-top', 'bg-vv-green', 'bg-vv-lavender', 'bg-vv-seg-21', 'bg-vv-seg-51', 'bg-vv-seg-out']
+
+/** One stacked horizontal bar of the position ranges + a legend with counts and change vs the comparison date. */
+function StackedBar({ r }: { r: RankingsOverview }) {
+  const total = Math.max(1, r.buckets.reduce((a, b) => a + b.now, 0))
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="flex h-4 w-full gap-[2px] overflow-hidden rounded-full" role="img" aria-label={r.buckets.map((b) => `${b.label}: ${b.now}`).join(', ')}>
+        {r.buckets.map((b, i) =>
+          b.now > 0 ? <span key={b.label} title={`${b.label}: ${b.now}`} className={`h-full ${SEGMENTS[i]}`} style={{ width: `${(b.now / total) * 100}%`, minWidth: 6 }} /> : null,
+        )}
+      </div>
+      <ul className="m-0 flex list-none flex-wrap gap-x-5 gap-y-1.5 p-0 text-[12px]">
+        {r.buckets.map((b, i) => {
+          const d = b.prev === null ? null : b.now - b.prev
+          const good = i === r.buckets.length - 1 ? (d ?? 0) < 0 : (d ?? 0) > 0
+          return (
+            <li key={b.label} className="flex items-center gap-1.5">
+              <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${SEGMENTS[i]}`} />
+              <span className="text-vv-body">{b.label}</span>
+              <strong>{b.now}</strong>
+              {d !== null && d !== 0 && <span className={`font-semibold ${good ? 'text-vv-green-ink' : 'text-vv-red'}`}>{`${d > 0 ? '+' : ''}${d}`}</span>}
+            </li>
+          )
+        })}
+        {r.previous && <li className="text-vv-muted">change vs {day(r.previous)}</li>}
+      </ul>
+    </div>
   )
 }
 
@@ -94,19 +149,7 @@ function Ranked({ r, siteId }: { r: RankingsOverview; siteId: string }) {
   const shown = head.filter((h) => h.show)
   return (
     <>
-      <div className="grid grid-cols-6 gap-2 [@media(max-width:900px)]:grid-cols-3">
-        {r.buckets.map((b, i) => {
-          const d = b.prev === null ? null : b.now - b.prev
-          const good = i === r.buckets.length - 1 ? (d ?? 0) < 0 : (d ?? 0) > 0
-          return (
-            <div key={b.label} className={`flex flex-col gap-0.5 rounded-[14px] px-3 py-2.5 ${i === 0 ? 'bg-vv-pos-top' : i === 1 ? 'bg-vv-green-100' : i === r.buckets.length - 1 ? 'bg-vv-st-todo' : 'bg-vv-lavender-50'}`}>
-              <span className="font-display text-[24px] font-semibold leading-none">{b.now}</span>
-              <span className="text-[12px] text-vv-body">{b.label}</span>
-              {d !== null && d !== 0 && <span className={`text-[11px] font-semibold ${good ? 'text-vv-green-ink' : 'text-vv-red'}`}>{`${d > 0 ? '+' : ''}${d} vs ${day(r.previous!)}`}</span>}
-            </div>
-          )
-        })}
-      </div>
+      <StackedBar r={r} />
 
       <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2.2fr)] items-start gap-4 [@media(max-width:1100px)]:grid-cols-1">
         <div className="flex flex-col gap-3">
@@ -220,66 +263,97 @@ function Row({ x, hasPrev, cols, trend }: { x: RankRow; hasPrev: boolean; cols: 
   )
 }
 
-/** Small pastel cards under Biggest moves. Empty (with why) when the CSV has no such column. */
+/** A progress ring: part of a whole, label in the middle. */
+function Ring({ value, max, color, center }: { value: number; max: number; color: string; center: ReactNode }) {
+  const r = 26
+  const c = 2 * Math.PI * r
+  const f = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0
+  return (
+    <span className="relative flex h-[68px] w-[68px] flex-none items-center justify-center">
+      <svg viewBox="0 0 64 64" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
+        <circle cx="32" cy="32" r={r} fill="none" strokeWidth="7" className="stroke-vv-line" />
+        {f > 0 && <circle cx="32" cy="32" r={r} fill="none" strokeWidth="7" strokeLinecap="round" stroke="currentColor" className={color} strokeDasharray={`${f * c} ${c}`} />}
+      </svg>
+      <span className="relative text-center text-[13px] font-bold leading-tight">{center}</span>
+    </span>
+  )
+}
+
+/** Graph cards under Biggest moves. Every number from the CSV; a card without its column is hidden. */
 function SideCards({ r, siteId }: { r: RankingsOverview; siteId: string }) {
   const prevDay = r.previous ? day(r.previous) : ''
-  const delta = (now: number, prev: number | null, fmt: (n: number) => string) => {
-    if (prev === null) return null
-    const d = now - prev
-    if (Math.abs(d) < 0.005) return <span className="text-[12px] text-vv-body">same as {prevDay}</span>
-    return <span className={`text-[12px] font-semibold ${d > 0 ? 'text-vv-green-ink' : 'text-vv-red'}`}>{`${d > 0 ? '+' : '−'}${fmt(Math.abs(d))} vs ${prevDay}`}</span>
-  }
+  const maxVol = Math.max(1, ...r.opportunities.map((o) => Number(o.volume) || 0))
+  const vis = r.visibility
+  const visD = vis && vis.prev !== null ? vis.now - vis.prev : null
   return (
-    <div className="grid grid-cols-1 gap-2.5 [@media(min-width:760px)_and_(max-width:1100px)]:grid-cols-2">
-      <Mini title="Visibility" tone="bg-vv-lavender-50">
-        {r.visibility ? (
-          <span className="flex items-end justify-between gap-2">
-            <span className="flex flex-col">
-              <span className="font-display text-[24px] font-semibold leading-none">{pct(r.visibility.now)}</span>
-              {delta(r.visibility.now, r.visibility.prev, (n) => `${n.toFixed(2)} pts`)}
+    <div className="flex flex-col gap-2.5">
+      {vis && (
+        <Mini icon="eye" title="Visibility" tone="bg-vv-lavender-50">
+          <span className="flex items-center gap-3">
+            <Ring value={vis.now} max={100} color="text-vv-chart-clicks" center={pct(vis.now)} />
+            <span className="flex min-w-0 flex-1 flex-col gap-1">
+              {visD !== null &&
+                (Math.abs(visD) < 0.005 ? (
+                  <span className="text-[12px] text-vv-body">same as {prevDay}</span>
+                ) : (
+                  <span className={`text-[12px] font-semibold ${visD > 0 ? 'text-vv-green-ink' : 'text-vv-red'}`}>{`${visD > 0 ? '+' : '−'}${Math.abs(visD).toFixed(2)} pts vs ${prevDay}`}</span>
+                ))}
+              <Spark values={vis.series.map((x) => x.value)} className="text-vv-chart-clicks" />
+              <span className="text-[11px] text-vv-body">Semrush visibility (sum of the keywords)</span>
             </span>
-            <Spark values={r.visibility.series.map((s) => s.value)} className="text-vv-chart-clicks" />
           </span>
-        ) : (
-          <Missing />
-        )}
-      </Mini>
-      <Mini title="Est. traffic" tone="bg-vv-pink-100">
-        {r.traffic ? (
-          <span className="flex flex-col">
-            <span className="font-display text-[24px] font-semibold leading-none">{r.traffic.now.toLocaleString('en-US')}</span>
-            {delta(r.traffic.now, r.traffic.prev, (n) => n.toLocaleString('en-US'))}
-          </span>
-        ) : (
-          <Missing />
-        )}
-      </Mini>
-      <Mini title="📍 In local pack" tone="bg-vv-green-100">
-        {r.localPack !== null ? (
-          <span className="text-[13px]">
-            <strong className="font-display text-[24px] font-semibold">{r.localPack}</strong> of {r.total} keywords show the map pin
-          </span>
-        ) : (
-          <Missing />
-        )}
-      </Mini>
-      <Mini title="⭐ Opportunities" tone="bg-vv-orange-100">
+        </Mini>
+      )}
+      {(r.localPack !== null || r.aiOverview !== null) && (
+        <div className="grid grid-cols-2 gap-2.5">
+          {r.localPack !== null && (
+            <Mini icon="map-pin" title="Local pack" tone="bg-vv-pink-100">
+              <span className="flex items-center gap-2.5">
+                <Ring value={r.localPack} max={r.total} color="text-vv-chart-impr" center={`${r.localPack}/${r.total}`} />
+                <span className="text-[12px] text-vv-body">in the Maps 3-pack</span>
+              </span>
+            </Mini>
+          )}
+          {r.aiOverview !== null && (
+            <Mini icon="sparkles" title="AI overview" tone="bg-vv-lavender-50">
+              <span className="flex items-center gap-2.5">
+                <Ring value={r.aiOverview} max={r.total} color="text-vv-purple" center={`${r.aiOverview}/${r.total}`} />
+                <span className="text-[12px] text-vv-body">cited</span>
+              </span>
+            </Mini>
+          )}
+        </div>
+      )}
+      {r.traffic && (
+        <Mini icon="trending-up" title="Est. traffic" tone="bg-vv-pink-100">
+          <span className="font-display text-[24px] font-semibold leading-none">{r.traffic.now.toLocaleString('en-US')}</span>
+        </Mini>
+      )}
+      <Mini icon="target" title="Opportunities" tone="bg-vv-orange-100">
         {r.opportunities.length === 0 ? (
           <span className="text-[13px] text-vv-body">Every tracked keyword ranks.</span>
         ) : (
-          <ul className="m-0 flex list-none flex-col gap-1 p-0">
-            {r.opportunities.map((o) => (
-              <li key={o.keyword} className="flex items-baseline justify-between gap-2 text-[13px]">
-                <Link to={`${strategyPath(siteId, 'keywords/database')}?q=${encodeURIComponent(o.keyword)}`} className="min-w-0 truncate text-vv-ink no-underline hover:text-vv-purple-deep hover:underline" title="Open in Strategy › Database">
-                  {o.keyword}
-                </Link>
-                <span className="flex-none text-[12px] text-vv-body">
-                  <strong className="text-vv-ink">{o.volume ?? '—'}</strong>
-                  {o.kd !== null && ` · KD ${o.kd}`}
-                </span>
-              </li>
-            ))}
-            <li className="text-[11px] text-vv-body">Not ranking yet · biggest search volume first</li>
+          <ul className="m-0 flex list-none flex-col gap-2 p-0">
+            {r.opportunities.map((o) => {
+              const v = Number(o.volume)
+              return (
+                <li key={o.keyword} className="flex flex-col gap-1 text-[13px]">
+                  <span className="flex items-baseline justify-between gap-2">
+                    <Link to={`${strategyPath(siteId, 'keywords/database')}?q=${encodeURIComponent(o.keyword)}`} className="min-w-0 truncate text-vv-ink no-underline hover:text-vv-purple-deep hover:underline" title="Open in Strategy › Database">
+                      {o.keyword}
+                    </Link>
+                    <span className="flex-none text-[12px]">
+                      <strong>{o.volume ?? '—'}</strong>
+                      {o.kd !== null && <span className="text-vv-body"> · KD {o.kd}</span>}
+                    </span>
+                  </span>
+                  <span className="h-1.5 rounded-full bg-vv-surface">
+                    <span className="block h-1.5 rounded-full bg-vv-chart-impr" style={{ width: `${Number.isFinite(v) && v > 0 ? Math.max(3, (v / maxVol) * 100) : 0}%` }} />
+                  </span>
+                </li>
+              )
+            })}
+            <li className="text-[11px] text-vv-body">Tracked, not ranking yet · by search volume</li>
           </ul>
         )}
       </Mini>
@@ -287,16 +361,17 @@ function SideCards({ r, siteId }: { r: RankingsOverview; siteId: string }) {
   )
 }
 
-function Mini({ title, tone, children }: { title: string; tone: string; children: ReactNode }) {
+function Mini({ icon, title, tone, children }: { icon: IconName; title: string; tone: string; children: ReactNode }) {
   return (
-    <div className={`flex flex-col gap-1.5 rounded-[16px] px-3.5 py-3 ${tone}`}>
-      <span className="text-[11px] font-bold uppercase tracking-[0.06em] text-vv-body">{title}</span>
+    <div className={`flex min-w-0 flex-col gap-2 rounded-[16px] px-3.5 py-3 ${tone}`}>
+      <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-vv-body">
+        <Icon name={icon} className="h-3.5 w-3.5" />
+        {title}
+      </span>
       {children}
     </div>
   )
 }
-
-const Missing = () => <span className="text-[13px] text-vv-body">Not in this CSV export.</span>
 
 /** Before the first Position Tracking CSV: the tracked keywords (real) with "—", and how to add the CSV. */
 function NoCsvYet({ client: c, error }: { client: ClientDetail; error: boolean }) {
