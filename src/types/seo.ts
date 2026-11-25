@@ -683,3 +683,220 @@ export interface ClientDeleteCheck {
   pages: number
   notes: number
 }
+
+// ---- Phase 2a · Google (Search Console + GA4) per client, migration 0016 ------------------------------------
+
+export interface GoogleLink {
+  /** "sc-domain:example.com" or "https://example.com/" */
+  gscProperty: string | null
+  /** "properties/123456" */
+  ga4Property: string | null
+  queryWords: string[]
+  lastSyncAt: string | null
+  lastSyncOk: boolean | null
+  lastError: string | null
+}
+
+/** What the Connect panel needs: the email to add, the client's saved link, and what the service account can see. */
+export interface GoogleSetup {
+  /** null = GOOGLE_SERVICE_ACCOUNT_JSON isn't set on the server */
+  serviceEmail: string | null
+  /** false = migration 0016 hasn't been run yet */
+  tableReady: boolean
+  link: GoogleLink | null
+  gscSites: { property: string; permission: string }[]
+  ga4Properties: { property: string; name: string; account: string }[]
+  /** Why a list is empty (no access yet, API not enabled…) */
+  listErrors: string[]
+}
+
+/** A 7-day pull that saves nothing (the Test button). null = not asked. */
+export interface GoogleTestResult {
+  from: string
+  to: string
+  gsc: { ok: true; clicks: number; impressions: number; ctr: number; position: number } | { ok: false; error: string } | null
+  ga4: { ok: true; sessions: number; engagedSessions: number; users: number } | { ok: false; error: string } | null
+}
+
+// ---- Phase 2b · Google numbers on the Overview (seo_metric_daily + seo_metric_top) ----------------------------
+
+export type MetricRange = '28d' | '3m' | '12m'
+
+/** Totals for one period. null = no data for that period (never 0). */
+export interface GscTotals {
+  clicks: number | null
+  impressions: number | null
+  /** clicks / impressions */
+  ctr: number | null
+  /** impression-weighted average position */
+  position: number | null
+  days: number
+}
+
+export interface Ga4Totals {
+  sessions: number | null
+  engagedSessions: number | null
+  users: number | null
+  keyEvents: number | null
+  /** average session duration, seconds */
+  avgSeconds: number | null
+  days: number
+}
+
+export interface MetricsOverview {
+  range: MetricRange
+  linked: { gsc: boolean; ga4: boolean }
+  lastSyncAt: string | null
+  lastSyncOk: boolean | null
+  lastError: string | null
+  gsc: null | {
+    from: string
+    to: string
+    prevFrom: string
+    prevTo: string
+    /** false = the history doesn't cover the whole previous period: no change shown */
+    comparable: boolean
+    /** current baseline date (dashed marker); null = no baseline yet */
+    baselineDay: string | null
+    now: GscTotals
+    prev: GscTotals
+    /** one point per day (28d, 3m) or week (12m); null = no data that day */
+    series: { day: string; clicks: number | null; impressions: number | null; ctr: number | null; position: number | null }[]
+    queries: { label: string; clicks: number; impressions: number; ctr: number; position: number; prevPosition: number | null }[]
+    pages: { label: string; clicks: number; impressions: number }[]
+  }
+  ga4: null | {
+    from: string
+    to: string
+    comparable: boolean
+    now: Ga4Totals
+    prev: Ga4Totals
+    /** sessions per day (28d), week (3m) or month (12m) */
+    bars: { label: string; from: string; to: string; sessions: number | null }[]
+  }
+}
+
+export interface MetricsSyncResult {
+  gscDays: number
+  ga4Days: number
+  topRows: number
+  errors: string[]
+}
+
+// ---- Phase 2c · Semrush Position Tracking (seo_rank_snapshots) ------------------------------------------------
+
+/** Dry run of a Position Tracking CSV (nothing saved). */
+export interface RankPlan {
+  /** The tracked domain as Semrush writes it, e.g. "*.anassabeauty.com/*" */
+  domain: string
+  /** Dates with positions in the file (YYYY-MM-DD), oldest first */
+  dates: string[]
+  /** Semrush period line, e.g. "20261117 - 20261118" */
+  period: string | null
+  /** Date the export's change columns compare with (period start); null = no change column */
+  compareFrom: string | null
+  keywords: number
+  /** Keywords that are already in this client's Database (the rest are listed, not created) */
+  matched: number
+  unmatched: string[]
+  /** For the newest date in the file */
+  latest: { date: string; ranked: number; top3: number; top10: number; avgPosition: number | null }
+  /** Rows already saved for these dates (an import of the same dates replaces them) */
+  replaces: number
+  /** Other domains in the file (competitors): not imported */
+  otherDomains: string[]
+}
+
+export interface RankRow {
+  keyword: string
+  position: number | null
+  /** Position at the comparison date (Semrush's own "difference" column, or the previous saved CSV date) */
+  prevPosition: number | null
+  landingUrl: string | null
+  /** The page that owns this keyword (Clusters), when it differs from the ranking URL */
+  swappedWith: { name: string; url: string } | null
+  /** Exactly as exported (text: "n/a" stays "n/a"); null = column not in the CSV */
+  volume: string | null
+  kd: string | null
+  visibility: number | null
+  traffic: number | null
+  /** Semrush's result type: "local" = local pack (map pin); anything else but "organic" = another SERP feature */
+  serpType: string | null
+  /** Positions over saved dates (oldest first), for the sparkline (3+ dates) */
+  history: (number | null)[]
+}
+
+export interface RankingsOverview {
+  /** null = no Position Tracking CSV yet */
+  latest: string | null
+  /** The date "Change" compares with (the export's period start, or the previous saved CSV date) */
+  previous: string | null
+  lastImport: { fileName: string; at: string } | null
+  buckets: { label: string; now: number; prev: number | null }[]
+  moves: { keyword: string; from: number | null; to: number | null }[]
+  rows: RankRow[]
+  swapped: number
+  /** Average over ranking keywords only */
+  avgPosition: number | null
+  ranking: number
+  total: number
+  /** Which optional columns the CSV had */
+  columns: { volume: boolean; kd: boolean; visibility: boolean; traffic: boolean; serpType: boolean }
+  /** Sum of the keywords' visibility (Semrush's visibility %), its value at the comparison date, and per saved date */
+  visibility: { now: number; prev: number | null; series: { date: string; value: number }[] } | null
+  traffic: { now: number; prev: number | null } | null
+  /** Keywords whose result type is "local" (map pin); null = no type column */
+  localPack: number | null
+  /** Keywords whose result type is "ai overview" (cited in Google's AI Overview); null = no type column */
+  aiOverview: number | null
+  /** Tracked keywords not ranking yet, biggest volume first */
+  opportunities: { keyword: string; volume: string | null; kd: string | null }[]
+}
+
+// ---- Phase 2d · GBP numbers (typed monthly) + Whitespark map grid (typed now, CSV later) ----------------------
+
+export interface GbpSnapshot {
+  id: string
+  periodFrom: string
+  periodTo: string
+  views: number | null
+  /** Profile views breakdown (GBP › Performance), optional: null = unknown */
+  viewsSearchDesktop: number | null
+  viewsSearchMobile: number | null
+  viewsMapsDesktop: number | null
+  viewsMapsMobile: number | null
+  calls: number | null
+  directions: number | null
+  websiteClicks: number | null
+  reviews: number | null
+  rating: number | null
+  newestReviewOn: string | null
+  typedBy: string | null
+  note: string | null
+  updatedAt: string
+}
+
+export type GbpInput = Omit<GbpSnapshot, 'id' | 'updatedAt'>
+
+export interface MapGrid {
+  id: string
+  keyword: string
+  scannedOn: string
+  gridSize: number
+  spacing: string | null
+  /** A town / area name only, never an address */
+  centerLabel: string | null
+  source: 'csv' | 'typed' | 'screenshot'
+  /** ranks[row][col]: 1–20, null = not found / 20+ */
+  ranks: (number | null)[][]
+  createdAt: string
+}
+
+export type MapGridInput = Pick<MapGrid, 'keyword' | 'scannedOn' | 'gridSize' | 'spacing' | 'centerLabel' | 'ranks'>
+
+export interface LocalState {
+  /** Newest period first */
+  gbp: GbpSnapshot[]
+  /** Newest scan first */
+  grids: MapGrid[]
+}

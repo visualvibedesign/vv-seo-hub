@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -335,4 +335,68 @@ export function checkDeleteClient(siteId: string): Promise<ClientDeleteCheck> {
 /** Deletes an Archived client; name = the client's name typed exactly. */
 export function deleteClient(siteId: string, name: string): Promise<{ filesRemoved: number; filesLeft: number }> {
   return call('/api/clients/delete', json({ siteId, name }))
+}
+
+// ---- Phase 2 · Google (Search Console + GA4) ----------------------------------------------------------------
+
+export function getGoogleSetup(siteId: string): Promise<GoogleSetup> {
+  return call(`/api/metrics/google?site=${encodeURIComponent(siteId)}`)
+}
+
+/** 7 days of totals, nothing saved. */
+export function testGoogle(gscProperty: string, ga4Property: string): Promise<GoogleTestResult> {
+  return call('/api/metrics/google-test', json({ gscProperty, ga4Property }))
+}
+
+export function saveGoogleLink(siteId: string, link: { gscProperty: string; ga4Property: string; queryWords: string[] }): Promise<{ link: GoogleLink }> {
+  return call('/api/metrics/google-save', json({ siteId, ...link }))
+}
+
+/** Search Console + GA4 numbers for one range (from the last pull). */
+export function getMetricsOverview(siteId: string, range: MetricRange): Promise<MetricsOverview> {
+  return call(`/api/metrics/overview?site=${encodeURIComponent(siteId)}&range=${range}`)
+}
+
+/** "Update numbers": pull this client's Search Console + GA4 now. */
+export function syncMetrics(siteId: string): Promise<MetricsSyncResult> {
+  return call('/api/metrics/sync', json({ siteId }))
+}
+
+// ---- Phase 2c · Semrush Position Tracking CSV ------------------------------------------------------------
+
+/** Dry run: what the CSV holds and what an import would do (nothing saved). */
+export function previewRankCsv(siteId: string, base64: string): Promise<{ plan: RankPlan }> {
+  return call('/api/imports/rank-preview', json({ siteId, base64 }))
+}
+
+/** Saves the rankings (same dates are replaced) and keeps the raw file. */
+export function commitRankCsv(siteId: string, fileName: string, base64: string): Promise<{ importId: string; plan: RankPlan }> {
+  return call('/api/imports/rank-commit', json({ siteId, fileName, base64 }))
+}
+
+/** Latest positions vs the previous CSV date, biggest moves, swapped pages. */
+export function getRankings(siteId: string): Promise<RankingsOverview> {
+  return call(`/api/metrics/rankings?site=${encodeURIComponent(siteId)}`)
+}
+
+// ---- Phase 2d · GBP (typed monthly) + Whitespark map grid (typed) ----------------------------------------------
+
+export function getLocal(siteId: string): Promise<LocalState> {
+  return call('/api/metrics/local?site=' + encodeURIComponent(siteId))
+}
+
+export function saveGbp(siteId: string, input: GbpInput): Promise<{ snapshot: GbpSnapshot }> {
+  return call('/api/metrics/gbp-save', json({ siteId, ...input }))
+}
+
+export function deleteGbp(siteId: string, id: string): Promise<{ ok: true }> {
+  return call('/api/metrics/gbp-delete', json({ siteId, id }))
+}
+
+export function saveMapGrid(siteId: string, input: MapGridInput): Promise<{ grid: MapGrid }> {
+  return call('/api/metrics/map-save', json({ siteId, ...input }))
+}
+
+export function deleteMapGrid(siteId: string, id: string): Promise<{ ok: true }> {
+  return call('/api/metrics/map-delete', json({ siteId, id }))
 }

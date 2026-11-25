@@ -9,11 +9,14 @@
 //   POST /api/imports/sams-apply   { siteId, fileName, base64, replace } -> { importId, plan } (only on Apply)
 //   POST /api/imports/sheet-preview { siteId, fileName, base64 }      -> { plan } (whole client Sheet .xlsx dry run, nothing saved)
 //   POST /api/imports/sheet-apply   { siteId, fileName, base64, replace, competitors } -> SheetApplyResult (only on Apply)
+//   POST /api/imports/rank-preview { siteId, base64 }       -> { plan } (Semrush Position Tracking CSV dry run)
+//   POST /api/imports/rank-commit  { siteId, fileName, base64 } -> { importId, plan }
 // (One file for every import action: the app stays within Vercel Hobby's 12 server functions.)
 import { DatabaseError } from '../../server/clients/supabase.js'
 import { checkDeleteImport, commitImport, deleteImport, ImportInputError, listImports, previewImport, rawFileUrl } from '../../server/services/importService.js'
 import { applySamsGuide, decodeSheet, planSamsGuide, SamsGuideInputError } from '../../server/services/samsGuideService.js'
 import { applySheet, previewSheet, SheetInputError } from '../../server/services/sheetImportService.js'
+import { commitRanks, previewRanks, RankInputError } from '../../server/services/rankService.js'
 import { requireSession } from '../../server/utils/auth.js'
 
 function actionOf(request: Request) {
@@ -51,6 +54,11 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       const fileName = typeof body.fileName === 'string' && body.fileName ? body.fileName.slice(0, 200) : 'sams-guide.csv'
       return Response.json(await applySamsGuide(siteId, file, fileName, replace))
     }
+    if (method === 'POST' && (action === 'rank-preview' || action === 'rank-commit')) {
+      const body = (await request.json().catch(() => ({}))) as { siteId?: unknown; fileName?: unknown; base64?: unknown }
+      if (action === 'rank-preview') return Response.json({ plan: await previewRanks(String(body.siteId ?? ''), body.base64) })
+      return Response.json(await commitRanks(String(body.siteId ?? ''), body.fileName, body.base64))
+    }
     if (method === 'POST' && (action === 'sheet-preview' || action === 'sheet-apply')) {
       const body = (await request.json().catch(() => ({}))) as { siteId?: unknown; fileName?: unknown; base64?: unknown; replace?: unknown; competitors?: unknown; confirmOwner?: unknown }
       const siteId = String(body.siteId ?? '')
@@ -73,6 +81,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
+    if (err instanceof RankInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof SheetInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof SamsGuideInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof ImportInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })

@@ -27,7 +27,8 @@ file was run wasn't recorded before this log existed.
 | 0013 | `0013_seo_page_url_suggested.sql` | `seo_pages.url_suggested`: a URL that is only a suggestion (from the template pattern), shown as "suggested" | Nov 25 | Yes (checked) |
 | 0014 | `0014_seo_notes_links.sql` | Notes & links: `seo_notes` (Rule / Decision / Note, author name, guide day; no client = agency rule) and `seo_client_links` (links that aren't accounts; https only) | Nov 25 | Yes (checked) |
 | 0015 | `0015_seo_client_sheet.sql` | Whole client Sheet (.xlsx): `seo_imports.report` + `client_sheet` (the .xlsx upload) and `competitors` (Competitors tab, names only); `seo_imports.parent_import_id` (each tab import → its .xlsx) | Nov 25 | Yes (checked) |
-| 0016 | `0016_seo_phase2.sql` | Phase 2: Google links + daily numbers + top queries/pages, Semrush rank snapshots, map grids (+ points), GBP snapshots, baselines (+ values), monthly reports (+ actions); imports `position_tracking` / `whitespark_grid` / source `whitespark` | Nov 26 | **No** (draft) |
+| 0016 | `0016_seo_phase2.sql` | Phase 2: Google links + daily numbers + top queries/pages, Semrush rank snapshots, map grids (+ points), GBP snapshots, baselines (+ values), monthly reports (+ actions); imports `position_tracking` / `whitespark_grid` / source `whitespark` | Nov 26 | Yes (checked) |
+| 0017 | `0017_seo_gbp_views_breakdown.sql` | `seo_gbp_snapshots`: 4 optional columns for the Profile views breakdown (Google Search desktop / mobile, Google Maps desktop / mobile). Nullable, no data change | Nov 26 | No |
 
 ## One-time data fixes (not migrations)
 

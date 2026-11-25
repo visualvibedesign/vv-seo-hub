@@ -4,8 +4,13 @@ import { useClientContext } from '../../components/layout/ClientLayout'
 import { Spinner } from '../../components/ui/Loading'
 import { Dash, LilacTable, PageHead, Panel, Soon } from '../../components/overview/OverviewParts'
 import { useSaveAccount } from '../../hooks/useClients'
-import { useKeywords } from '../../hooks/useKeywords'
 import { useNotes } from '../../hooks/useNotes'
+import { useGoogleSetup } from '../../hooks/useGoogle'
+import ConnectGoogle from '../../components/overview/ConnectGoogle'
+import RankingsCard from '../../components/overview/RankingsCard'
+import { GbpCard, MapGridCard } from '../../components/overview/LocalCards'
+import SourcesButton from '../../components/overview/SourcesButton'
+import GoogleNumbers from '../../components/overview/GoogleNumbers'
 import { LinkEditor, OpenButton } from '../../components/client/AccountParts'
 import { ApiError } from '../../lib/api'
 import { ACCOUNT_ICON, ACCOUNTS, ACCOUNT_STATUS_LABEL, accountOpenUrl, clientPath, strategyPath } from '../../lib/clientSetup'
@@ -31,6 +36,7 @@ const COMPARE: { metric: string; source: string }[] = [
 
 export default function OverviewPage() {
   const c = useClientContext()
+  const [googleOpen, setGoogleOpen] = useState(false)
   return (
     <>
       <PageHead
@@ -59,51 +65,20 @@ export default function OverviewPage() {
         }
       >
         <Link to={strategyPath(c.siteId)} className={BTN_LIME}>
-          Strategy Builder →
+          Strategy Builder
         </Link>
       </PageHead>
 
-      <Sources client={c} />
+      <SourcesButton client={c} onChangeGoogle={() => setGoogleOpen(true)} />
 
-      <section className={`${CARD} !rounded-[20px] !border-dashed !border-vv-lavender !gap-2.5 !p-8 phone:!p-5 items-start`} aria-labelledby="ov-google">
-        <span className={`${PILL} bg-vv-lavender-100 text-vv-purple-ink`}>Search Console + GA4 · not connected</span>
-        <h2 id="ov-google" className="m-0 font-display text-[26px] font-semibold leading-tight">
-          Connect Google to see searches, clicks and CTR here.
-        </h2>
-        <p className="m-0 max-w-[640px] text-[15px] leading-normal text-vv-body">
-          Impressions, clicks, CTR, average position, top searches, top pages and organic sessions come from the free Google APIs, updated every day. The baseline is kept so every month compares
-          like with like.
-        </p>
-        <span className="flex flex-wrap items-center gap-3">
-          <button type="button" className={BTN_GHOST} disabled>
-            Connect Search Console + GA4
-          </button>
-          <Soon>Comes in phase 2</Soon>
-        </span>
-      </section>
+      <ConnectGoogle client={c} open={googleOpen} setOpen={setGoogleOpen} />
+      <LinkedNumbers siteId={c.siteId} />
 
-      <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] items-start gap-4 [@media(max-width:1200px)]:grid-cols-2 [@media(max-width:760px)]:grid-cols-1">
-        <Rankings client={c} />
-        <Panel title="Map grid" sub="Whitespark · CSV or screenshot" right={<Soon>Phase 2</Soon>}>
-          <div className="grid max-w-[240px] grid-cols-5 gap-2" aria-hidden="true">
-            {Array.from({ length: 25 }, (_, i) => (
-              <span key={i} className="aspect-square rounded-full border border-dashed border-vv-lavender bg-vv-lavender-50" />
-            ))}
-          </div>
-          <p className="m-0 text-[13px] text-vv-body">No scan yet. The 5×5 grid for the main service and city shows here, with the average rank and points in the top 3.</p>
-        </Panel>
-        <Panel title="Google Business Profile" sub="Typed in once a month" right={<Soon>Phase 2</Soon>}>
-          <div className="grid grid-cols-2 gap-3">
-            {['Profile views', 'Calls', 'Direction requests', 'Website clicks'].map((l) => (
-              <div key={l} className="rounded-[14px] bg-vv-pink-100 p-3">
-                <div className="text-[22px] font-bold">
-                  <Dash />
-                </div>
-                <div className="text-[12px] text-vv-body">{l}</div>
-              </div>
-            ))}
-          </div>
-        </Panel>
+      <RankingsCard client={c} />
+
+      <div className="grid grid-cols-2 items-start gap-4 [@media(max-width:760px)]:grid-cols-1">
+        <MapGridCard siteId={c.siteId} />
+        <GbpCard siteId={c.siteId} />
       </div>
 
       <Panel
@@ -136,61 +111,10 @@ export default function OverviewPage() {
   )
 }
 
-const DOT: Record<'live' | 'soon' | 'part', string> = { live: 'bg-vv-green', soon: 'bg-vv-muted', part: 'bg-vv-purple' }
-
-/** Where each number comes from, and whether we have it yet (real state only). */
-function Sources({ client: c }: { client: ClientDetail }) {
-  const tracked = c.counts.tracked
-  const list: { name: string; note: string; dot: keyof typeof DOT }[] = [
-    { name: 'Search Console', note: 'Not connected · phase 2', dot: 'soon' },
-    { name: 'GA4', note: 'Not connected · phase 2', dot: 'soon' },
-    { name: 'Semrush', note: tracked ? `${tracked} keywords tracked · positions CSV in phase 2` : 'No keywords tracked yet', dot: tracked ? 'part' : 'soon' },
-    { name: 'Whitespark', note: 'No map grid yet', dot: 'soon' },
-    { name: 'GBP', note: 'Not typed in yet', dot: 'soon' },
-  ]
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-[12px] font-semibold uppercase tracking-[0.05em] text-vv-body">Sources</span>
-      {list.map((s) => (
-        <span key={s.name} className="inline-flex items-center gap-1.5 rounded-full border border-solid border-vv-field-line bg-vv-surface px-3 py-1 text-[12px]">
-          <span aria-hidden="true" className={`h-2 w-2 rounded-full ${DOT[s.dot]}`} />
-          <strong>{s.name}</strong>
-          <span className="text-vv-body">{s.note}</span>
-        </span>
-      ))}
-    </div>
-  )
-}
-
-/** The keywords marked Track (real); their positions come from the Semrush Position Tracking CSV in phase 2. */
-function Rankings({ client: c }: { client: ClientDetail }) {
-  const q = useKeywords(c.siteId)
-  const tracked = (q.data ?? []).filter((k) => k.track && k.status === 'keep')
-  return (
-    <Panel title="Keyword rankings" sub={`Semrush Position Tracking · ${c.counts.tracked} tracked keywords`} right={<Soon>Positions in phase 2</Soon>}>
-      {q.isPending ? (
-        <Spinner />
-      ) : tracked.length === 0 ? (
-        <p className="m-0 text-[13px] text-vv-body">
-          No keywords tracked yet. Pick them in{' '}
-          <Link to={strategyPath(c.siteId, 'keywords/database')} className="font-semibold text-vv-purple-deep">
-            Database
-          </Link>{' '}
-          (Track).
-        </p>
-      ) : (
-        <ul className="m-0 flex list-none flex-col p-0">
-          {tracked.slice(0, 10).map((k) => (
-            <li key={k.id} className="flex justify-between gap-3 border-0 border-t border-solid border-vv-line py-2 text-[13px] first:border-t-0">
-              <span className="min-w-0 truncate">{k.keyword}</span>
-              <span className="flex-none text-vv-muted">position —</span>
-            </li>
-          ))}
-          {tracked.length > 10 && <li className="pt-1 text-[12px] text-vv-muted">+ {tracked.length - 10} more</li>}
-        </ul>
-      )}
-    </Panel>
-  )
+/** Search Console + GA4 numbers, once Google is linked for this client. */
+function LinkedNumbers({ siteId }: { siteId: string }) {
+  const link = useGoogleSetup(siteId).data?.link
+  return link && (link.gscProperty || link.ga4Property) ? <GoogleNumbers siteId={siteId} /> : null
 }
 
 const KIND_PILL: Record<NoteKind, string> = {

@@ -47,7 +47,7 @@ export default function AddClientPage() {
     if (s === 2) {
       const home = f.categories.find((c) => c.code === 'Home')
       // A new client needs its main service on Home (Found #5): the Home page targets it.
-      if (home && !home.services.some((x) => x.name.trim()) && !home.pending.trim()) return 'Add the Home service: the main service, as people search it (e.g. “waxing”).'
+      if (home && !home.services.some((x) => x.name.trim()) && !home.pending.trim()) return 'Add the Home service: the main service, as people search it.'
       return servicesProblem(f)
     }
     return ''

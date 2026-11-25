@@ -18,6 +18,8 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
 
 ## Decisions for Angel
 
+> **Answered Nov 26:** 1 service account (key in env vars only) · 2 Whitespark typed for now, sample CSV later · 3 GBP typed monthly · 4 one daily Vercel cron + "Update numbers" · 5 health folded into auth (done in 2a).
+
 1. **Google access: one agency service account (recommended) or OAuth?**
    - **Service account (recommended):** a Google Cloud service account (free). Its email is added once per client as a
      user on the client's Search Console property and a Viewer on the GA4 property. Its key lives only in Vercel / `.env.local`
@@ -68,6 +70,8 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
 ### GBP (typed)
 - Overview › GBP › "Add this month's numbers": a period (from / to) + the numbers. `seo_gbp_snapshots`.
 
+**2d built (Nov 26, no SQL: tables from 0016):** GBP form (period defaults to last month; same period replaces; empty = unknown, never 0; rating 1–5; typed-by remembered per browser) and a typed map grid (keyword, date, 5×5 or 7×7, spacing, area name only: anything with a digit is refused, so no street address or ZIP). Grid colours: green 1–3, amber 4–7, red 8+, grey = not found / 20+. Avg rank = average over the points where the business was found (Whitespark's own ARP comes with the CSV). Both feed Overview cards, the Sources popover and the Baseline cards; each has "All months / All scans" with Remove (confirm). Actions live in `api/metrics/[action].ts` (`local`, `gbp-save`, `gbp-delete`, `map-save`, `map-delete`): still 12 functions. Whitespark CSV import waits for Angel's sample.
+
 ## Baseline (Day 3)
 - **Save baseline** copies the current numbers of each source **with their own dates** into `seo_baselines` +
   `seo_baseline_values` (a frozen copy: re-pulling Google later never changes it). Each source card shows "Saved · date"
@@ -96,7 +100,9 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
 | 2f | Results: monthly reports, every number vs baseline, wins, Claude report notes (reviewed), next actions | 2e |
 | 2g (later) | GBP / map grid from a screenshot (Claude), report PDF | — |
 
-Anassa's real baseline (Semrush Nov 17–18 CSV in `test-data/anassa/`) is the test data for 2c and 2e.
+Test data for 2c and 2e: Visual Vibe's real Position Tracking CSV (Nov 19–25, 27 keywords, uploaded Nov 26). Anassa's Nov 17–18 CSV stays in `test-data/anassa/` for when she is re-added.
+
+**2c export facts (Visual Vibe file):** one position column per date (`<domain>_<YYYYMMDD>`, plus `_visibility`, `_type`, `_landing`), and `<domain>_difference` / `_visibility_difference` = change since the period start (`Period: 20261119 - 20261125`). So a 7-day export has ONE date column; Change and Biggest moves use the difference column (vs the period start). `_type` = `organic` / `local` (local pack, map pin) / `ai overview` (other SERP feature). No estimated-traffic column in this export. Search Volume, KD, CPC, Intents kept as text exactly as exported; read from the stored raw file (no extra table columns).
 
 ## SQL (0016, draft, not run)
 

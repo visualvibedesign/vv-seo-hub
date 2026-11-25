@@ -58,7 +58,7 @@ export default function Day1Autofill({ client: c }: { client: ClientDetail }) {
           placeholder="What they offer, what they don’t, the cities they serve…"
         />
         <span className="text-[12px] font-normal text-vv-muted">
-          {text.length.toLocaleString('en-US')} / {MAX.toLocaleString('en-US')} characters. Used for this one run and never stored; only the suggestions are kept.
+          {text.length.toLocaleString('en-US')} / {MAX.toLocaleString('en-US')} characters. Sent once for this run and never stored. Each suggestion shows a short quote from it while you review; the quote is deleted when you approve or reject.
         </span>
       </label>
       <ul className="m-0 flex list-none flex-col p-0">
