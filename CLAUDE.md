@@ -31,7 +31,7 @@ Website first (SEO Hub phases 1–4), then the Vibe SEO plugin + site connection
 - Supabase connector (claude.ai Supabase MCP): use only our SEO Hub project (the same one as `.env.local`). Never touch other projects; never pause or create projects.
 - Only `seo_` tables. Never read or change HQ's tables.
 - Reads are fine: counts, RLS checks, duplicate checks, test SELECTs.
-- Writes (migrations, insert, update, delete): show Angel the exact SQL + how many rows it affects, then wait for his "yes". Deletes always start with a count.
+- Writes (migrations, insert, update, delete): show Angel the exact SQL + how many rows it affects, then wait for Angel's "yes". Deletes always start with a count.
 - Never print or store keys or tokens.
 
 ## Look
