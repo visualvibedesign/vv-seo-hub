@@ -177,6 +177,13 @@ function EditForm({ existing }: { existing: ClientDetail }) {
           Notes
         </h2>
         <TextArea label="Notes about this client" value={f.notes} onChange={(v) => set('notes', v)} />
+        <p className="m-0 text-[13px] text-vv-muted">
+          New notes go in{' '}
+          <Link to={`/clients/${existing.siteId}/notes`} className="font-semibold text-vv-purple-deep">
+            Notes &amp; links
+          </Link>{' '}
+          (tagged Rule, Decision or Note). Text here shows there as “Earlier notes”, with a Move to notes button.
+        </p>
       </section>
 
       {error && (

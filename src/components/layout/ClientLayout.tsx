@@ -118,7 +118,7 @@ export default function ClientLayout() {
 }
 
 /** Sections that have their own page header (title + tools) from the design. */
-const OWN_HEADER = new Set(['guide', 'uploads', 'database', 'matrix', 'clusters'])
+const OWN_HEADER = new Set(['guide', 'uploads', 'database', 'matrix', 'clusters', 'notes'])
 
 /** The client loaded by ClientLayout, for its tab pages. */
 // eslint-disable-next-line react-refresh/only-export-components

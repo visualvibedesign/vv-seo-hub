@@ -193,7 +193,7 @@ function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuidePlan; cl
         <Table head={['Type', 'Keyword', 'Action']} rows={p.later.map((l) => [l.type, l.keyword, <Act key="a" a={l.action} />])} />
         {p.areaNote && (
           <p className="m-0 mt-2 text-[13px] text-vv-body">
-            <strong>Client note added:</strong> {p.areaNote}
+            <strong>Note added (Notes &amp; links):</strong> {p.areaNote}
           </p>
         )}
       </Fold>

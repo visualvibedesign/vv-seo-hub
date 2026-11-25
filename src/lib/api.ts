@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, Industry, SamsGuidePlan } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -273,4 +273,37 @@ export function renameIndustry(key: string, label: string, hint = ''): Promise<{
 /** Stores a copy of the template on the client. */
 export function applyTemplate(templateId: string, siteId: string): Promise<{ template: Template }> {
   return call('/api/templates/apply', json({ templateId, siteId }))
+}
+
+// ---- Notes & links (redesign step 7, migration 0014) ----------------------------------------------------------
+
+/** This client's notes + agency rules (newest first), its extra links, and the old one-box notes. */
+export function getNotes(siteId: string): Promise<NotesState> {
+  return call(`/api/notes/list?site=${encodeURIComponent(siteId)}`)
+}
+
+export function addNote(n: { siteId: string; kind: NoteKind; body: string; author: string; day: number | null; agency: boolean }): Promise<{ note: ClientNote }> {
+  return call('/api/notes/add', json(n))
+}
+
+export function editNote(n: { siteId: string; id: string; kind: NoteKind; body: string }): Promise<{ note: ClientNote }> {
+  return call('/api/notes/edit', json(n))
+}
+
+export function deleteNote(siteId: string, id: string): Promise<{ ok: true }> {
+  return call('/api/notes/delete', json({ siteId, id }))
+}
+
+/** The old one-box notes become one Note; the old box is emptied. */
+export function moveEarlierNotes(siteId: string, author: string): Promise<{ note: ClientNote }> {
+  return call('/api/notes/move-earlier', json({ siteId, author }))
+}
+
+/** Adds (no id) or saves a link. */
+export function saveLink(l: { siteId: string; id?: string; label: string; url: string; note: string }): Promise<{ link: ClientLink }> {
+  return call('/api/notes/link', json(l))
+}
+
+export function deleteLink(siteId: string, id: string): Promise<{ ok: true }> {
+  return call('/api/notes/link-delete', json({ siteId, id }))
 }

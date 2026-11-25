@@ -129,7 +129,7 @@ export const CLIENT_GROUPS: ClientGroup[] = [
     label: 'Site',
     items: [
       { key: 'site', label: 'Connection + work log', path: 'site', live: false, tag: 'Plugin' },
-      { key: 'notes', label: 'Notes & links', path: 'notes', live: false, tag: 'P1' },
+      { key: 'notes', label: 'Notes & links', path: 'notes', live: true, tag: '' },
       { key: 'conversions', label: 'Conversions', path: 'conversions', live: false, tag: 'Later' },
     ],
   },

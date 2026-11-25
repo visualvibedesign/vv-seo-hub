@@ -100,6 +100,35 @@ export function hasServiceName(keyword: string, services: { name: string }[]): b
   return services.some((s) => singular(s.name).trim() !== '' && kw.includes(` ${singular(s.name)} `))
 }
 
+/**
+ * A category hub URL: ONE short path segment that names no place, e.g. /seo, /web-design/, /branding
+ * (full links too). Place words = the client's city, state, areas and neighbourhoods. /web-design-rogers-ar → no.
+ */
+export function isHubPath(url: string | null | undefined, placeWords: string[]): boolean {
+  if (!url?.trim()) return false
+  let path: string
+  try {
+    path = new URL(url.trim(), 'https://example.invalid').pathname
+  } catch {
+    return false
+  }
+  const segs = path.split('/').filter(Boolean)
+  if (segs.length !== 1) return false
+  let seg = segs[0]
+  try {
+    seg = decodeURIComponent(seg)
+  } catch {
+    /* keep it as is */
+  }
+  const words = seg.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)
+  if (!words.length || words.length > 4 || seg.length > 40) return false
+  const text = ` ${words.join(' ')} `
+  return !placeWords.some((w) => {
+    const t = w.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean).join(' ')
+    return t !== '' && text.includes(` ${t} `)
+  })
+}
+
 export type KeywordLite = { id: string; keyword: string; role: KeywordRole | null; serviceId: string | null; status: string }
 
 // ---- Brand (the client's own name) ----------------------------------------------------------------------

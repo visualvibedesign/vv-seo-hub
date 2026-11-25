@@ -552,3 +552,35 @@ export interface SamsGuidePlan {
   skipped: { line: number; section: string; why: string }[]
   notUnderstood: { line: number; section: string; text: string }[]
 }
+
+// ---- Notes & links (redesign step 7, migration 0014) ------------------------------------------------------
+
+export type NoteKind = 'rule' | 'decision' | 'note'
+
+export interface ClientNote {
+  id: string
+  kind: NoteKind
+  body: string
+  author: string | null
+  /** Guide step index (0 = Day 1 … 8 = Days 8–9, 9 = monthly). null = no day. */
+  day: number | null
+  /** No client: an agency rule, shown on every client. */
+  agency: boolean
+  createdAt: string
+}
+
+/** A link that isn't an account (the Google Sheet, ClickUp lists…). Links only, never logins. */
+export interface ClientLink {
+  id: string
+  label: string
+  url: string
+  note: string | null
+  sort: number
+}
+
+export interface NotesState {
+  notes: ClientNote[]
+  links: ClientLink[]
+  /** The old one-box notes (Edit client → Notes), shown as "Earlier notes" until moved. */
+  earlier: string | null
+}

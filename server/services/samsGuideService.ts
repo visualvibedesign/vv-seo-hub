@@ -252,7 +252,11 @@ async function build(c: ClientRow, csvText: string) {
     return `${words.join(' / ')}${l.why ? ` (${l.why})` : ''}`
   })
   const areaNote = areaLines.length ? `Possible areas (Sam’s Guide, Page 3): ${areaLines.join('; ')}` : null
-  const noteAlready = !!areaNote && (c.notes ?? '').includes(areaNote)
+  // Already there = in the Notes feed (step 7) or still in the old one-box notes.
+  const noteAlready =
+    !!areaNote &&
+    ((c.notes ?? '').includes(areaNote) ||
+      (must(await db().from('seo_notes').select('id').eq('client_id', c.id).eq('body', areaNote).limit(1), 'Checking notes') as unknown[]).length > 0)
 
   // ---- Competitors: names only ---------------------------------------------------------------------------
   const competitors = g.competitors.map((x) => {
@@ -466,10 +470,9 @@ export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text
       else if (x.action.startsWith('Conflict') && tick.has(`comp:${x.code}`)) must(await db().from('seo_competitors').update({ name: x.name }).eq('client_id', c.id).eq('code', x.code), 'Saving competitors')
     }
 
-    // 10. "More areas" → one line added to the client's notes
+    // 10. "More areas" → one Note in Notes & links (tagged Day 1, where areas are chosen)
     if (b.areaNote) {
-      const notes = c.notes?.trim() ? `${c.notes.trim()}\n\n${b.areaNote}` : b.areaNote
-      must(await db().from('seo_clients').update({ notes }).eq('id', c.id), 'Saving the client note')
+      must(await db().from('seo_notes').insert({ client_id: c.id, kind: 'note', body: b.areaNote.slice(0, 4000), author: 'Sam’s Guide import', day: 0 }), 'Saving the client note')
     }
   } catch (err) {
     for (let i = 0; i < createdIds.length; i += CHUNK) await db().from('seo_keywords').delete().in('id', createdIds.slice(i, i + CHUNK))

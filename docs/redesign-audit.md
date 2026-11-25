@@ -235,7 +235,7 @@ Numbers = the redesign steps as built (START-HERE order). Migrations are split p
 - ✅ **Any client** (Nov 25, migration 0009): brand words per client, neutral prompts / screen text, area state falls back to the client's state ("[state]" if none), industries are a database list (`seo_industries`) with "+ New industry" in the Add client wizard and "Add industry" on Templates. No industry needs its own template versions: generic templates + the client's own services, areas, scope and brand words.
 - ✅ **Accounts as quick access** (migration 0010): every account starts Ready, Open button (client link, else the tool's main page), per-client links (https only, never logins), "More accounts" always shown.
 - ✅ **Bulk "Add clients from CSV"** (/clients/import): name, URL, city, state, optional industry; site ids worked out, existing clients + repeats skipped, address-like rows refused, new industries added on save, preview before saving; services filled in later per client ("Needs services" on All clients). No new tables.
-- **Step 7 · Notes & links.** Migration: `seo_notes`, `seo_client_links`.
+- ✅ **Step 7 · Notes & links** (migration 0014): Links card (website + account links from Overview + extra links), Notes feed (Rule / Decision / Note, author typed once per browser, guide day; agency rules shown on every client; no street addresses), old Notes box shown as "Earlier notes" with Move to notes, Sam's Guide "Possible areas" line saved as a Note. Pages · Claude also counts a one-segment URL with no place word (/seo, /web-design) as a hub.
 - **Last:** Anassa check vs §4, phone + dark mode on every screen.
 
 Each step: plan → Angel OK → build → test on localhost → commit locally. No push, merge or deploy until Angel says so.
