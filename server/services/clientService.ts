@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { ACCOUNTS, ACCOUNT_KINDS, accountLinkProblem, AREA_CODES, CATEGORY_CODES, CORE_ACCOUNT_KINDS, DEFAULT_FAQ_NAME } from '../../src/lib/clientSetup.js'
 import { checkIndustry, IndustryInputError } from './industryService.js'
 import { GUIDE_STEPS } from '../../src/lib/guide.js'
+import { stripStateSuffix } from '../../src/lib/templates.js'
 import type {
   AccountKind,
   AccountStatus,
@@ -288,6 +289,9 @@ function validate(raw: unknown): ClientInput {
       seen.add(key)
     }
   }
+  // "Staten Island, NY" with state NY is stored as "Staten Island" (the state is its own field: never "…, NY, NY").
+  input.city = stripStateSuffix(input.city, input.state)
+  for (const a of input.areas) a.name = stripStateSuffix(a.name, a.state || input.state)
   for (const a of input.areas) {
     if (a.status === 'active' && !a.name) throw new ClientInputError(`Name area ${a.code}, or mark it N/A.`)
   }
@@ -376,6 +380,7 @@ async function writeClient(input: ClientInput, fields: Record<string, unknown>, 
  * The caller has already checked the row (site id free, industry in the list, no address).
  */
 export async function addClientBasic(row: { name: string; siteUrl: string; siteId: string; city: string; state: string; industry: string | null }): Promise<{ siteId: string }> {
+  row = { ...row, city: stripStateSuffix(row.city, row.state) }
   const input: ClientInput = {
     siteUrl: row.siteUrl,
     name: row.name,

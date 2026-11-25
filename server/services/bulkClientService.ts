@@ -6,6 +6,7 @@
 //   * no address is ever accepted: a city / name that looks like a street address is a problem row
 // New clients get no services (filled in later per client) and every account starts Ready.
 import { z } from 'zod'
+import { stripStateSuffix } from '../../src/lib/templates.js'
 import { looksLikeAddress } from '../../src/lib/importRules.js'
 import type { BulkClientCheck, BulkClientRow } from '../../src/types/seo.js'
 import { db, must } from '../clients/supabase.js'
@@ -39,7 +40,8 @@ export async function checkBulk(rows: BulkClientRow[]): Promise<BulkClientCheck[
   ])
   const taken = new Map((must(existing, 'Loading clients') as { site_id: string; name: string }[]).map((c) => [c.site_id, c.name]))
   const seen = new Map<string, number>()
-  return rows.map((r): BulkClientCheck => {
+  return rows.map((raw): BulkClientCheck => {
+    const r = { ...raw, city: stripStateSuffix(raw.city, raw.state) } // "Staten Island, NY" + NY → "Staten Island"
     const base = { ...r, siteUrl: null, siteId: null, industryKey: null, industryLabel: null, industryNew: false }
     const problem = (note: string): BulkClientCheck => ({ ...base, status: 'problem', note })
     if (!r.name) return problem('No business name.')

@@ -39,6 +39,21 @@ const STATES: Record<string, string> = {
 /** "NY" → "New York"; unknown → the code as typed. */
 export const stateName = (st: string) => STATES[st.trim().toUpperCase()] ?? st.trim()
 
+/**
+ * "Staten Island, NY" + state "NY" → "Staten Island" (also ", New York" or "NY" + "New York"): the state is its own
+ * field, so it isn't stored twice ("Staten Island, NY, NY"). Any other text after a comma stays as typed.
+ */
+export function stripStateSuffix(city: string, state: string | null | undefined): string {
+  const c = city.trim()
+  const st = (state ?? '').trim().toLowerCase()
+  const comma = c.lastIndexOf(',')
+  if (!st || comma < 1) return c
+  const tail = c.slice(comma + 1).trim().replace(/\.$/, '').toLowerCase()
+  const code = Object.keys(STATES).find((k) => k.toLowerCase() === st || STATES[k].toLowerCase() === st)
+  const same = tail === st || (!!code && (tail === code.toLowerCase() || tail === STATES[code].toLowerCase()))
+  return same ? c.slice(0, comma).trim() : c
+}
+
 /** "Main City" → "main-city" (URL patterns). */
 const slug = (s: string) =>
   s
