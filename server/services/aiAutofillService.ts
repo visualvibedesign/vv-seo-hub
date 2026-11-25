@@ -6,7 +6,7 @@
 // are on the plain-code scope list instead.
 import { z } from 'zod'
 import { AI_MODELS, AI_TASKS, costUsd, type AiTask } from '../../src/lib/aiModels.js'
-import { isOwnBrand, roleOptions, serviceOptions, type KeywordLite } from '../../src/lib/autofillRules.js'
+import { hasServiceName, isOwnBrand, roleOptions, serviceOptions, type KeywordLite } from '../../src/lib/autofillRules.js'
 import type { AutofillItem, AutofillKind, AutofillRow } from '../../src/types/seo.js'
 import { db, must } from '../clients/supabase.js'
 import { callStructured, countInputTokens } from './aiService.js'
@@ -180,7 +180,10 @@ async function prepTriage(c: ClientRow): Promise<Prepared<typeof TriageOut>> {
   const [kws, svc, words, scope] = await Promise.all([candidates(c), servicesOf(c), templateWords(c), scopeWordsOf(c)])
   // Keywords naming the client itself stay out (brand words, or the business name / domain): never a competitor.
   const brand = { brandWords: c.brand_words ?? [], name: c.name, siteUrl: c.site_url }
-  const list = kws.filter((k) => k.status === 'keep' && !k.role && roleOptions(k.keyword, words).length === 0 && !isOwnBrand(k.keyword, brand))
+  // Keywords with one of the client's service names in them clearly fit: not sent either.
+  const list = kws.filter(
+    (k) => k.status === 'keep' && !k.role && roleOptions(k.keyword, words).length === 0 && !isOwnBrand(k.keyword, brand) && !hasServiceName(k.keyword, svc),
+  )
   const vol = await volumes(list.map((k) => k.id))
   return {
     list,

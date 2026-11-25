@@ -5,6 +5,7 @@ import { useClientContext } from '../../components/layout/ClientLayout'
 import { Spinner } from '../../components/ui/Loading'
 import { useCommitImport, usePreviewImport } from '../../hooks/useImports'
 import { ApiError } from '../../lib/api'
+import { areaState } from '../../lib/clientSetup'
 import { FIELD_LABEL, keywordKey, REPORTS, SOURCE_FIELDS, SOURCE_LABEL, sourceOf } from '../../lib/importRules'
 import { applyMap, fileToBase64, filterRows, initialMap, readCsvFile, type ParsedFile } from '../../lib/readCsv'
 import { BTN_GHOST, BTN_LIME, CARD, CARD_TITLE, FIELD, LABEL, PILL_DONE, PILL_WAITING } from '../../lib/ui'
@@ -45,7 +46,7 @@ export default function ImportPage() {
   const rows = useMemo(() => filterRows(mapped.rows, include, exclude), [mapped.rows, include, exclude])
 
   const defaultLocation = (s: ImportSource) =>
-    s === 'semrush' ? 'US' : s === 'kp' ? [c.areas.find((a) => a.code === 'A1')?.name, c.areas.find((a) => a.code === 'A1')?.state].filter(Boolean).join(', ') : ''
+    s === 'semrush' ? 'US' : s === 'kp' ? [c.areas.find((a) => a.code === 'A1')?.name, areaState(c.areas.find((a) => a.code === 'A1'), c.state)].filter(Boolean).join(', ') : ''
 
   const reset = () => {
     setStep('source')
@@ -358,7 +359,7 @@ function MatchStep(props: {
   // Placeholders from this client's own data (A1 area, services, scope words); nothing typed in for any one client.
   const c = props.client
   const a1 = c.areas.find((a) => a.code === 'A1' && a.status === 'active')
-  const place = [a1?.name || c.city, a1?.state || c.state].filter(Boolean).join(', ')
+  const place = [a1?.name || c.city, areaState(a1, c.state)].filter(Boolean).join(', ')
   const area = (a1?.name || c.city || '').toLowerCase()
   const svc = c.categories.flatMap((k) => k.services.map((s) => s.name.toLowerCase())).slice(0, 2)
   const eg = (xs: string[]) => (xs.length ? `e.g. ${xs.join(', ')}` : '')

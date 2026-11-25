@@ -1,6 +1,7 @@
 // Templates (redesign step 5): labels, variables and the fill-in used by the library preview, the editor's
 // live preview and Apply. Variables: {service} {city} {st} {state} {brand}. Filled from the client's own
 // services, A1 city and state; nothing else is made up. Unknown variables are left as typed.
+import { areaState } from './clientSetup.js'
 import type { ClientDetail, TemplateItem, TemplateKind, WordGroup } from '../types/seo'
 
 export const TEMPLATE_KINDS: { kind: TemplateKind; label: string; step: number }[] = [
@@ -48,14 +49,16 @@ const slug = (s: string) =>
     .replace(/^-+|-+$/g, '')
 
 /**
- * Fill {service} {city} {st} {state} {brand}; empty values leave the variable in place so gaps show.
+ * Fill {service} {city} {st} {state} {brand}; empty values leave the variable in place so gaps show, except a
+ * missing state ({st} / {state}), which shows "[state]" so it's never silently blank.
  * A pattern that starts with "/" is a URL: each value becomes a slug ("/main-service-main-city-st/").
  */
+export const MISSING_STATE = '[state]'
 export function fill(body: string, v: Partial<Vars>): string {
   const url = body.trim().startsWith('/')
   return body.replace(/\{(service|city|st|state|brand)\}/g, (m, key: keyof Vars) => {
     const val = v[key]?.trim()
-    if (!val) return m
+    if (!val) return key === 'st' || key === 'state' ? MISSING_STATE : m
     return url ? slug(val) : val
   })
 }
@@ -71,7 +74,7 @@ export function varsFromClient(c: ClientDetail): Vars {
   const order = ['Home', 'S1', 'S2', 'S3']
   const services = [...c.categories].filter((k) => k.code !== 'FAQ').sort((a, b) => order.indexOf(a.code) - order.indexOf(b.code)).flatMap((k) => k.services)
   const a1 = c.areas.find((a) => a.code === 'A1' && a.status === 'active')
-  const st = (a1?.state || c.state || '').trim()
+  const st = areaState(a1, c.state)
   return { service: services[0]?.name ?? '', city: (a1?.name || c.city || '').trim(), st, state: st ? stateName(st) : '', brand: c.name }
 }
 
@@ -84,7 +87,7 @@ export function seedsFor(items: TemplateItem[], c: ClientDetail, max = 500): str
   for (const p of patterns)
     for (const s of services.length ? services : [''])
       for (const a of areas.length ? areas : [{ name: c.city ?? '', state: c.state ?? '' }]) {
-        const st = (a.state || c.state || '').trim()
+        const st = areaState(a, c.state)
         out.add(fillSearch(p, { service: s, city: a.name ?? '', st, state: st ? stateName(st) : '', brand: c.name }).replace(/\s+/g, ' ').trim())
         if (out.size >= max) return [...out]
       }

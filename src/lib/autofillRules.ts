@@ -94,6 +94,12 @@ function serviceMatches(keyword: string, services: ServiceRef[], w: Words): Opti
   return out
 }
 
+/** The keyword contains one of the client's service names exactly (plurals ignored), e.g. "<service> <city>". */
+export function hasServiceName(keyword: string, services: { name: string }[]): boolean {
+  const kw = ` ${singular(keyword)} `
+  return services.some((s) => singular(s.name).trim() !== '' && kw.includes(` ${singular(s.name)} `))
+}
+
 export type KeywordLite = { id: string; keyword: string; role: KeywordRole | null; serviceId: string | null; status: string }
 
 // ---- Brand (the client's own name) ----------------------------------------------------------------------

@@ -2,7 +2,7 @@
 // Tables (from 0001): seo_matrix_cells (one row per category × area) + seo_matrix_keywords (primary / backup links).
 // Keywords themselves are never changed here; only which keyword sits in which cell.
 import { z } from 'zod'
-import { AREA_CODES } from '../../src/lib/clientSetup.js'
+import { AREA_CODES, areaState } from '../../src/lib/clientSetup.js'
 import type { AreaCode, CategoryCode, MatrixCell, MatrixCellInput, MatrixKeyword, MatrixState, PageStatus } from '../../src/types/seo.js'
 import { db, must } from '../clients/supabase.js'
 import { clientRow } from './clientService.js'
@@ -55,7 +55,8 @@ export async function getMatrix(siteId: string): Promise<MatrixState> {
   const kw = (k: KwRow): MatrixKeyword => ({ id: k.id, keyword: k.keyword, role: k.role, semrushVolume: k.semrush_volume, kpVolume: k.kp_volume, page: pages.get(k.id) ?? null })
 
   return {
-    areas: areaRows.map((a) => ({ code: a.code, name: a.name, state: a.state, status: a.status })),
+    // An area with no state shows the client's main state.
+    areas: areaRows.map((a) => ({ code: a.code, name: a.name, state: a.name ? areaState(a, c.state) || null : a.state, status: a.status })),
     rows: ROWS.flatMap((code) => {
       const cat = catRows.find((k) => k.code === code)
       if (!cat) return []

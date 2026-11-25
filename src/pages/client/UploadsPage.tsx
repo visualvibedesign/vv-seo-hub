@@ -9,7 +9,7 @@ import { useMatrix } from '../../hooks/useMatrix'
 import { useAutofill } from '../../hooks/useAutofill'
 import Day2Autofill from '../../components/autofill/Day2Autofill'
 import { ApiError } from '../../lib/api'
-import { CORE_ACCOUNT_KINDS } from '../../lib/clientSetup'
+import { areaState, CORE_ACCOUNT_KINDS } from '../../lib/clientSetup'
 import { guessFilter, REPORTS, sourceOf } from '../../lib/importRules'
 import { applyMap, fileToBase64, initialMap, MAX_FILE_BYTES, readCsvFile } from '../../lib/readCsv'
 import { BTN_GHOST, BTN_LIME, CARD, PILL } from '../../lib/ui'
@@ -255,7 +255,7 @@ function DropZone({ client: c, imports }: { client: ClientDetail; imports: Impor
           source,
           report: p.report,
           fileName: file.name,
-          location: source === 'kp' ? [a1?.name, a1?.state].filter(Boolean).join(', ') : 'US',
+          location: source === 'kp' ? [a1?.name, areaState(a1, c.state)].filter(Boolean).join(', ') : 'US',
           filter: source === 'semrush' ? guessFilter(mapped.rows, areaWords) : '',
           columnMap: map,
           totals: mapped.totals,

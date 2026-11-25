@@ -11,6 +11,9 @@ export const INDUSTRIES: { key: ClientIndustry; label: string; hint: string }[] 
 export const INDUSTRY_KEYS = INDUSTRIES.map((i) => i.key)
 export const industryLabel = (k: ClientIndustry | null) => INDUSTRIES.find((i) => i.key === k)?.label ?? null
 
+/** An area's state code, or the client's main state when the area has none ("" only if both are empty). */
+export const areaState = (area: { state?: string | null } | null | undefined, clientState: string | null | undefined) => (area?.state || clientState || '').trim()
+
 /** Matrix rows first (Home + S1–S3), then FAQ (help pages: a cluster category, not a matrix row). */
 export const CATEGORY_CODES: CategoryCode[] = ['Home', 'S1', 'S2', 'S3', 'FAQ']
 export const AREA_CODES: AreaCode[] = ['A1', 'A2', 'A3']
