@@ -4,12 +4,14 @@ import HeaderTools from '../../components/layout/HeaderTools'
 import { Bone, Spinner } from '../../components/ui/Loading'
 import { useGuide, useGuideChange } from '../../hooks/useGuide'
 import { ApiError } from '../../lib/api'
-import { GUIDE, GUIDE_STEPS, type GuideStep } from '../../lib/guide'
+import { clientPath } from '../../lib/clientSetup'
+import { GUIDE, GUIDE_STEPS, isOverviewStep, overviewLine, STRATEGY_GUIDE, strategyCurrent, type GuideStep } from '../../lib/guide'
 import { BTN_GHOST, BTN_LIME, CARD, PILL, PILL_DONE } from '../../lib/ui'
 import type { GuideState, GuideStepState } from '../../types/seo'
 
-// Step-by-step guide (/clients/{site id}/guide), design docs/design/Guide.png: Sam's 10 days as 9 steps,
-// tick the tasks, then mark the step done. Some tasks tick themselves from the client's data (never stored).
+// Step-by-step guide (/clients/{site id}/strategy/guide), design docs/design/Guide.png: the Strategy Builder's days
+// (1, 2, 4, 5, 6, 7, 8–9); Day 3 and Day 10 are thin lines linking to the client Overview, where they're ticked.
+// Tick the tasks, then mark the day done. Some tasks tick themselves from the client's data (never stored).
 
 export default function GuidePage() {
   const c = useClientContext()
@@ -63,43 +65,60 @@ export default function GuidePage() {
   )
 }
 
-/** ?step=N, else the current step (the last one once everything is done). */
+/** The Strategy Builder's current step: the first of its days not done (Day 3 / Day 10 are ticked in the Overview). */
+const strategyNow = (g: GuideState) => strategyCurrent((n) => g.steps[n]?.status === 'done')
+
+/** ?step=N (a Strategy day), else the current Strategy day (the last one once all are done). */
 function pick(raw: string | null, g: GuideState): number {
   const n = raw === null ? NaN : Number(raw)
-  if (Number.isInteger(n) && n >= 0 && n < GUIDE_STEPS) return n
-  return Math.min(g.current, GUIDE_STEPS - 1)
+  if (Number.isInteger(n) && n >= 0 && n < GUIDE_STEPS && !isOverviewStep(n)) return n
+  const now = strategyNow(g)
+  return now < GUIDE_STEPS ? now : STRATEGY_GUIDE[STRATEGY_GUIDE.length - 1].n
 }
 
 function Progress({ guide: g }: { guide: GuideState }) {
+  const total = STRATEGY_GUIDE.length
+  const doneCount = STRATEGY_GUIDE.filter((s) => g.steps[s.n]?.status === 'done').length
   return (
     <div className="flex w-[260px] flex-col gap-2 phone:w-auto phone:flex-1">
       <span className="text-[15px] font-bold text-vv-ink">
-        {g.doneCount} of {GUIDE_STEPS} steps done
+        {doneCount} of {total} days done
       </span>
       <div
         role="progressbar"
-        aria-label="Steps done"
+        aria-label="Strategy days done"
         aria-valuemin={0}
-        aria-valuemax={GUIDE_STEPS}
-        aria-valuenow={g.doneCount}
+        aria-valuemax={total}
+        aria-valuenow={doneCount}
         className="h-2.5 overflow-hidden rounded-full bg-vv-lavender-100 dark:bg-vv-field-line"
       >
-        <div className="h-full rounded-full bg-vv-purple transition-[width] motion-reduce:transition-none" style={{ width: `${(g.doneCount / GUIDE_STEPS) * 100}%` }} />
+        <div className="h-full rounded-full bg-vv-purple transition-[width] motion-reduce:transition-none" style={{ width: `${(doneCount / total) * 100}%` }} />
       </div>
     </div>
   )
 }
 
 function Guide({ guide: g, siteId, selected, onSelect }: { guide: GuideState; siteId: string; selected: number; onSelect: (n: number) => void }) {
+  const now = strategyNow(g)
   return (
     <div className="grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] items-start gap-6 [@media(max-width:1100px)]:grid-cols-1">
       <nav aria-label="Guide steps" className={`${CARD} !gap-1 !p-3.5 [@media(max-width:1100px)]:order-last`}>
         <ol className="m-0 flex list-none flex-col gap-1 p-0">
           {GUIDE.map((s) => {
+            // Day 3 / Day 10 live in the client Overview: a thin muted line in Sam's order, linking there.
+            if (isOverviewStep(s.n))
+              return (
+                <li key={s.n}>
+                  <Link to={clientPath(siteId, s.open.path)} className="flex min-h-9 items-center gap-2 rounded-[12px] px-3 pl-[66px] text-[13px] text-vv-muted no-underline hover:bg-vv-lavender-50 hover:text-vv-purple-deep">
+                    {overviewLine(s.n)} <span aria-hidden="true">→</span> in Overview
+                    {g.steps[s.n]?.status === 'done' && <span className="sr-only">(done)</span>}
+                  </Link>
+                </li>
+              )
             const st = g.steps[s.n]
             const on = s.n === selected
             const done = st.status === 'done'
-            const here = s.n === g.current
+            const here = s.n === now
             return (
               <li key={s.n}>
                 <button
@@ -122,7 +141,7 @@ function Guide({ guide: g, siteId, selected, onSelect }: { guide: GuideState; si
           })}
         </ol>
       </nav>
-      <StepDetail key={selected} step={GUIDE[selected]} state={g.steps[selected]} here={selected === g.current} siteId={siteId} onNext={(n) => onSelect(n)} />
+      <StepDetail key={selected} step={GUIDE[selected]} state={g.steps[selected]} here={selected === now} siteId={siteId} onNext={(n) => onSelect(n)} />
     </div>
   )
 }
@@ -140,18 +159,28 @@ function StepBadge({ n, done, here }: { n: number; done: boolean; here: boolean 
   return <span className={`${base} ${here ? 'bg-vv-green text-vv-on-green' : 'bg-vv-lavender-100 text-vv-body'}`}>{n + 1}</span>
 }
 
-function StepDetail({ step: s, state: st, here, siteId, onNext }: { step: GuideStep; state: GuideStepState; here: boolean; siteId: string; onNext: (n: number) => void }) {
+/**
+ * One step: tasks to tick, tools, tip, the "open" button and Mark done. Also used by the client Overview's Baseline
+ * (Day 3) and Results (Day 10) pages, where `showOpen` is off (they are that page) and there's no next step to jump to.
+ */
+export function StepDetail({ step: s, state: st, here, siteId, onNext, showOpen = true }: { step: GuideStep; state: GuideStepState; here: boolean; siteId: string; onNext?: (n: number) => void; showOpen?: boolean }) {
   const change = useGuideChange(siteId)
   const isDone = (key: string, auto?: boolean) => (auto ? st.autoDone.includes(key) : st.tasksDone.includes(key))
   const ticked = s.tasks.filter((t) => isDone(t.key, t.auto)).length
   const done = st.status === 'done'
   const error = change.error ? (change.error instanceof ApiError && change.error.detail ? change.error.detail : 'Couldn’t save. Try again.') : ''
-  const openPath = s.open.path === 'edit' ? `/clients/${siteId}/edit` : `/clients/${siteId}/${s.open.path}`
+  const openPath = clientPath(siteId, s.open.path)
 
+  // After Mark done, the guide jumps to the next Strategy day (Day 3 / Day 10 aren't in its list).
   const markDone = () =>
     change.mutate(
       { kind: 'step', step: s.n, done: true },
-      { onSuccess: ({ guide }) => guide.current < GUIDE_STEPS && guide.current !== s.n && onNext(guide.current) },
+      {
+        onSuccess: ({ guide }) => {
+          const next = strategyNow(guide)
+          if (onNext && next < GUIDE_STEPS && next !== s.n) onNext(next)
+        },
+      },
     )
 
   return (
@@ -220,9 +249,11 @@ function StepDetail({ step: s, state: st, here, siteId, onNext }: { step: GuideS
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <Link to={openPath} className={BTN_GHOST}>
-          {s.open.label} ›
-        </Link>
+        {showOpen && (
+          <Link to={openPath} className={BTN_GHOST}>
+            {s.open.label} ›
+          </Link>
+        )}
         {s.videos.map((v) => (
           <a key={v.url} href={v.url} target="_blank" rel="noopener noreferrer" className={BTN_GHOST}>
             {s.videos.length > 1 ? `Sam’s ${v.label} video` : 'Watch Sam’s video'}

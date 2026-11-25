@@ -72,7 +72,7 @@ export default function AddClientPage() {
     try {
       const client = { ...toInput(f), accounts: ACCOUNTS.map((a) => ({ kind: a.kind, status: accounts[a.kind], ...(links[a.kind] ? { link: links[a.kind] } : {}) })) }
       const res = await save.mutateAsync({ client })
-      navigate(`/clients/${res.siteId}/guide`)
+      navigate(`/clients/${res.siteId}/strategy/guide`)
     } catch (err) {
       setError(err instanceof ApiError && err.detail ? err.detail : 'Couldn’t save. Check your connection and try again.')
     }

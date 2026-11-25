@@ -73,77 +73,93 @@ export function accountLinkProblem(raw: string): string {
 export const ACCOUNT_STATUS_LABEL: Record<AccountStatus, string> = { ready: 'Ready', pending: 'Pending', n_a: 'N/A' }
 
 /**
- * A client's sections (/clients/{site id}/<path>), grouped like the design's sidebar (docs/design/Sidebar.png,
- * Client.png): a few top items, then KEYWORDS, RESULTS, PAGES, LOCAL, SITE. `live` = built.
- * `tag` says when a section comes: 'P1' (phase 1, being built), 'P2'…'P4', 'Plugin' (needs the Vibe SEO
- * plugin), 'Later'. Only 'Later' shows in the sidebar; the others show on the section's "coming" card.
+ * A client has two areas (Angel, Nov 26), both on the same client and data:
+ *   - Overview (/clients/{site id}/…): results + quick access, the default page when you open a client. Day 3
+ *     (Baseline) and Day 10 (Results) live here, with the site connection and Notes & links.
+ *   - Strategy Builder (/clients/{site id}/strategy/…): the work, Sam's days 1, 2, 4, 5, 6, 7, 8–9.
+ * `path` = the path under /clients/{site id}. `live` = built. `tag` says when a section comes: 'P1'…'P5', 'Plugin'
+ * (needs the Vibe SEO plugin), 'Later'. Only 'Later' shows in the sidebar; the rest show on the "coming" card.
+ * A Strategy group's `step` = its guide step (src/lib/guide.ts), so the current day opens by itself.
  */
-export type ClientSection = { key: string; label: string; path: string; live: boolean; tag: string; group?: string }
-export type ClientGroup = { key: string; label: string; items: ClientSection[] }
+export type ClientArea = 'overview' | 'strategy'
+export type ClientSection = { key: string; label: string; path: string; live: boolean; tag: string; group?: string; area?: ClientArea }
+export type ClientGroup = { key: string; label: string; step: number; items: ClientSection[] }
 
-export const CLIENT_TOP: ClientSection[] = [
-  { key: 'overview', label: 'Overview', path: '', live: true, tag: '' },
-  { key: 'guide', label: 'Step-by-step guide', path: 'guide', live: true, tag: '' },
-  { key: 'uploads', label: 'Uploads + auto-fill', path: 'uploads', live: true, tag: '' },
+/** /clients/{site id}[/path] */
+export const clientPath = (siteId: string, path = '') => `/clients/${siteId}${path ? `/${path.replace(/^\/+/, '')}` : ''}`
+/** /clients/{site id}/strategy[/path] */
+export const strategyPath = (siteId: string, path = '') => clientPath(siteId, path ? `strategy/${path.replace(/^\/+/, '')}` : 'strategy')
+
+/** Overview area: results + quick access. */
+export const OVERVIEW_SECTIONS: ClientSection[] = [
+  { key: 'overview', label: 'Overview', path: '', live: true, tag: '', area: 'overview' },
+  { key: 'baseline', label: 'Baseline', path: 'baseline', live: true, tag: 'P2', area: 'overview' },
+  { key: 'results', label: 'Results', path: 'results', live: true, tag: 'P2', area: 'overview' },
+  { key: 'site', label: 'Site connection', path: 'site', live: false, tag: 'Plugin', area: 'overview' },
+  { key: 'notes', label: 'Notes & links', path: 'notes', live: true, tag: '', area: 'overview' },
+  { key: 'conversions', label: 'Conversions', path: 'conversions', live: false, tag: 'Later', area: 'overview' },
 ]
 
-export const CLIENT_GROUPS: ClientGroup[] = [
+/** Strategy Builder: the top items, then one group per Sam day. */
+export const STRATEGY_TOP: ClientSection[] = [
+  { key: 'strategy', label: 'Strategy home', path: 'strategy', live: true, tag: '', area: 'strategy' },
+  { key: 'guide', label: 'Step-by-step guide', path: 'strategy/guide', live: true, tag: '', area: 'strategy' },
+  { key: 'uploads', label: 'Uploads + auto-fill', path: 'strategy/uploads', live: true, tag: '', area: 'strategy' },
+]
+
+export const STRATEGY_GROUPS: ClientGroup[] = [
+  { key: 'day1', label: 'Day 1 · Setup', step: 0, items: [{ key: 'setup', label: 'Client setup', path: 'strategy/setup', live: true, tag: '' }] },
   {
     key: 'keywords',
-    label: 'Keywords',
+    label: 'Day 2 · Keywords',
+    step: 1,
     items: [
-      { key: 'matrix', label: 'Matrix', path: 'keywords', live: true, tag: '' },
-      { key: 'database', label: 'Database', path: 'keywords/database', live: true, tag: '' },
-      { key: 'clusters', label: 'Clusters', path: 'keywords/clusters', live: true, tag: '' },
-      { key: 'import', label: 'Import', path: 'keywords/import', live: true, tag: '' },
+      { key: 'matrix', label: 'Matrix', path: 'strategy/keywords', live: true, tag: '' },
+      { key: 'database', label: 'Database', path: 'strategy/keywords/database', live: true, tag: '' },
+      { key: 'clusters', label: 'Clusters', path: 'strategy/keywords/clusters', live: true, tag: '' },
+      { key: 'import', label: 'Import', path: 'strategy/keywords/import', live: true, tag: '' },
     ],
   },
+  { key: 'day4', label: 'Day 4 · GBP check', step: 3, items: [{ key: 'gbp', label: 'GBP check', path: 'strategy/gbp', live: false, tag: 'P4' }] },
   {
-    key: 'results',
-    label: 'Results',
+    key: 'day5',
+    label: 'Day 5 · Sitemap',
+    step: 4,
     items: [
-      { key: 'reports', label: 'Baseline + reports', path: 'reports', live: false, tag: 'P2' },
-      { key: 'review', label: 'Day 10 review', path: 'review', live: false, tag: 'P2' },
+      { key: 'pages', label: 'Sitemap + hotspots', path: 'strategy/pages', live: false, tag: 'P3' },
+      { key: 'plan', label: 'Site plan', path: 'strategy/plan', live: false, tag: 'P3' },
     ],
   },
-  {
-    key: 'pages',
-    label: 'Pages',
-    items: [
-      { key: 'pages', label: 'Sitemap + hotspots', path: 'pages', live: false, tag: 'P3' },
-      { key: 'plan', label: 'Site plan', path: 'plan', live: false, tag: 'P3' },
-      { key: 'briefs', label: 'Page briefs', path: 'briefs', live: false, tag: 'P3' },
-    ],
-  },
-  {
-    key: 'local',
-    label: 'Local',
-    items: [
-      { key: 'gbp', label: 'GBP check', path: 'gbp', live: false, tag: 'P4' },
-      { key: 'gbp-care', label: 'GBP care', path: 'gbp-care', live: false, tag: 'P4' },
-      { key: 'links', label: 'Links', path: 'links', live: false, tag: 'P4' },
-    ],
-  },
-  {
-    key: 'site',
-    label: 'Site',
-    items: [
-      { key: 'site', label: 'Connection + work log', path: 'site', live: false, tag: 'Plugin' },
-      { key: 'notes', label: 'Notes & links', path: 'notes', live: true, tag: '' },
-      { key: 'conversions', label: 'Conversions', path: 'conversions', live: false, tag: 'Later' },
-    ],
-  },
+  { key: 'day6', label: 'Day 6 · Page briefs', step: 5, items: [{ key: 'briefs', label: 'Page briefs', path: 'strategy/briefs', live: false, tag: 'P3' }] },
+  { key: 'day7', label: 'Day 7 · GBP care', step: 6, items: [{ key: 'gbp-care', label: 'GBP care', path: 'strategy/gbp-care', live: false, tag: 'P4' }] },
+  { key: 'day89', label: 'Days 8–9 · Links', step: 7, items: [{ key: 'links', label: 'Link database', path: 'strategy/links', live: false, tag: 'P4' }] },
 ]
 
 /** Every client section, flat; grouped ones carry their group's label (for the breadcrumb). */
-export const ALL_SECTIONS: ClientSection[] = [...CLIENT_TOP, ...CLIENT_GROUPS.flatMap((g) => g.items.map((s) => ({ ...s, group: g.label })))]
+export const ALL_SECTIONS: ClientSection[] = [
+  ...OVERVIEW_SECTIONS,
+  ...STRATEGY_TOP,
+  ...STRATEGY_GROUPS.flatMap((g) => g.items.map((s) => ({ ...s, group: g.label, area: 'strategy' as const }))),
+]
 
-/** Hub pages (no client open). Clients are never listed in the sidebar (50+ clients): they live on All clients. */
+/** Old client paths (before the Overview / Strategy Builder split) → the new path. Unknown → '' (the Overview). */
+export function legacyClientPath(rest: string, search: string): string {
+  const p = rest.replace(/^\/+|\/+$/g, '')
+  const day = new URLSearchParams(search).get('day')
+  if (p === 'edit') return 'strategy/setup'
+  if (p === 'reports' || p === 'review') return 'results'
+  if (p === 'uploads' && day === 'day3') return 'baseline'
+  if (p === 'uploads' && day === 'day10') return 'results'
+  if (/^(guide|uploads|keywords(\/.*)?|gbp|gbp-care|pages|plan|briefs|links)$/.test(p)) return `strategy/${p}`
+  return ''
+}
+
+/** Hub pages (no client open). Clients are never listed in the sidebar (50+ clients): they live on Clients. */
 export const HUB_SECTIONS: ClientSection[] = [
   { key: 'hub-overview', label: 'Overview', path: '/', live: true, tag: '' },
-  { key: 'clients', label: 'All clients', path: '/clients', live: true, tag: '' },
+  { key: 'clients', label: 'Clients', path: '/clients', live: true, tag: '' },
   { key: 'templates', label: 'Templates', path: '/templates', live: true, tag: '' },
-  { key: 'automation', label: 'Automation', path: '/automation', live: false, tag: 'P5' },
+  { key: 'settings', label: 'Settings', path: '/settings', live: false, tag: 'P1' },
 ]
 
 /** "Building now · phase 1", "Coming in phase 3", "Comes with the Vibe SEO plugin", "Coming later". */
@@ -172,5 +188,10 @@ export const TAB_COMING: Record<string, string> = {
   notes: 'Quick links to the client’s tools and the rules and decisions the team needs to remember.',
   conversions: 'Conversion insights (calls, forms, Clarity). Moves over from the agency hub later.',
   templates: 'One template per step of Sam’s 10 days (keyword research, 3×3 matrix, clusters, SEO hotspots, GBP posts, review email, citation waves). Set up once, applied to every new client.',
+  strategy: 'Sam’s days for this client: progress, services and areas.',
+  setup: 'Services, areas, scope and brand words.',
+  baseline: 'The starting point: Semrush Position Tracking, Search Console and GA4 snapshots, GBP numbers and the Whitespark map grid. The uploads and numbers come in phase 2.',
+  results: 'Results vs the baseline: rankings, Search Console, GA4, GBP and the map grid, and the monthly report. Comes in phase 2.',
+  settings: 'Industries, Claude usage (cost per client) and Automation (phase 5). Building next.',
   automation: 'Slack alerts, the weekly SEO email, ClickUp lists and the Claude drafts queue. Nothing is published without a review.',
 }

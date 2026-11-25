@@ -223,7 +223,7 @@ export default function ClientsPage() {
                         <td className="whitespace-nowrap px-4 py-3">{c.city ? `${c.city}${c.state ? `, ${c.state}` : ''}` : <Dash />}</td>
                         <td className="px-4 py-3 text-vv-body">{industryLabel(c.industry) ?? <Dash />}</td>
                         <td className="px-4 py-3">
-                          <Link to={`/clients/${c.siteId}/guide`} className={STEP_PILL} title={GUIDE[c.guide.current]?.title ?? 'All steps done'}>
+                          <Link to={`/clients/${c.siteId}/strategy/guide`} className={STEP_PILL} title={GUIDE[c.guide.current]?.title ?? 'All steps done'}>
                             {stepDay(c.guide.current)}
                           </Link>
                         </td>

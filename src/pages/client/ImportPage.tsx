@@ -204,7 +204,7 @@ export default function ImportPage() {
             <button type="button" className={BTN_LIME} onClick={reset}>
               Import another file
             </button>
-            <Link to={`/clients/${c.siteId}/keywords/database`} className={BTN_GHOST}>
+            <Link to={`/clients/${c.siteId}/strategy/keywords/database`} className={BTN_GHOST}>
               Keyword database
             </Link>
           </div>
