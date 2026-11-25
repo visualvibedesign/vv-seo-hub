@@ -125,7 +125,7 @@ function TargetsCard({ client: c }: { client: ClientDetail }) {
             <dt className="pt-0.5 text-[14px] font-bold text-vv-purple-deep">{k.code}</dt>
             <dd className="m-0 flex min-w-0 flex-col">
               <span className="text-[16px] font-semibold">{k.name || <span className="text-vv-muted">No name yet</span>}</span>
-              <span className="text-[14px] text-vv-body">{serviceLine(k.services.map((s) => s.name)) || 'No services yet'}</span>
+              <span className="text-[14px] text-vv-body">{serviceLine(k.services.map((s) => s.name)) || (k.code === 'Home' ? 'No main service yet: add it in Client setup › Home' : 'No services yet')}</span>
             </dd>
           </div>
         ))}

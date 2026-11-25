@@ -47,6 +47,7 @@ function EditForm({ existing }: { existing: ClientDetail }) {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    if (save.isPending) return // one save at a time
     setError('')
     if (!f.name.trim()) return setError('Add the client’s name.')
     const problem = servicesProblem(f)

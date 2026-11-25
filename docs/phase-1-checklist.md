@@ -138,3 +138,7 @@ the imports, the two client areas and Settings). Tick each line on localhost. An
 | # | Where | What happened | Fixed in |
 | --- | --- | --- | --- |
 | 1 | §1 Add client | City "Staten Island, NY" + State "NY" showed "Staten Island, NY, NY" | `d3c98a2`: a trailing ", <same state>" is dropped from the city and area names on save (Add client, Client setup, CSV) |
+| 2 | §3 Day 1 Claude | Suggested 8 services the client already had | Root cause: those 8 were stored as "~…" placeholder names by an interrupted Client setup save, so they didn't match. The Day 1 skip (case-insensitive) was right. Fixed with #4 |
+| 3 | §3 Review list | Approving several fast "dropped" Lip wax | Lip wax was saved (S2). Now one decision at a time: clicks while one saves are ignored (lock in useDecide) |
+| 4 | §3 Client setup | Save ~5 s, no feedback; 8 services left on "~…" names | Only renamed services are parked; writes batched (1–2 requests, not 2 per service); a failed 2nd step restores the names; "~" names refused on save; a 2nd Save while saving is ignored |
+| 5 | §3 Strategy home | Home row "No services yet" | Not a bug: the wizard has a Home service field (the run only set the Home category name). Text now says "No main service yet: add it in Client setup › Home" |

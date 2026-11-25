@@ -224,7 +224,7 @@ const InputSchema = z.object({
       z.object({
         code: z.enum(['Home', 'S1', 'S2', 'S3', 'FAQ']),
         name: text(80),
-        services: z.array(z.object({ id: z.string().uuid().optional(), name: text(80) })).max(60),
+        services: z.array(z.object({ id: z.string().uuid().optional(), name: text(80).refine((n) => !n.startsWith('~'), 'A service name was lost (it shows as “~…”). Type its real name again.') })).max(60),
       }),
     )
     .length(5),
@@ -479,9 +479,9 @@ async function saveServices(clientId: string, input: ClientInput) {
     'id' | 'code'
   >[]
   const catId = new Map(cats.map((c) => [c.code, c.id]))
-  const existing = must(await db().from('seo_client_services').select('id, name').eq('client_id', clientId), 'Loading services') as Pick<
+  const existing = must(await db().from('seo_client_services').select('id, name, category_id, sort').eq('client_id', clientId), 'Loading services') as Pick<
     ServiceRow,
-    'id' | 'name'
+    'id' | 'name' | 'category_id' | 'sort'
   >[]
   const keep = new Set<string>()
   const wanted = input.categories.flatMap((cat) =>
@@ -489,16 +489,26 @@ async function saveServices(clientId: string, input: ClientInput) {
   )
   for (const w of wanted) if (w.id) keep.add(w.id)
 
-  // 1. Delete removed ones first, and park renamed ones on a temporary name, so swapping two names never
-  //    trips the "one name per client" rule.
+  // 1. Delete removed ones first. Only RENAMED services are parked on a temporary name (so swapping two names
+  //    never trips the "one name per client" rule); unchanged rows aren't touched. Writes are batched (Found #4/#5:
+  //    a slow save left 8 services on "~…" names).
   const removed = existing.filter((e) => !keep.has(e.id)).map((e) => e.id)
   if (removed.length) must(await db().from('seo_client_services').delete().in('id', removed), 'Removing services')
-  for (const w of wanted.filter((w) => w.id)) {
-    must(await db().from('seo_client_services').update({ name: `~${w.id}` }).eq('id', w.id!), 'Saving services')
-  }
-  // 2. Final names, categories and order.
-  for (const w of wanted.filter((w) => w.id)) {
-    must(await db().from('seo_client_services').update({ name: w.name, category_id: w.category_id, sort: w.sort }).eq('id', w.id!), 'Saving services')
+  const before = new Map(existing.map((e) => [e.id, e]))
+  const changed = wanted.filter((w) => {
+    const e = w.id ? before.get(w.id) : undefined
+    return !!e && (e.name !== w.name || e.category_id !== w.category_id || e.sort !== w.sort)
+  })
+  const renamed = changed.filter((w) => before.get(w.id!)!.name !== w.name)
+  if (renamed.length)
+    must(await db().from('seo_client_services').upsert(renamed.map((w) => ({ id: w.id!, client_id: clientId, name: `~${w.id}`, category_id: before.get(w.id!)!.category_id, sort: before.get(w.id!)!.sort })), { onConflict: 'id' }), 'Saving services')
+  // 2. Final names, categories and order, in one request. If it fails, the parked names go back.
+  if (changed.length) {
+    const final = await db().from('seo_client_services').upsert(changed.map((w) => ({ id: w.id!, client_id: clientId, name: w.name, category_id: w.category_id, sort: w.sort })), { onConflict: 'id' })
+    if (final.error) {
+      if (renamed.length) await db().from('seo_client_services').upsert(renamed.map((w) => ({ id: w.id!, client_id: clientId, name: before.get(w.id!)!.name, category_id: before.get(w.id!)!.category_id, sort: before.get(w.id!)!.sort })), { onConflict: 'id' })
+      must(final, 'Saving services')
+    }
   }
   const added = wanted.filter((w) => !w.id).map((w) => ({ client_id: clientId, name: w.name, category_id: w.category_id, sort: w.sort }))
   if (added.length) must(await db().from('seo_client_services').insert(added), 'Adding services')
