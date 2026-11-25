@@ -756,6 +756,8 @@ export interface MetricsOverview {
     prevTo: string
     /** false = the history doesn't cover the whole previous period: no change shown */
     comparable: boolean
+    /** current baseline date (dashed marker); null = no baseline yet */
+    baselineDay: string | null
     now: GscTotals
     prev: GscTotals
     /** one point per day (28d, 3m) or week (12m); null = no data that day */

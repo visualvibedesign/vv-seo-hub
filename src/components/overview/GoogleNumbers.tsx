@@ -50,7 +50,7 @@ function ChangePill({ c }: { c: Change | null }) {
 }
 
 /** Tiny line for a tile (no axis). Position is drawn upside down (lower = better = higher on the tile). */
-function Sparkline({ values, invert, tone }: { values: (number | null)[]; invert?: boolean; tone: Tone }) {
+function Sparkline({ values, invert, tone, line }: { values: (number | null)[]; invert?: boolean; tone: Tone; line?: string }) {
   const pts = values.map((v, i) => [i, v] as const).filter((p): p is readonly [number, number] => p[1] !== null)
   if (pts.length < 2) return <div className="h-10" />
   const ys = pts.map((p) => (invert ? -p[1] : p[1]))
@@ -58,13 +58,13 @@ function Sparkline({ values, invert, tone }: { values: (number | null)[]; invert
   const hi = Math.max(...ys)
   const d = pts.map((p, i) => `${(p[0] / (values.length - 1)) * 200},${36 - ((ys[i] - lo) / (hi - lo || 1)) * 32}`).join(' ')
   return (
-    <svg viewBox="0 0 200 40" preserveAspectRatio="none" className={`h-10 w-full ${TONE[tone].ink}`} aria-hidden="true">
+    <svg viewBox="0 0 200 40" preserveAspectRatio="none" className={`h-10 w-full ${line ?? TONE[tone].ink}`} aria-hidden="true">
       <polyline points={d} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
     </svg>
   )
 }
 
-function KpiTile({ label, value, c, tone, spark, invert, note }: { label: string; value: string | null; c: Change | null; tone: Tone; spark: (number | null)[]; invert?: boolean; note: string }) {
+function KpiTile({ label, value, c, tone, spark, invert, note, line }: { label: string; value: string | null; c: Change | null; tone: Tone; spark: (number | null)[]; invert?: boolean; note: string; line?: string }) {
   const t = TONE[tone]
   return (
     <div className={`flex min-w-0 flex-col gap-2 rounded-[24px] px-[22px] py-5 ${t.bg}`}>
@@ -73,81 +73,207 @@ function KpiTile({ label, value, c, tone, spark, invert, note }: { label: string
         <span className="font-display text-[36px] font-semibold leading-none text-vv-ink">{value ?? <Dash />}</span>
         <ChangePill c={c} />
       </span>
-      <Sparkline values={spark} invert={invert} tone={tone} />
+      <Sparkline values={spark} invert={invert} tone={tone} line={line} />
       <span className="text-[12px] text-vv-body">{note}</span>
     </div>
   )
 }
 
-/** One measure over time with a hover crosshair. A null point is a gap (no history), never 0. */
-function LineChart({ points, label, format }: { points: { day: string; v: number | null }[]; label: string; format: (n: number) => string }) {
+type Shown = { impressions: boolean; clicks: boolean }
+
+/** A nice round top for an axis: 6 → 6, 47 → 50, 461 → 500, 3,120 → 4,000. */
+function niceMax(v: number): number {
+  if (v <= 0) return 1
+  const p = 10 ** Math.floor(Math.log10(v))
+  const steps = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]
+  return (steps.find((s) => s * p >= v) ?? 10) * p
+}
+
+/** Split a series into runs so a gap (no history) stays a gap, never drawn as 0. */
+function runsOf(values: (number | null)[], x: (i: number) => number, y: (v: number) => number): { i: number; pts: string[] }[] {
+  const runs: { i: number; pts: string[] }[] = []
+  let cur: { i: number; pts: string[] } | null = null
+  values.forEach((v, i) => {
+    if (v === null) {
+      if (cur) runs.push(cur)
+      cur = null
+    } else {
+      cur ??= { i, pts: [] }
+      cur.pts.push(`${x(i).toFixed(1)},${y(v).toFixed(1)}`)
+    }
+  })
+  if (cur) runs.push(cur)
+  return runs
+}
+
+/**
+ * Search performance, like Search Console (Angel, Nov 26): Impressions (pink, soft area) on the LEFT scale and Clicks
+ * (purple) on the RIGHT scale, both on by default. Each scale is labelled in its own colour key; the hover shows the
+ * exact values, so nobody has to read one line against the other's scale. Dashed amber line = the baseline date.
+ */
+function SearchChart({ series, shown, baselineDay }: { series: NonNullable<MetricsOverview['gsc']>['series']; shown: Shown; baselineDay: string | null }) {
   const [hover, setHover] = useState<number | null>(null)
   const W = 800
-  const H = 220
-  const vals = points.map((p) => p.v).filter((v): v is number => v !== null)
-  if (!vals.length) return <p className="m-0 text-[13px] text-vv-body">No data in this range yet.</p>
-  const max = Math.max(...vals) || 1
-  const x = (i: number) => (points.length < 2 ? W / 2 : (i / (points.length - 1)) * W)
-  const y = (v: number) => H - 6 - (v / max) * (H - 24)
-  // Split into runs so a gap stays a gap.
-  const runs: string[] = []
-  let cur: string[] = []
-  points.forEach((p, i) => {
-    if (p.v === null) {
-      if (cur.length) runs.push(cur.join(' '))
-      cur = []
-    } else cur.push(`${x(i).toFixed(1)},${y(p.v).toFixed(1)}`)
-  })
-  if (cur.length) runs.push(cur.join(' '))
-  const ticks = [0, 0.5, 1].map((f) => max * f)
-  const h = hover !== null ? points[hover] : null
+  const H = 230
+  const imp = series.map((s) => s.impressions)
+  const clk = series.map((s) => s.clicks)
+  const any = (xs: (number | null)[]) => xs.some((v) => v !== null)
+  if (!any(imp) && !any(clk)) return <p className="m-0 text-[13px] text-vv-body">No data in this range yet.</p>
+  const maxImp = niceMax(Math.max(0, ...imp.filter((v): v is number => v !== null)))
+  const maxClk = niceMax(Math.max(0, ...clk.filter((v): v is number => v !== null)))
+  const x = (i: number) => (series.length < 2 ? W / 2 : (i / (series.length - 1)) * W)
+  const yImp = (v: number) => H - 4 - (v / maxImp) * (H - 16)
+  const yClk = (v: number) => H - 4 - (v / maxClk) * (H - 16)
+  const impRuns = runsOf(imp, x, yImp)
+  const clkRuns = runsOf(clk, x, yClk)
+  const grid = [0, 0.25, 0.5, 0.75, 1]
+  const weekly = series.length > 1 && Date.parse(series[1].day) - Date.parse(series[0].day) > 2 * 86_400_000
+  const bIndex = baselineDay ? series.findIndex((s) => s.day >= baselineDay) : -1
+  const h = hover !== null ? series[hover] : null
+  const label = (d: string) => (weekly ? `Week of ${shortDay(d)}` : shortDay(d))
   return (
-    <div className="relative">
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        preserveAspectRatio="none"
-        className="h-[220px] w-full touch-none text-vv-purple"
-        role="img"
-        aria-label={`${label} per ${points.length > 60 ? 'week' : 'day'}`}
-        onPointerMove={(e) => {
-          const r = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
-          const i = Math.round(((e.clientX - r.left) / r.width) * (points.length - 1))
-          setHover(Math.max(0, Math.min(points.length - 1, i)))
-        }}
-        onPointerLeave={() => setHover(null)}
-      >
-        {ticks.map((t) => (
-          <line key={t} x1="0" x2={W} y1={y(t)} y2={y(t)} className="stroke-vv-line" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-        ))}
-        {runs.map((r) => (
-          <polyline key={r} points={r} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        ))}
-        {h && h.v !== null && hover !== null && (
-          <>
-            <line x1={x(hover)} x2={x(hover)} y1="0" y2={H} className="stroke-vv-muted" strokeWidth="1" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
-            <circle cx={x(hover)} cy={y(h.v)} r="5" fill="currentColor" className="stroke-vv-surface" strokeWidth="2" vectorEffect="non-scaling-stroke" />
-          </>
-        )}
-      </svg>
-      <div className="pointer-events-none absolute left-0 top-0 flex h-[220px] flex-col justify-between py-1 text-[11px] text-vv-muted" aria-hidden="true">
-        {[...ticks].reverse().map((t) => (
-          <span key={t}>{format(t)}</span>
-        ))}
+    <div className="flex flex-col gap-1">
+      <div className="flex justify-between text-[11px] font-semibold">
+        <span className={`flex items-center gap-1.5 ${shown.impressions ? 'text-vv-body' : 'invisible'}`}>
+          <span aria-hidden="true" className="h-[3px] w-3.5 rounded-full bg-vv-chart-impr" />
+          Impressions
+        </span>
+        <span className={`flex items-center gap-1.5 ${shown.clicks ? 'text-vv-body' : 'invisible'}`}>
+          Clicks
+          <span aria-hidden="true" className="h-[3px] w-3.5 rounded-full bg-vv-chart-clicks" />
+        </span>
       </div>
-      {h && hover !== null && (
-        <div
-          className="pointer-events-none absolute top-2 z-10 rounded-xl border border-solid border-vv-line bg-vv-surface px-3 py-2 text-[12px] shadow-[0_10px_24px_-16px_rgba(75,51,181,.5)]"
-          style={{ left: `clamp(0px, calc(${(x(hover) / W) * 100}% - 70px), calc(100% - 140px))` }}
-        >
-          <div className="text-vv-body">{points.length > 60 || points.length === 53 ? `Week of ${shortDay(h.day)}` : shortDay(h.day)}</div>
-          <strong className="text-vv-ink">{h.v === null ? 'No data' : `${format(h.v)} ${label.toLowerCase()}`}</strong>
+      <div className="flex gap-2">
+        <div className={`flex h-[230px] w-9 flex-none flex-col justify-between text-right text-[11px] text-vv-muted ${shown.impressions ? '' : 'invisible'}`} aria-hidden="true">
+          {[...grid].reverse().map((g) => (
+            <span key={g}>{compact(maxImp * g)}</span>
+          ))}
         </div>
-      )}
-      <div className="mt-1 flex justify-between text-[11px] text-vv-body">
-        {[0, Math.floor((points.length - 1) / 3), Math.floor(((points.length - 1) * 2) / 3), points.length - 1].map((i) => (
-          <span key={i}>{points[i] ? shortDay(points[i].day) : ''}</span>
+        <div className="relative min-w-0 flex-1">
+          <svg
+            viewBox={`0 0 ${W} ${H}`}
+            preserveAspectRatio="none"
+            className="block h-[230px] w-full touch-none"
+            role="img"
+            aria-label={`Impressions and clicks per ${weekly ? 'week' : 'day'}, ${shortDay(series[0].day)} to ${shortDay(series[series.length - 1].day)}`}
+            onPointerMove={(e) => {
+              const r = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+              setHover(Math.max(0, Math.min(series.length - 1, Math.round(((e.clientX - r.left) / r.width) * (series.length - 1)))))
+            }}
+            onPointerLeave={() => setHover(null)}
+          >
+            {grid.map((g) => (
+              <line key={g} x1="0" x2={W} y1={H - 4 - g * (H - 16)} y2={H - 4 - g * (H - 16)} className="stroke-vv-line" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+            ))}
+            {shown.impressions &&
+              impRuns.map((r) => (
+                <g key={`i${r.i}`}>
+                  <polygon points={`${r.pts[0].split(',')[0]},${H - 4} ${r.pts.join(' ')} ${r.pts[r.pts.length - 1].split(',')[0]},${H - 4}`} className="fill-vv-chart-impr-area" />
+                  <polyline points={r.pts.join(' ')} fill="none" className="stroke-vv-chart-impr" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+                </g>
+              ))}
+            {shown.clicks &&
+              clkRuns.map((r) => (
+                <polyline key={`c${r.i}`} points={r.pts.join(' ')} fill="none" className="stroke-vv-chart-clicks" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+              ))}
+            {bIndex >= 0 && (
+              <line x1={x(bIndex)} x2={x(bIndex)} y1="0" y2={H} stroke="#d39b16" strokeWidth="1.5" strokeDasharray="5 5" vectorEffect="non-scaling-stroke" />
+            )}
+            {h && hover !== null && (
+              <>
+                <line x1={x(hover)} x2={x(hover)} y1="0" y2={H} className="stroke-vv-muted" strokeWidth="1" strokeDasharray="4 4" vectorEffect="non-scaling-stroke" />
+                {shown.impressions && h.impressions !== null && <circle cx={x(hover)} cy={yImp(h.impressions)} r="4.5" className="fill-vv-chart-impr stroke-vv-surface" strokeWidth="2" vectorEffect="non-scaling-stroke" />}
+                {shown.clicks && h.clicks !== null && <circle cx={x(hover)} cy={yClk(h.clicks)} r="4.5" className="fill-vv-chart-clicks stroke-vv-surface" strokeWidth="2" vectorEffect="non-scaling-stroke" />}
+              </>
+            )}
+          </svg>
+          {h && hover !== null && (
+            <div
+              className="pointer-events-none absolute top-2 z-10 flex min-w-[150px] flex-col gap-0.5 rounded-xl border border-solid border-vv-line bg-vv-surface px-3 py-2 text-[12px] shadow-[0_10px_24px_-16px_rgba(75,51,181,.5)]"
+              style={{ left: `clamp(0px, calc(${(x(hover) / W) * 100}% - 75px), calc(100% - 160px))` }}
+            >
+              <span className="text-vv-body">{label(h.day)}</span>
+              {shown.impressions && (
+                <span className="flex items-center gap-1.5">
+                  <span aria-hidden="true" className="h-2 w-2 rounded-full bg-vv-chart-impr" />
+                  <strong className="text-vv-ink">{h.impressions === null ? 'No data' : int(h.impressions)}</strong> {h.impressions === 1 ? 'impression' : 'impressions'}
+                </span>
+              )}
+              {shown.clicks && (
+                <span className="flex items-center gap-1.5">
+                  <span aria-hidden="true" className="h-2 w-2 rounded-full bg-vv-chart-clicks" />
+                  <strong className="text-vv-ink">{h.clicks === null ? 'No data' : int(h.clicks)}</strong> {h.clicks === 1 ? 'click' : 'clicks'}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        <div className={`flex h-[230px] w-9 flex-none flex-col justify-between text-[11px] text-vv-muted ${shown.clicks ? '' : 'invisible'}`} aria-hidden="true">
+          {[...grid].reverse().map((g) => (
+            <span key={g}>{compact(maxClk * g)}</span>
+          ))}
+        </div>
+      </div>
+      <div className="flex justify-between px-11 text-[11px] text-vv-body">
+        {[0, Math.floor((series.length - 1) / 3), Math.floor(((series.length - 1) * 2) / 3), series.length - 1].map((i) => (
+          <span key={i}>{series[i] ? shortDay(series[i].day) : ''}</span>
         ))}
       </div>
+      {bIndex >= 0 && baselineDay && (
+        <span className="flex items-center gap-1.5 text-[11px] text-vv-body">
+          <span aria-hidden="true" className="w-3.5 border-0 border-t-2 border-dashed border-[#d39b16]" />
+          Baseline {shortDay(baselineDay)}
+        </span>
+      )}
+    </div>
+  )
+}
+
+/** On/off pills for the two measures (at least one stays on). */
+function MeasureToggles({ shown, setShown }: { shown: Shown; setShown: (s: Shown) => void }) {
+  const pill = (k: keyof Shown, label: string, dot: string) => {
+    const on = shown[k]
+    const last = on && !shown[k === 'clicks' ? 'impressions' : 'clicks']
+    return (
+      <button
+        type="button"
+        aria-pressed={on}
+        disabled={last}
+        title={last ? 'At least one stays on' : undefined}
+        onClick={() => setShown({ ...shown, [k]: !on })}
+        className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border border-solid px-3 font-body text-[12px] font-semibold ${on ? 'border-vv-field-line bg-vv-surface text-vv-ink' : 'border-vv-line bg-transparent text-vv-muted'} disabled:cursor-default`}
+      >
+        <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${on ? dot : 'bg-vv-line'}`} />
+        {label}
+      </button>
+    )
+  }
+  return (
+    <div className="flex gap-1.5">
+      {pill('impressions', 'Impressions', 'bg-vv-chart-impr')}
+      {pill('clicks', 'Clicks', 'bg-vv-chart-clicks')}
+    </div>
+  )
+}
+
+type SortBy = 'clicks' | 'impressions'
+/** Clicks / Impressions sort switch for the top lists. */
+function SortToggle({ value, onChange }: { value: SortBy; onChange: (v: SortBy) => void }) {
+  return (
+    <div role="radiogroup" aria-label="Sort by" className="flex rounded-full border border-solid border-vv-field-line p-0.5">
+      {(['clicks', 'impressions'] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          role="radio"
+          aria-checked={value === m}
+          onClick={() => onChange(m)}
+          className={`inline-flex min-h-8 items-center gap-1.5 rounded-full border-0 px-3 font-body text-[12px] font-semibold capitalize ${value === m ? 'bg-vv-lavender-100 text-vv-purple-ink' : 'bg-transparent text-vv-body'}`}
+        >
+          <span aria-hidden="true" className={`h-2 w-2 rounded-full ${m === 'clicks' ? 'bg-vv-chart-clicks' : 'bg-vv-chart-impr'}`} />
+          {m}
+        </button>
+      ))}
     </div>
   )
 }
@@ -184,7 +310,9 @@ function Bars({ bars }: { bars: NonNullable<MetricsOverview['ga4']>['bars'] }) {
 
 export default function GoogleNumbers({ siteId }: { siteId: string }) {
   const [range, setRange] = useState<MetricRange>('28d')
-  const [metric, setMetric] = useState<'clicks' | 'impressions'>('clicks')
+  const [shown, setShown] = useState<Shown>({ impressions: true, clicks: true })
+  const [sortQ, setSortQ] = useState<SortBy>('clicks')
+  const [sortP, setSortP] = useState<SortBy>('clicks')
   const q = useMetricsOverview(siteId, range, true)
   const sync = useSyncMetrics(siteId)
   const o = q.data
@@ -192,6 +320,12 @@ export default function GoogleNumbers({ siteId }: { siteId: string }) {
   const a = o?.ga4 ?? null
   const prevWords = `previous ${RANGE_WORDS[range]}`
   const noData = o && !g && !a
+  const by = (k: SortBy) => (x: { clicks: number; impressions: number }, y: { clicks: number; impressions: number }) =>
+    k === 'clicks' ? y.clicks - x.clicks || y.impressions - x.impressions : y.impressions - x.impressions || y.clicks - x.clicks
+  const queries = g ? [...g.queries].sort(by(sortQ)).slice(0, 10) : []
+  const pages = g ? [...g.pages].sort(by(sortP)).slice(0, 6) : []
+  const pageMax = Math.max(1, ...pages.map((p) => p[sortP]))
+  const word = (k: SortBy, n: number) => (k === 'clicks' ? (n === 1 ? 'click' : 'clicks') : n === 1 ? 'impression' : 'impressions')
 
   return (
     <section className="flex flex-col gap-4" aria-label="Search Console and GA4 numbers">
@@ -224,13 +358,17 @@ export default function GoogleNumbers({ siteId }: { siteId: string }) {
 
       {q.isPending && <Bone className="h-[160px] w-full rounded-[24px]" />}
       {q.isError && <p className="m-0 text-[14px] font-semibold text-vv-red">Couldn’t load the numbers. Try again in a moment.</p>}
-      {noData && <p className="m-0 rounded-2xl border border-dashed border-vv-lavender bg-vv-surface px-4 py-5 text-[14px] text-vv-body">No numbers pulled yet. Press <strong>Update numbers</strong> (the first pull fetches about 16 months).</p>}
+      {noData && (
+        <p className="m-0 rounded-2xl border border-dashed border-vv-lavender bg-vv-surface px-4 py-5 text-[14px] text-vv-body">
+          No numbers pulled yet. Press <strong>Update numbers</strong> (the first pull fetches about 16 months).
+        </p>
+      )}
 
       {g && (
         <>
           <div className="grid grid-cols-4 gap-4 [@media(max-width:1200px)]:grid-cols-2 phone:grid-cols-1">
-            <KpiTile label="Impressions" value={compact(g.now.impressions)} c={change(g.now.impressions, g.prev.impressions, 'count', g.comparable)} tone="purple" spark={g.series.map((s) => s.impressions)} note={`${prevWords}: ${compact(g.prev.impressions) ?? '—'} · Search Console`} />
-            <KpiTile label="Clicks" value={int(g.now.clicks)} c={change(g.now.clicks, g.prev.clicks, 'count', g.comparable)} tone="pink" spark={g.series.map((s) => s.clicks)} note={`${prevWords}: ${int(g.prev.clicks) ?? '—'} · Search Console`} />
+            <KpiTile label="Impressions" value={compact(g.now.impressions)} c={change(g.now.impressions, g.prev.impressions, 'count', g.comparable)} tone="pink" line="text-vv-chart-impr" spark={g.series.map((s) => s.impressions)} note={`${prevWords}: ${compact(g.prev.impressions) ?? '—'} · Search Console`} />
+            <KpiTile label="Clicks" value={int(g.now.clicks)} c={change(g.now.clicks, g.prev.clicks, 'count', g.comparable)} tone="purple" line="text-vv-chart-clicks" spark={g.series.map((s) => s.clicks)} note={`${prevWords}: ${int(g.prev.clicks) ?? '—'} · Search Console`} />
             <KpiTile label="CTR" value={pct(g.now.ctr)} c={change(g.now.ctr, g.prev.ctr, 'rate', g.comparable)} tone="green" spark={g.series.map((s) => s.ctr)} note={`${prevWords}: ${pct(g.prev.ctr) ?? '—'} · Search Console`} />
             <KpiTile label="Avg position" value={pos(g.now.position)} c={change(g.now.position, g.prev.position, 'position', g.comparable)} tone="orange" spark={g.series.map((s) => s.position)} invert note={`${prevWords}: ${pos(g.prev.position) ?? '—'} · lower is better`} />
           </div>
@@ -240,20 +378,8 @@ export default function GoogleNumbers({ siteId }: { siteId: string }) {
 
       <div className="grid grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)] items-start gap-4 [@media(max-width:1100px)]:grid-cols-1">
         {g && (
-          <Panel
-            title="Search performance"
-            sub={`Google Search Console · ${shortDay(g.from)} – ${shortDay(g.to)}${range === '12m' ? ' · per week' : ' · per day'}`}
-            right={
-              <div role="radiogroup" aria-label="Measure" className="flex rounded-full border border-solid border-vv-field-line p-0.5">
-                {(['clicks', 'impressions'] as const).map((m) => (
-                  <button key={m} type="button" role="radio" aria-checked={metric === m} onClick={() => setMetric(m)} className={`min-h-8 rounded-full border-0 px-3 font-body text-[12px] font-semibold capitalize ${metric === m ? 'bg-vv-lavender-100 text-vv-purple-ink' : 'bg-transparent text-vv-body'}`}>
-                    {m}
-                  </button>
-                ))}
-              </div>
-            }
-          >
-            <LineChart points={g.series.map((s) => ({ day: s.day, v: s[metric] }))} label={metric === 'clicks' ? 'Clicks' : 'Impressions'} format={(n) => Math.round(n).toLocaleString('en-US')} />
+          <Panel title="Search performance" sub={`Google Search Console · ${shortDay(g.from)} – ${shortDay(g.to)}${range === '12m' ? ' · per week' : ' · per day'}`} right={<MeasureToggles shown={shown} setShown={setShown} />}>
+            <SearchChart series={g.series} shown={shown} baselineDay={g.baselineDay} />
           </Panel>
         )}
         {a && (
@@ -282,20 +408,20 @@ export default function GoogleNumbers({ siteId }: { siteId: string }) {
 
       {g && (
         <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start gap-4 [@media(max-width:1100px)]:grid-cols-1">
-          <Panel flush title="Top searches" sub={`Search Console · queries · ${RANGE_WORDS[range]}`}>
-            {g.queries.length === 0 ? (
+          <Panel flush title="Top searches" sub={`Search Console · queries · ${RANGE_WORDS[range]}`} right={<SortToggle value={sortQ} onChange={setSortQ} />}>
+            {queries.length === 0 ? (
               <p className="m-0 px-5 pb-5 text-[13px] text-vv-body">No searches in this range.</p>
             ) : (
               <LilacTable
                 head={['Query', 'Clicks', 'Impr.', 'CTR', 'Position']}
                 right={[1, 2, 3, 4]}
                 minWidth={520}
-                rows={g.queries.map((x) => {
+                rows={queries.map((x) => {
                   const d = x.prevPosition === null ? null : x.prevPosition - x.position
                   return [
                     x.label,
-                    <strong key="c">{int(x.clicks)}</strong>,
-                    int(x.impressions),
+                    sortQ === 'clicks' ? <strong key="c">{int(x.clicks)}</strong> : int(x.clicks),
+                    sortQ === 'impressions' ? <strong key="i">{int(x.impressions)}</strong> : int(x.impressions),
                     pct(x.ctr),
                     <span key="p" className="whitespace-nowrap">
                       {x.position.toFixed(1)}{' '}
@@ -308,21 +434,33 @@ export default function GoogleNumbers({ siteId }: { siteId: string }) {
               />
             )}
           </Panel>
-          <Panel title="Top pages" sub={`Search Console · pages · ${RANGE_WORDS[range]}`}>
-            {g.pages.length === 0 && <p className="m-0 text-[13px] text-vv-body">No pages in this range.</p>}
-            {g.pages.map((p) => (
-              <div key={p.label} className="flex flex-col gap-1">
-                <div className="flex justify-between gap-2 text-[13px]">
-                  <span className="truncate" title={p.label}>
-                    {p.label.replace(/^https?:\/\/[^/]+/, '') || '/'}
+          <Panel title="Top pages" sub={`Search Console · pages · ${RANGE_WORDS[range]}`} right={<SortToggle value={sortP} onChange={setSortP} />}>
+            {pages.length === 0 && <p className="m-0 text-[13px] text-vv-body">No pages in this range.</p>}
+            {pages.map((p) => {
+              const main = p[sortP]
+              const otherKey: SortBy = sortP === 'clicks' ? 'impressions' : 'clicks'
+              const other = p[otherKey]
+              return (
+                <a key={p.label} href={p.label} target="_blank" rel="noopener noreferrer" title={p.label} className="group flex flex-col gap-1 rounded-lg text-vv-ink no-underline">
+                  <span className="flex items-baseline justify-between gap-2 text-[13px]">
+                    <span className="truncate group-hover:text-vv-purple-deep group-hover:underline">
+                      {p.label.replace(/^https?:\/\/[^/]+/, '') || '/'} <span aria-hidden="true">↗</span>
+                    </span>
+                    <span className="flex flex-none items-baseline gap-2">
+                      <strong>
+                        {int(main)} {word(sortP, main)}
+                      </strong>
+                      <span className="text-[11px] text-vv-muted">
+                        {int(other)} {word(otherKey, other)}
+                      </span>
+                    </span>
                   </span>
-                  <strong className="flex-none">{int(p.clicks)} {p.clicks === 1 ? 'click' : 'clicks'}</strong>
-                </div>
-                <div className="h-2 rounded-full bg-vv-lavender-50">
-                  <div className="h-2 rounded-full bg-vv-purple" style={{ width: `${Math.max(2, (p.clicks / Math.max(1, g.pages[0].clicks)) * 100)}%` }} />
-                </div>
-              </div>
-            ))}
+                  <span className="h-2 rounded-full bg-vv-lavender-50">
+                    <span className={`block h-2 rounded-full ${sortP === 'clicks' ? 'bg-vv-chart-clicks' : 'bg-vv-chart-impr'}`} style={{ width: `${Math.max(2, (main / pageMax) * 100)}%` }} />
+                  </span>
+                </a>
+              )
+            })}
           </Panel>
         </div>
       )}

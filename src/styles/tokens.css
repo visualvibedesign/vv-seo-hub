@@ -78,6 +78,10 @@
   --vv-avatar-pink: #f7b3d2;
   --vv-pink-100: #fde8f1; /* Mica's card header (Who's on what) */
   --vv-pink-ink: #b2336f; /* text on pink-100 (SEO Hub pastel tiles) */
+  /* SEO Hub charts: the same two colours wherever impressions / clicks appear (Search Console style). */
+  --vv-chart-impr: #e98fb8;
+  --vv-chart-impr-area: #fdeef5;
+  --vv-chart-clicks: #5b3fd0;
 
   /* Weekly queue board columns (design-ref Queue) + the tidy-up note */
   --vv-col-ready: #e9f7f5;
@@ -157,6 +161,9 @@
   --vv-kpi-red: #ffb3c8; /* due-card stripe, overdue line */
   --vv-pink-100: #222020;
   --vv-pink-ink: #ff9cc4;
+  --vv-chart-impr: #f29cc3;
+  --vv-chart-impr-area: rgba(242, 156, 195, 0.14);
+  --vv-chart-clicks: #a995ff;
   --vv-avatar-pink: #e99bc0; /* Mica's avatar (unchanged) */
 
   /* Labels: solid pastel, black text */

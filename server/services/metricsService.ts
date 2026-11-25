@@ -35,6 +35,14 @@ async function lastDay(clientId: string, source: 'gsc' | 'ga4'): Promise<string 
   return r[0]?.day ?? null
 }
 
+/** The current baseline's Search Console end date (the dashed marker on the chart); null until a baseline is saved (2e). */
+async function baselineDay(clientId: string): Promise<string | null> {
+  const b = must(await db().from('seo_baselines').select('id, saved_at').eq('client_id', clientId).eq('is_current', true).maybeSingle(), 'Loading the baseline') as { id: string; saved_at: string } | null
+  if (!b) return null
+  const v = must(await db().from('seo_baseline_values').select('date_to').eq('baseline_id', b.id).eq('source', 'gsc').not('date_to', 'is', null).order('date_to', { ascending: false }).limit(1), 'Loading the baseline') as { date_to: string }[]
+  return v[0]?.date_to ?? b.saved_at.slice(0, 10)
+}
+
 /** The first day pulled (the start of the history SEO Hub has). */
 async function firstDay(clientId: string, source: 'gsc' | 'ga4'): Promise<string | null> {
   const r = must(await db().from('seo_metric_daily').select('day').eq('client_id', clientId).eq('source', source).order('day').limit(1), 'Reading the history') as { day: string }[]
@@ -79,9 +87,10 @@ export async function syncClient(siteId: string): Promise<MetricsSyncResult> {
         const prevTo = addDays(from, -1)
         const prevFrom = addDays(prevTo, -(n - 1))
         const [q, prevQ, pages] = await Promise.all([
-          gscQuery(gscProp, { startDate: from, endDate: end, dimensions: ['query'], rowLimit: 25 }),
+          // 250: Google returns searches by clicks, so a short list would miss high-impression searches with no clicks.
+          gscQuery(gscProp, { startDate: from, endDate: end, dimensions: ['query'], rowLimit: 250 }),
           gscQuery(gscProp, { startDate: prevFrom, endDate: prevTo, dimensions: ['query'], rowLimit: 250 }),
-          gscQuery(gscProp, { startDate: from, endDate: end, dimensions: ['page'], rowLimit: 10 }),
+          gscQuery(gscProp, { startDate: from, endDate: end, dimensions: ['page'], rowLimit: 25 }),
         ])
         const row = (dimension: 'query' | 'page', pf: string, pt: string) => (r: GscRow) => ({
           client_id: clientId,
@@ -253,10 +262,24 @@ export async function metricsOverview(siteId: string, range: MetricRange): Promi
         series.push({ day: d, clicks: known(d) ? (v?.clicks ?? 0) : null, impressions: known(d) ? (v?.impressions ?? 0) : null, ctr: v?.ctr ?? null, position: v?.position ?? null })
       }
     }
-    const top = must(
-      await db().from('seo_metric_top').select('dimension, period_from, period_to, label, clicks, impressions, ctr, position').eq('client_id', clientId),
+    // Only this range's lists (ending on the last pulled day, or its previous period), read in pages: the lists can
+    // pass 1,000 rows and the database returns at most 1,000 per request.
+    type TopRow = { dimension: 'query' | 'page'; period_from: string; period_to: string; label: string; clicks: number; impressions: number; ctr: number; position: number }
+    const top: TopRow[] = []
+    for await (const r of pagedRows<TopRow>(
+      (a, b) =>
+        db()
+          .from('seo_metric_top')
+          .select('dimension, period_from, period_to, label, clicks, impressions, ctr, position')
+          .eq('client_id', clientId)
+          .in('period_from', [from, prevFrom])
+          .order('dimension')
+          .order('period_to')
+          .order('label')
+          .range(a, b),
       'Loading top searches',
-    ) as { dimension: 'query' | 'page'; period_from: string; period_to: string; label: string; clicks: number; impressions: number; ctr: number; position: number }[]
+    ))
+      top.push(r)
     // Top lists were pulled for each range ending on the last pulled day: pick the ones of this range's length.
     const len = (a: string, b: string) => Math.round((dayMs(b) - dayMs(a)) / DAY) + 1
     const curQ = top.filter((t) => t.dimension === 'query' && len(t.period_from, t.period_to) === n).sort((a, b) => b.period_to.localeCompare(a.period_to))
@@ -270,14 +293,14 @@ export async function metricsOverview(siteId: string, range: MetricRange): Promi
       prevFrom,
       prevTo,
       comparable: !!first.gsc && first.gsc <= prevFrom,
+      baselineDay: await baselineDay(clientId),
       now: gscTotals(bySource.gsc, from, to),
       prev: gscTotals(bySource.gsc, prevFrom, prevTo),
       series,
       queries: qNow
         .sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions)
-        .slice(0, 10)
         .map((t) => ({ label: t.label, clicks: t.clicks, impressions: t.impressions, ctr: Number(t.ctr), position: Number(t.position), prevPosition: qPrev.get(t.label) ?? null })),
-      pages: pages.sort((a, b) => b.clicks - a.clicks).slice(0, 6).map((t) => ({ label: t.label, clicks: t.clicks, impressions: t.impressions })),
+      pages: pages.sort((a, b) => b.clicks - a.clicks).map((t) => ({ label: t.label, clicks: t.clicks, impressions: t.impressions })),
     }
   }
 
