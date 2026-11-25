@@ -38,12 +38,16 @@ function shortText(v: unknown, max: number): string | null {
   return t ? t.slice(0, max) : null
 }
 
-type GbpRow = { id: string; period_from: string; period_to: string; views: number | null; calls: number | null; directions: number | null; website_clicks: number | null; reviews: number | null; rating: number | null; newest_review_on: string | null; typed_by: string | null; note: string | null; updated_at: string }
+type GbpRow = { id: string; period_from: string; period_to: string; views: number | null; views_search_desktop?: number | null; views_search_mobile?: number | null; views_maps_desktop?: number | null; views_maps_mobile?: number | null; calls: number | null; directions: number | null; website_clicks: number | null; reviews: number | null; rating: number | null; newest_review_on: string | null; typed_by: string | null; note: string | null; updated_at: string }
 const gbpOut = (r: GbpRow): GbpSnapshot => ({
   id: r.id,
   periodFrom: r.period_from,
   periodTo: r.period_to,
   views: r.views,
+  viewsSearchDesktop: r.views_search_desktop ?? null, // undefined until migration 0017 has run
+  viewsSearchMobile: r.views_search_mobile ?? null,
+  viewsMapsDesktop: r.views_maps_desktop ?? null,
+  viewsMapsMobile: r.views_maps_mobile ?? null,
   calls: r.calls,
   directions: r.directions,
   websiteClicks: r.website_clicks,
@@ -101,9 +105,22 @@ export async function saveGbp(siteId: string, raw: unknown): Promise<GbpSnapshot
     note: shortText(b.note, 300),
     updated_at: new Date().toISOString(),
   }
-  if ([row.views, row.calls, row.directions, row.website_clicks, row.reviews, row.rating].every((v) => v === null)) throw new LocalInputError('Type at least one number.')
-  const saved = must(await db().from('seo_gbp_snapshots').upsert(row, { onConflict: 'client_id,period_from,period_to' }).select('*').single(), 'Saving GBP numbers') as GbpRow
-  return gbpOut(saved)
+  const split = {
+    views_search_desktop: count(b.viewsSearchDesktop, 'Search · desktop'),
+    views_search_mobile: count(b.viewsSearchMobile, 'Search · mobile'),
+    views_maps_desktop: count(b.viewsMapsDesktop, 'Maps · desktop'),
+    views_maps_mobile: count(b.viewsMapsMobile, 'Maps · mobile'),
+  }
+  const hasSplit = Object.values(split).some((v) => v !== null)
+  if (!hasSplit && [row.views, row.calls, row.directions, row.website_clicks, row.reviews, row.rating].every((v) => v === null)) throw new LocalInputError('Type at least one number.')
+  // The breakdown columns come with migration 0017. Always sent (so clearing them on an edit clears them); if the
+  // columns don't exist yet and no breakdown was typed, the rest still saves.
+  const upsert = (r: object) => db().from('seo_gbp_snapshots').upsert(r, { onConflict: 'client_id,period_from,period_to' }).select('*').single()
+  let res = await upsert({ ...row, ...split })
+  const missingCols = !!res.error && /views_(search|maps)_/.test(res.error.message)
+  if (missingCols && hasSplit) throw new LocalInputError('The views breakdown needs database migration 0017 first. Clear those 4 boxes to save the rest now.')
+  if (missingCols) res = await upsert(row)
+  return gbpOut(must(res, 'Saving GBP numbers') as GbpRow)
 }
 
 export async function deleteGbp(siteId: string, id: unknown): Promise<void> {

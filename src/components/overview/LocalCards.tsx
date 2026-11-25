@@ -76,7 +76,7 @@ export function GbpCard({ siteId }: { siteId: string }) {
     const from = iso(new Date(t.getFullYear(), t.getMonth() - 1, 1))
     const to = iso(new Date(t.getFullYear(), t.getMonth(), 0))
     const have = list.find((s) => s.periodFrom === from && s.periodTo === to)
-    return have ?? { periodFrom: from, periodTo: to, views: null, calls: null, directions: null, websiteClicks: null, reviews: null, rating: null, newestReviewOn: null, typedBy: null, note: null }
+    return have ?? { periodFrom: from, periodTo: to, views: null, viewsSearchDesktop: null, viewsSearchMobile: null, viewsMapsDesktop: null, viewsMapsMobile: null, calls: null, directions: null, websiteClicks: null, reviews: null, rating: null, newestReviewOn: null, typedBy: null, note: null }
   }
 
   return (
@@ -102,6 +102,7 @@ export function GbpCard({ siteId }: { siteId: string }) {
               </div>
             ))}
           </div>
+          {now && <ViewsDonut s={now} />}
           <p className="m-0 text-[13px] text-vv-body">
             {now ? (
               <>
@@ -167,14 +168,18 @@ function GbpForm({ siteId, start, onDone }: { siteId: string; start: GbpInput; o
   const [v, setV] = useState<Record<string, string>>(() => {
     const author = start.typedBy ?? savedAuthor()
     const s = (x: number | null) => (x === null ? '' : String(x))
-    return { periodFrom: start.periodFrom, periodTo: start.periodTo, views: s(start.views), calls: s(start.calls), directions: s(start.directions), websiteClicks: s(start.websiteClicks), reviews: s(start.reviews), rating: s(start.rating), newestReviewOn: start.newestReviewOn ?? '', typedBy: author, note: start.note ?? '' }
+    return { periodFrom: start.periodFrom, periodTo: start.periodTo, views: s(start.views), viewsSearchDesktop: s(start.viewsSearchDesktop), viewsSearchMobile: s(start.viewsSearchMobile), viewsMapsDesktop: s(start.viewsMapsDesktop), viewsMapsMobile: s(start.viewsMapsMobile), calls: s(start.calls), directions: s(start.directions), websiteClicks: s(start.websiteClicks), reviews: s(start.reviews), rating: s(start.rating), newestReviewOn: start.newestReviewOn ?? '', typedBy: author, note: start.note ?? '' }
   })
   const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setV({ ...v, [k]: e.target.value })
   const n = (k: string) => (v[k].trim() === '' ? null : Number(v[k]))
+  // A gentle check only: GBP's total is normally the sum of the four (nothing is changed or blocked).
+  const parts = ['viewsSearchDesktop', 'viewsSearchMobile', 'viewsMapsDesktop', 'viewsMapsMobile'].map(n)
+  const partsSum = parts.every((x) => x !== null && Number.isFinite(x)) ? (parts as number[]).reduce((a, b) => a + b, 0) : null
+  const splitNote = partsSum !== null && n('views') !== null && partsSum !== n('views') ? `The four add up to ${partsSum}, Profile views says ${n('views')}. Fine if that’s what GBP shows.` : ''
   const submit = () => {
     if (v.typedBy.trim()) rememberAuthor(v.typedBy)
     save.mutate(
-      { periodFrom: v.periodFrom, periodTo: v.periodTo, views: n('views'), calls: n('calls'), directions: n('directions'), websiteClicks: n('websiteClicks'), reviews: n('reviews'), rating: n('rating'), newestReviewOn: v.newestReviewOn || null, typedBy: v.typedBy || null, note: v.note || null },
+      { periodFrom: v.periodFrom, periodTo: v.periodTo, views: n('views'), viewsSearchDesktop: n('viewsSearchDesktop'), viewsSearchMobile: n('viewsSearchMobile'), viewsMapsDesktop: n('viewsMapsDesktop'), viewsMapsMobile: n('viewsMapsMobile'), calls: n('calls'), directions: n('directions'), websiteClicks: n('websiteClicks'), reviews: n('reviews'), rating: n('rating'), newestReviewOn: v.newestReviewOn || null, typedBy: v.typedBy || null, note: v.note || null },
       { onSuccess: onDone },
     )
   }
@@ -217,6 +222,16 @@ function GbpForm({ siteId, start, onDone }: { siteId: string; start: GbpInput; o
           <input className={FIELD} value={v.typedBy} maxLength={60} onChange={set('typedBy')} />
         </label>
       </div>
+      <fieldset className="m-0 flex flex-col gap-2 rounded-2xl border border-solid border-vv-line p-3">
+        <legend className="px-1 text-[13px] font-semibold text-vv-body">Where the views came from (optional)</legend>
+        <div className="grid grid-cols-2 gap-3">
+          {num('viewsSearchDesktop', 'Google Search · desktop')}
+          {num('viewsSearchMobile', 'Google Search · mobile')}
+          {num('viewsMapsDesktop', 'Google Maps · desktop')}
+          {num('viewsMapsMobile', 'Google Maps · mobile')}
+        </div>
+        {splitNote && <span className="text-[12px] text-vv-orange-ink">{splitNote}</span>}
+      </fieldset>
       <label className={LABEL}>
         Note (optional)
         <input className={FIELD} value={v.note} maxLength={300} onChange={set('note')} placeholder="e.g. new photos added this month" />
@@ -232,6 +247,91 @@ function GbpForm({ siteId, start, onDone }: { siteId: string; start: GbpInput; o
         </button>
       </div>
     </form>
+  )
+}
+
+
+// ---- Profile views: Search vs Maps donut (device split on hover / focus) ----------------------------------------
+
+type Part = { key: 'search' | 'maps'; label: string; desktop: number | null; mobile: number | null; color: string; dot: string }
+
+/** Sum of the known parts; null when neither is known (unknown, never 0). */
+const known = (a: number | null, b: number | null) => (a === null && b === null ? null : (a ?? 0) + (b ?? 0))
+
+function ViewsDonut({ s }: { s: GbpSnapshot }) {
+  const [hover, setHover] = useState<Part['key'] | null>(null)
+  const parts: Part[] = [
+    { key: 'search', label: 'Google Search', desktop: s.viewsSearchDesktop, mobile: s.viewsSearchMobile, color: 'text-vv-chart-clicks', dot: 'bg-vv-chart-clicks' },
+    { key: 'maps', label: 'Google Maps', desktop: s.viewsMapsDesktop, mobile: s.viewsMapsMobile, color: 'text-vv-chart-impr', dot: 'bg-vv-chart-impr' },
+  ]
+  const totals = parts.map((p) => known(p.desktop, p.mobile))
+  if (totals.every((t) => t === null)) return null
+  const sum = totals.reduce<number>((a, b) => a + (b ?? 0), 0)
+  const r = 26
+  const c = 2 * Math.PI * r
+  let offset = 0
+
+  const fmt = (n: number | null) => (n === null ? '—' : n.toLocaleString('en-US'))
+  const pctOf = (n: number | null) => (n === null || sum === 0 ? '' : ` · ${Math.round((n / sum) * 100)}%`)
+  const shown = parts.find((p) => p.key === hover)
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-[14px] bg-vv-lavender-50 p-3">
+      <span className="relative flex h-[84px] w-[84px] flex-none items-center justify-center">
+        <svg viewBox="0 0 64 64" className="absolute inset-0 h-full w-full -rotate-90" role="img" aria-label={parts.map((p, i) => `${p.label}: ${fmt(totals[i])}`).join(', ')}>
+          <circle cx="32" cy="32" r={r} fill="none" strokeWidth="9" className="stroke-vv-line" />
+          {sum > 0 &&
+            parts.map((p, i) => {
+              const t = totals[i] ?? 0
+              if (!t) return null
+              const len = (t / sum) * c
+              const gap = parts.filter((_, j) => (totals[j] ?? 0) > 0).length > 1 ? 1.5 : 0
+              const el = (
+                <circle
+                  key={p.key}
+                  cx="32"
+                  cy="32"
+                  r={r}
+                  fill="none"
+                  strokeWidth={hover === p.key ? 11 : 9}
+                  stroke="currentColor"
+                  className={`${p.color} cursor-default transition-[stroke-width]`}
+                  strokeDasharray={`${Math.max(0.01, len - gap)} ${c}`}
+                  strokeDashoffset={-offset}
+                  onMouseEnter={() => setHover(p.key)}
+                  onMouseLeave={() => setHover(null)}
+                />
+              )
+              offset += len
+              return el
+            })}
+        </svg>
+        <span className="relative text-center leading-tight">
+          <span className="block text-[15px] font-bold">{fmt(sum)}</span>
+          <span className="block text-[10px] text-vv-body">views split</span>
+        </span>
+      </span>
+      <ul className="m-0 flex min-w-[150px] flex-1 list-none flex-col gap-1.5 p-0 text-[13px]">
+        {parts.map((p, i) => (
+          <li
+            key={p.key}
+            tabIndex={0}
+            onMouseEnter={() => setHover(p.key)}
+            onMouseLeave={() => setHover(null)}
+            onFocus={() => setHover(p.key)}
+            onBlur={() => setHover(null)}
+            className={`flex cursor-default items-center gap-2 rounded-lg px-1.5 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-vv-purple ${hover === p.key ? 'bg-vv-surface' : ''}`}
+          >
+            <span aria-hidden="true" className={`h-2.5 w-2.5 flex-none rounded-full ${p.dot}`} />
+            <span className="text-vv-body">{p.label}</span>
+            <strong className="ml-auto">{fmt(totals[i])}</strong>
+            <span className="w-9 text-right text-[12px] text-vv-body">{pctOf(totals[i]).replace(' · ', '')}</span>
+          </li>
+        ))}
+        <li className="min-h-[18px] px-1.5 text-[12px] text-vv-body" aria-live="polite">
+          {shown ? `${shown.label}: desktop ${fmt(shown.desktop)} · mobile ${fmt(shown.mobile)}` : 'Hover a part for desktop / mobile'}
+        </li>
+      </ul>
+    </div>
   )
 }
 

@@ -860,6 +860,11 @@ export interface GbpSnapshot {
   periodFrom: string
   periodTo: string
   views: number | null
+  /** Profile views breakdown (GBP › Performance), optional: null = unknown */
+  viewsSearchDesktop: number | null
+  viewsSearchMobile: number | null
+  viewsMapsDesktop: number | null
+  viewsMapsMobile: number | null
   calls: number | null
   directions: number | null
   websiteClicks: number | null
