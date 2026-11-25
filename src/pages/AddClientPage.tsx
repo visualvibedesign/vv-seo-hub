@@ -44,7 +44,12 @@ export default function AddClientPage() {
       if (site.check?.takenBy) return `${site.check.takenBy} already uses this site.`
     }
     if (s === 1 && !f.industry) return 'Pick a template (Blank is fine).'
-    if (s === 2) return servicesProblem(f)
+    if (s === 2) {
+      const home = f.categories.find((c) => c.code === 'Home')
+      // A new client needs its main service on Home (Found #5): the Home page targets it.
+      if (home && !home.services.some((x) => x.name.trim()) && !home.pending.trim()) return 'Add the Home service: the main service, as people search it (e.g. “waxing”).'
+      return servicesProblem(f)
+    }
     return ''
   }
 
