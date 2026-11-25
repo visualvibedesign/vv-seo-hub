@@ -1,5 +1,20 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["sin1"],
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+  "regions": [
+    "sin1"
+  ],
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "functions": {
+    "api/autofill/*.ts": {
+      "maxDuration": 300
+    },
+    "api/imports/*.ts": {
+      "maxDuration": 120
+    }
+  }
 }
