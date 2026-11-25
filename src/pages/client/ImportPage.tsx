@@ -355,6 +355,13 @@ function MatchStep(props: {
 }) {
   const { parsed, source, map, mapped } = props
   const fields = SOURCE_FIELDS[source]
+  // Placeholders from this client's own data (A1 area, services, scope words); nothing typed in for any one client.
+  const c = props.client
+  const a1 = c.areas.find((a) => a.code === 'A1' && a.status === 'active')
+  const place = [a1?.name || c.city, a1?.state || c.state].filter(Boolean).join(', ')
+  const area = (a1?.name || c.city || '').toLowerCase()
+  const svc = c.categories.flatMap((k) => k.services.map((s) => s.name.toLowerCase())).slice(0, 2)
+  const eg = (xs: string[]) => (xs.length ? `e.g. ${xs.join(', ')}` : '')
   return (
     <section className={CARD} aria-labelledby="imp-match">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -379,11 +386,11 @@ function MatchStep(props: {
         </label>
         <label className={LABEL}>
           {source === 'kp' ? 'KP location' : source === 'semrush' ? 'Semrush database' : 'Sheet location (as in its column header)'}
-          <input className={FIELD} value={props.location} onChange={(e) => props.setLocation(e.target.value)} placeholder={source === 'semrush' ? 'US' : 'Staten Island, NY'} />
+          <input className={FIELD} value={props.location} onChange={(e) => props.setLocation(e.target.value)} placeholder={source === 'semrush' ? 'US' : place} />
         </label>
         <label className={LABEL}>
           {source === 'semrush' ? 'Semrush filter used (optional)' : 'Note (optional)'}
-          <input className={FIELD} value={props.filter} onChange={(e) => props.setFilter(e.target.value)} placeholder={source === 'semrush' ? 'Include keywords: staten island' : ''} />
+          <input className={FIELD} value={props.filter} onChange={(e) => props.setFilter(e.target.value)} placeholder={source === 'semrush' && area ? `Include keywords: ${area}` : ''} />
         </label>
       </div>
 
@@ -430,11 +437,11 @@ function MatchStep(props: {
       <div className="grid grid-cols-2 gap-4 phone:grid-cols-1">
         <label className={LABEL}>
           Only keywords containing (comma-separated, optional)
-          <input className={FIELD} value={props.include} onChange={(e) => props.setInclude(e.target.value)} placeholder="e.g. staten island, wax, brow" />
+          <input className={FIELD} value={props.include} onChange={(e) => props.setInclude(e.target.value)} placeholder={eg([area, ...svc].filter(Boolean))} />
         </label>
         <label className={LABEL}>
           Leave out keywords containing (optional)
-          <input className={FIELD} value={props.exclude} onChange={(e) => props.setExclude(e.target.value)} placeholder="e.g. european wax center, men" />
+          <input className={FIELD} value={props.exclude} onChange={(e) => props.setExclude(e.target.value)} placeholder={eg(c.outOfScopeWords.slice(0, 3))} />
         </label>
       </div>
 

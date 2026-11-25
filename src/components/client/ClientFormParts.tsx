@@ -122,7 +122,7 @@ function CategoryEditor({
               className={`${FIELD} ${nameTooLong ? '!border-vv-error-line' : ''}`}
               value={cat.name}
               onChange={(e) => onName(e.target.value)}
-              placeholder={cat.code === 'Home' ? 'e.g. All waxing' : cat.code === 'FAQ' ? DEFAULT_FAQ_NAME : 'e.g. Brazilian & Bikini (short name)'}
+              placeholder={cat.code === 'Home' ? 'The general term people search' : cat.code === 'FAQ' ? DEFAULT_FAQ_NAME : 'A short category name'}
               aria-invalid={nameTooLong}
             />
           </label>
@@ -187,7 +187,7 @@ function CategoryEditor({
               rows={cat.pending.includes('\n') ? 3 : 1}
               value={cat.pending}
               onChange={(e) => onPending(e.target.value)}
-              placeholder={cat.code === 'Home' ? 'e.g. Waxing' : 'e.g. Brazilian, Full bikini, Bikini line'}
+              placeholder={cat.code === 'Home' ? 'The main service, as people search it' : 'Service names, as people search them'}
             />
           </label>
           <button type="button" className={`${BTN_GHOST} min-h-[44px]`} onClick={addPasted} disabled={!cat.pending.trim()}>

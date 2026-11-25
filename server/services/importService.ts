@@ -124,7 +124,7 @@ async function plan(p: ImportPayload): Promise<Plan> {
   const seen = new Set<string>()
   const unique: Plan['unique'] = []
   const skipped: string[] = []
-  // 0. Street addresses ("2627 hylan blvd staten island") are held back: never stored (not even in the
+  // 0. Street addresses ("123 main st springfield") are held back: never stored (not even in the
   //    import history) unless Angel ticks them. A client's private address must never be stored.
   const allowed = new Set(p.allowAddresses ?? [])
   const addresses = new Map<string, string>()

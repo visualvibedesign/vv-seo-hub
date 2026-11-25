@@ -38,7 +38,7 @@ const STATES: Record<string, string> = {
 /** "NY" → "New York"; unknown → the code as typed. */
 export const stateName = (st: string) => STATES[st.trim().toUpperCase()] ?? st.trim()
 
-/** "Staten Island" → "staten-island" (URL patterns). */
+/** "Main City" → "main-city" (URL patterns). */
 const slug = (s: string) =>
   s
     .trim()
@@ -49,7 +49,7 @@ const slug = (s: string) =>
 
 /**
  * Fill {service} {city} {st} {state} {brand}; empty values leave the variable in place so gaps show.
- * A pattern that starts with "/" is a URL: each value becomes a slug ("/brazilian-wax-staten-island-ny/").
+ * A pattern that starts with "/" is a URL: each value becomes a slug ("/main-service-main-city-st/").
  */
 export function fill(body: string, v: Partial<Vars>): string {
   const url = body.trim().startsWith('/')
@@ -60,15 +60,16 @@ export function fill(body: string, v: Partial<Vars>): string {
   })
 }
 
-/** Keyword patterns read lower case, like searches ("brazilian wax staten island ny"). */
+/** Keyword patterns read lower case, like searches ("main service main city st"). */
 export function fillSearch(body: string, v: Partial<Vars>): string {
   const lower: Partial<Vars> = Object.fromEntries(Object.entries(v).map(([k, x]) => [k, (x ?? '').toLowerCase()]))
   return fill(body, lower)
 }
 
-/** Sample values from a client: first S1 service (or any), the A1 area (or main city) and its state. */
+/** Sample values from a client: the Home service first (the main page), else the first S1–S3 service, the A1 area (or main city) and its state. */
 export function varsFromClient(c: ClientDetail): Vars {
-  const services = c.categories.filter((k) => k.code !== 'FAQ' && k.code !== 'Home').flatMap((k) => k.services)
+  const order = ['Home', 'S1', 'S2', 'S3']
+  const services = [...c.categories].filter((k) => k.code !== 'FAQ').sort((a, b) => order.indexOf(a.code) - order.indexOf(b.code)).flatMap((k) => k.services)
   const a1 = c.areas.find((a) => a.code === 'A1' && a.status === 'active')
   const st = (a1?.state || c.state || '').trim()
   return { service: services[0]?.name ?? '', city: (a1?.name || c.city || '').trim(), st, state: st ? stateName(st) : '', brand: c.name }

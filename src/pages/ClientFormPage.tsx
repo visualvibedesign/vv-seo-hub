@@ -6,6 +6,7 @@ import HeaderTools from '../components/layout/HeaderTools'
 import { Bone, Spinner } from '../components/ui/Loading'
 import { useClient, useSaveClient } from '../hooks/useClients'
 import { ApiError } from '../lib/api'
+import { domainName } from '../lib/autofillRules'
 import { INDUSTRIES } from '../lib/clientSetup'
 import { BTN_GHOST, BTN_LIME, CARD, CARD_TITLE, FIELD, LABEL } from '../lib/ui'
 import type { ClientDetail, ClientIndustry, ClientStatus } from '../types/seo'
@@ -38,6 +39,7 @@ function EditForm({ existing }: { existing: ClientDetail }) {
   // Scope words (migration 0008), typed as comma / line separated text.
   const [outOfScope, setOutOfScope] = useState(existing.outOfScopeWords.join(', '))
   const [hoods, setHoods] = useState(existing.neighbourhoodWords.join(', '))
+  const [brand, setBrand] = useState(existing.brandWords.join(', ')) // migration 0009
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setF((s) => ({ ...s, [k]: v }))
   const site = useSiteCheck(f.siteUrl, existing.siteId)
   const idChanges = !!site.check && site.check.siteId !== existing.siteId
@@ -52,7 +54,11 @@ function EditForm({ existing }: { existing: ClientDetail }) {
       // Only sent when there's something to save (so Edit client still works before migration 0008 runs).
       const scope = splitNames(outOfScope)
       const hood = splitNames(hoods)
-      const words = scope.length || hood.length || existing.outOfScopeWords.length || existing.neighbourhoodWords.length ? { outOfScopeWords: scope, neighbourhoodWords: hood } : {}
+      const brandWords = splitNames(brand)
+      const words = {
+        ...(scope.length || hood.length || existing.outOfScopeWords.length || existing.neighbourhoodWords.length ? { outOfScopeWords: scope, neighbourhoodWords: hood } : {}),
+        ...(brandWords.length || existing.brandWords.length ? { brandWords } : {}),
+      }
       const res = await save.mutateAsync({ client: { ...toInput(f), ...words }, siteId: existing.siteId })
       navigate(`/clients/${res.siteId}`, { replace: true })
     } catch (err) {
@@ -149,7 +155,7 @@ function EditForm({ existing }: { existing: ClientDetail }) {
       <section className={CARD} aria-labelledby="f-scope">
         <div className="flex flex-col gap-1">
           <h2 id="f-scope" className={CARD_TITLE}>
-            Scope words
+            Scope &amp; brand words
           </h2>
           <p className="m-0 text-sm text-vv-muted">
             Keywords with one of these words get no role, service or intent suggestions. They go to the “Out of scope &amp; neighbourhoods” list on Uploads → Day 2 for you to confirm. Separate with commas.
@@ -158,11 +164,15 @@ function EditForm({ existing }: { existing: ClientDetail }) {
         <div className="grid grid-cols-2 gap-4 phone:grid-cols-1">
           <label className={LABEL}>
             Out of scope (suggest Rejected)
-            <textarea className={`${FIELD} min-h-[76px] resize-y`} value={outOfScope} onChange={(e) => setOutOfScope(e.target.value)} placeholder="e.g. male, men, men's, mens, chest" />
+            <textarea className={`${FIELD} min-h-[76px] resize-y`} value={outOfScope} onChange={(e) => setOutOfScope(e.target.value)} placeholder="Words for services this client doesn’t offer" />
           </label>
           <label className={LABEL}>
             Neighbourhoods, not an area yet (suggest Later)
-            <textarea className={`${FIELD} min-h-[76px] resize-y`} value={hoods} onChange={(e) => setHoods(e.target.value)} placeholder="e.g. great kills, new dorp, eltingville" />
+            <textarea className={`${FIELD} min-h-[76px] resize-y`} value={hoods} onChange={(e) => setHoods(e.target.value)} placeholder="Neighbourhoods inside the main area" />
+          </label>
+          <label className={`${LABEL} col-span-2 phone:col-span-1`}>
+            Brand words (the client’s own name, never a competitor)
+            <input className={FIELD} value={brand} onChange={(e) => setBrand(e.target.value)} placeholder={`Empty = “${existing.name.toLowerCase()}” and “${domainName(existing.siteUrl)}” are used`} />
           </label>
         </div>
       </section>

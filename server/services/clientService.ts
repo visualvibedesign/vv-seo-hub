@@ -45,6 +45,8 @@ export type ClientRow = {
   /** Both undefined until migration 0008 runs. */
   out_of_scope_words?: string[]
   neighbourhood_words?: string[]
+  /** Undefined until migration 0009 runs. */
+  brand_words?: string[]
   notes: string | null
   created_at: string
   updated_at: string
@@ -182,6 +184,7 @@ export async function clientDetail(c: ClientRow): Promise<ClientDetail> {
     accounts: accountList,
     outOfScopeWords: c.out_of_scope_words ?? [],
     neighbourhoodWords: c.neighbourhood_words ?? [],
+    brandWords: c.brand_words ?? [],
     counts: counts.get(c.id)!,
     guide: guides.get(c.id)!,
   }
@@ -225,6 +228,7 @@ const InputSchema = z.object({
     .optional(),
   outOfScopeWords: z.array(text(60)).max(100).optional(),
   neighbourhoodWords: z.array(text(60)).max(200).optional(),
+  brandWords: z.array(text(60)).max(50).optional(),
 })
 
 const FIELD_LABEL: Record<string, string> = {
@@ -314,6 +318,7 @@ export async function saveClient(raw: unknown, existingSiteId?: string): Promise
     // Migration 0008 columns: only sent when the form sends them (Edit client), as clean lowercase lists.
     ...(input.outOfScopeWords ? { out_of_scope_words: cleanWords(input.outOfScopeWords) } : {}),
     ...(input.neighbourhoodWords ? { neighbourhood_words: cleanWords(input.neighbourhoodWords) } : {}),
+    ...(input.brandWords ? { brand_words: cleanWords(input.brandWords) } : {}),
   }
 
   try {
@@ -325,6 +330,9 @@ export async function saveClient(raw: unknown, existingSiteId?: string): Promise
     }
     if (err instanceof DatabaseError && /(out_of_scope|neighbourhood)_words/i.test(err.message)) {
       throw new ClientInputError('The scope word columns are missing: run supabase/migrations/0008_seo_scope_words.sql in Supabase first.')
+    }
+    if (err instanceof DatabaseError && /brand_words/i.test(err.message)) {
+      throw new ClientInputError('The brand words column is missing: run supabase/migrations/0009_seo_industries.sql in Supabase first.')
     }
     throw err
   }

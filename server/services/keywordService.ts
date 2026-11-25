@@ -36,7 +36,7 @@ async function clientIdFor(siteId: string): Promise<string> {
   return c.id
 }
 
-/** KP stand-in from the KP rows: the location row first (e.g. Richmond County), never the hidden "All" row. */
+/** KP stand-in from the KP rows: the location row first (e.g. a county row), never the hidden "All" row. */
 function standIn(sources: Row['seo_keyword_sources']): string | null {
   const kp = sources.filter((s) => s.source === 'kp' && s.volume_raw)
   const pick = kp.find((s) => s.segment && s.segment.toLowerCase() !== 'all') ?? kp.find((s) => !s.segment) ?? null

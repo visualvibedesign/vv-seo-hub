@@ -96,6 +96,8 @@ export interface ClientDetail extends ClientSummary {
   outOfScopeWords: string[]
   /** Neighbourhoods inside the client's area that aren't an area of their own (migration 0008). */
   neighbourhoodWords: string[]
+  /** The client's own brand words (migration 0009; [] = business name + site domain are used). */
+  brandWords: string[]
 }
 
 /** What the Add / Edit client form sends. Services keep their id when renamed or moved. */
@@ -117,6 +119,8 @@ export interface ClientInput {
   /** Edit client only (migration 0008). Left out = unchanged. */
   outOfScopeWords?: string[]
   neighbourhoodWords?: string[]
+  /** Edit client only (migration 0009). Left out = unchanged. */
+  brandWords?: string[]
 }
 
 export interface SiteIdCheck {
@@ -156,7 +160,7 @@ export interface ImportPayload {
   location: string
   filter: string
   columnMap: Partial<Record<ImportField, string>>
-  /** KP file totals (rows with no keyword, e.g. "All" / "Richmond County"): kept on the import, not shown in the table. */
+  /** KP file totals (rows with no keyword, e.g. "All" / a county row): kept on the import, not shown in the table. */
   totals: { segment: string; volume: string }[]
   rows: ImportRow[]
   /** keyword keys whose different Semrush numbers should replace the filled ones ("Use the new numbers"). */

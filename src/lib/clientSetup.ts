@@ -16,7 +16,7 @@ export const CATEGORY_CODES: CategoryCode[] = ['Home', 'S1', 'S2', 'S3', 'FAQ']
 export const AREA_CODES: AreaCode[] = ['A1', 'A2', 'A3']
 
 export const CATEGORY_HINT: Record<CategoryCode, string> = {
-  Home: 'The general search the home page targets (e.g. “Waxing”).',
+  Home: 'The general search the home page targets (the main service, as people search it).',
   S1: 'Top service category: most money or most wanted.',
   S2: 'Second service category.',
   S3: 'Third service category.',

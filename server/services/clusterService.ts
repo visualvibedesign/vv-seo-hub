@@ -39,7 +39,7 @@ export interface ClusterImportResult {
 
 const CAT = /^(Home|S1|S2|S3|FAQ)\b/i
 
-/** "- brazilian wax price (1,600 · 15)" → "brazilian wax price"; "—" / "" → null. */
+/** "- service price (1,600 · 15)" → "service price"; "—" / "" → null. */
 function cleanListItem(line: string): string | null {
   const t = line.replace(/^\s*[-•*]\s*/, '').trim()
   if (!t || t === '—' || t === '-') return null
@@ -56,7 +56,7 @@ function statusOf(why: string, page: string, category: CategoryCode): PageStatus
   return 'planned'
 }
 
-/** "/brazilian-wax/" → "Brazilian wax"; "/faqs/" → "FAQs". */
+/** "/main-service/" → "Main service"; "/faqs/" → "FAQs". */
 function nameFromPath(path: string): string {
   const slug = path.replace(/^\/+|\/+$/g, '').split('/').pop() ?? path
   if (/^faqs?$/i.test(slug)) return 'FAQs'

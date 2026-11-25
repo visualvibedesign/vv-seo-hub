@@ -86,7 +86,7 @@ export function servicesProblem(f: FormState): string {
   return ''
 }
 
-/** "Brazilian, Full bikini\nFull butt." → ["Brazilian", "Full bikini", "Full butt"] (no trailing dots, no repeats). */
+/** "Service A, Service B\nService C." → ["Service A", "Service B", "Service C"] (no trailing dots, no repeats). */
 export function splitNames(text: string, skip: string[] = []): string[] {
   const seen = new Set(skip.map((s) => s.trim().toLowerCase()))
   const out: string[] = []

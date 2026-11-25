@@ -154,7 +154,7 @@ function TargetsCard({ client: c }: { client: ClientDetail }) {
   )
 }
 
-/** "Eyebrow lamination, Eyebrow tint, Chin + 7 more" (first 3 names). */
+/** "Service A, Service B, Service C + 7 more" (first 3 names). */
 function serviceLine(names: string[]): string {
   return names.length > 3 ? `${names.slice(0, 3).join(', ')} + ${names.length - 3} more` : names.join(', ')
 }

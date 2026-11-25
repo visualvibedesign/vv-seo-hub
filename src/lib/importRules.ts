@@ -14,7 +14,7 @@ export function keywordKey(k: string): string {
   return cleanKeyword(k).toLowerCase()
 }
 
-/** Street words that follow a house number ("2627 hylan blvd"). */
+/** Street words that follow a house number ("123 main st"). */
 const STREET =
   'blvd|boulevard|ave|avenue|av|st|street|rd|road|dr|drive|ln|lane|pl|place|ct|court|hwy|highway|pkwy|parkway|way|ter|terrace|cir|circle|sq|square|tpke|turnpike|pike|trl|trail|loop|row|plz|plaza'
 const ADDRESS = new RegExp(`(^|\\s)\\d{1,6}[a-z]?\\s+(?:[a-z0-9.'-]+\\s+){1,4}(${STREET})\\.?(\\s|$)`, 'i')

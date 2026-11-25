@@ -51,7 +51,7 @@ export function initialMap(p: ParsedFile, report: ImportReport) {
 }
 
 /**
- * Applies the column match. Rows with no keyword: KP totals ("All", "Richmond County") are kept apart;
+ * Applies the column match. Rows with no keyword: KP totals ("All", a county row) are kept apart;
  * anything else without a keyword is counted as blank and left out.
  */
 export function applyMap(p: ParsedFile, map: Partial<Record<ImportField, string>>) {

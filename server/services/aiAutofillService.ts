@@ -6,7 +6,7 @@
 // are on the plain-code scope list instead.
 import { z } from 'zod'
 import { AI_MODELS, AI_TASKS, costUsd, type AiTask } from '../../src/lib/aiModels.js'
-import { roleOptions, serviceOptions, type KeywordLite } from '../../src/lib/autofillRules.js'
+import { isOwnBrand, roleOptions, serviceOptions, type KeywordLite } from '../../src/lib/autofillRules.js'
 import type { AutofillItem, AutofillKind, AutofillRow } from '../../src/types/seo.js'
 import { db, must } from '../clients/supabase.js'
 import { callStructured, countInputTokens } from './aiService.js'
@@ -89,7 +89,7 @@ export const INTENTS = ['Informational', 'Navigational', 'Commercial', 'Transact
 
 const INTENT_SYSTEM = `You label search keywords for a local business SEO tool with Semrush's search intent.
 Intents:
-- Informational: wants to learn or understand something (how, what, aftercare, vs, does it hurt).
+- Informational: wants to learn or understand something (how to, what is, why, vs, ideas, guide).
 - Navigational: looking for a specific business, brand or website by name.
 - Commercial: comparing or researching before buying (best, price, cost, reviews, near me comparisons).
 - Transactional: ready to book or buy a service now (service + city, book, appointment).
@@ -169,7 +169,7 @@ const TRIAGE_SYSTEM = `You sort search keywords for a local business SEO tool.
 You get the business's services, the areas it targets, and keywords (id | keyword | monthly volume).
 Keywords that name this business itself were already removed. For each keyword id pick one category:
 - fits: someone looking for one of these services in or near these areas (keep it).
-- competitor brand: names another business, salon, chain or brand.
+- competitor brand: names another business, chain or brand.
 - neighbourhood: a town or neighbourhood that is not one of the listed areas (worth a page later, not now).
 - off-topic: not about these services (a different service, a product, jobs, DIY, a place only).
 Add a reason of at most 8 words. Do not add keywords.`
@@ -178,9 +178,9 @@ const TriageOut = z.object({ items: z.array(z.object({ id: z.number().int(), cat
 
 async function prepTriage(c: ClientRow): Promise<Prepared<typeof TriageOut>> {
   const [kws, svc, words, scope] = await Promise.all([candidates(c), servicesOf(c), templateWords(c), scopeWordsOf(c)])
-  // The business's own name (its first word of 4+ letters, e.g. "anassa") stays out: never a competitor.
-  const own = c.name.toLowerCase().split(/[^a-z0-9]+/).find((w) => w.length >= 4)
-  const list = kws.filter((k) => k.status === 'keep' && !k.role && roleOptions(k.keyword, words).length === 0 && !(own && k.keyword.toLowerCase().includes(own)))
+  // Keywords naming the client itself stay out (brand words, or the business name / domain): never a competitor.
+  const brand = { brandWords: c.brand_words ?? [], name: c.name, siteUrl: c.site_url }
+  const list = kws.filter((k) => k.status === 'keep' && !k.role && roleOptions(k.keyword, words).length === 0 && !isOwnBrand(k.keyword, brand))
   const vol = await volumes(list.map((k) => k.id))
   return {
     list,

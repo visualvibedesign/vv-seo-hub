@@ -39,7 +39,7 @@ export function splitAccent(text: string): [string, string] {
   return i < 0 ? ['', t] : [t.slice(0, i + 1), t.slice(i + 1)]
 }
 
-/** "anassabeauty.com" from "https://anassabeauty.com/" (path kept). */
+/** "example.com" from "https://example.com/" (path kept). */
 export function siteLabel(url: string): string {
   return url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/+$/, '')
 }

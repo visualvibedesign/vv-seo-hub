@@ -58,7 +58,7 @@ export function roleOptions(keyword: string, w: Words): Option<RuleRole>[] {
   return out
 }
 
-/** `home` = a Home-row service (the general term, e.g. "Waxing"): only used when no S1–S3 service matches. */
+/** `home` = a Home-row service (the general term the home page targets): only used when no S1–S3 service matches. */
 export type ServiceRef = { id: string; name: string; home?: boolean }
 
 /**
@@ -76,10 +76,10 @@ function serviceMatches(keyword: string, services: ServiceRef[], w: Words): Opti
     if (!out.some((o) => o.value === value)) out.push({ value, rule })
   }
   const kw = ` ${singular(keyword)} `
-  // 1. exact service name in the keyword (plurals ignored): longest names first, so "bikini line" beats "bikini"
+  // 1. exact service name in the keyword (plurals ignored): longest names first, so "full service" beats "service"
   const byLength = [...services].sort((a, b) => b.name.length - a.name.length)
   const exact = byLength.filter((s) => kw.includes(` ${singular(s.name)} `))
-  // drop a shorter exact match that sits inside a longer one ("bikini" inside "full bikini")
+  // drop a shorter exact match that sits inside a longer one ("service" inside "full service")
   const kept = exact.filter((s) => !exact.some((o) => o !== s && singular(o.name).includes(singular(s.name)) && kw.includes(` ${singular(o.name)} `)))
   for (const s of kept) add(s.id, `service name “${s.name}”`)
   if (out.length) return out
@@ -96,6 +96,30 @@ function serviceMatches(keyword: string, services: ServiceRef[], w: Words): Opti
 
 export type KeywordLite = { id: string; keyword: string; role: KeywordRole | null; serviceId: string | null; status: string }
 
+// ---- Brand (the client's own name) ----------------------------------------------------------------------
+// Brand words from Edit client. None typed → the full business name and the site's domain name are used
+// ("Acme Plumbing & Heat" → "acme plumbing heat"; "https://www.acmeplumbing.com/" → "acmeplumbing").
+// Keywords naming the client are never sent to the triage (they'd look like a competitor brand).
+
+const compact = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '')
+
+/** Domain name without www / the ending: "https://www.acme-plumbing.co.uk/x" → "acme-plumbing". */
+export function domainName(siteUrl: string): string {
+  const host = siteUrl.toLowerCase().replace(/^[a-z]+:\/\//, '').split(/[/?#]/)[0].replace(/^www\./, '')
+  const parts = host.split('.')
+  if (parts.length <= 1) return host
+  // keep the label before the ending (handles two-part endings like co.uk / com.au)
+  const twoPart = parts.length >= 3 && parts[parts.length - 2].length <= 3
+  return parts[parts.length - (twoPart ? 3 : 2)]
+}
+
+/** Does the keyword name the client? Typed words: whole words. Fallback: name / domain, spaces ignored. */
+export function isOwnBrand(keyword: string, b: { brandWords: string[]; name: string; siteUrl: string }): boolean {
+  if (b.brandWords.length) return b.brandWords.some((w) => has(keyword, w))
+  const kw = compact(keyword)
+  return [compact(b.name), compact(domainName(b.siteUrl))].some((x) => x.length >= 4 && kw.includes(x))
+}
+
 // ---- Scope (step 6c-2, Angel Nov 25) ------------------------------------------------------------------
 // Per client (Edit client): out-of-scope words (services they don't offer, e.g. "male", "chest") and
 // neighbourhood words (places inside their area, e.g. "great kills"). A keyword with one of them gets NO
@@ -106,7 +130,7 @@ export type ScopeWords = { outOfScope: string[]; neighbourhoods: string[]; activ
 export type ScopeStatus = 'rejected' | 'later'
 export type ScopeHit = { category: 'out of scope' | 'neighbourhood'; word: string; status: ScopeStatus }
 
-/** Out of scope wins over neighbourhood. Whole words only ("men" matches "men's wax", not "mentor"). */
+/** Out of scope wins over neighbourhood. Whole words only ("pro" matches "pro's pick", not "product"). */
 export function scopeHit(keyword: string, s: ScopeWords): ScopeHit | null {
   const out = [...s.outOfScope].sort((a, b) => b.length - a.length).find((w) => has(keyword, w))
   if (out) return { category: 'out of scope', word: out, status: 'rejected' }

@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto'
 
 export class SiteUrlError extends Error {}
 
-/** Cleans what was typed into a full home URL ("anassabeauty.com" → "https://anassabeauty.com/"). */
+/** Cleans what was typed into a full home URL ("example.com" → "https://example.com/"). */
 export function normalizeSiteUrl(input: string): string {
   let raw = input.trim()
   if (!raw) throw new SiteUrlError('Add the site’s home URL.')
