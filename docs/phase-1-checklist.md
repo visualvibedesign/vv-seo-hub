@@ -121,8 +121,17 @@ the imports, the two client areas and Settings). Tick each line on localhost. An
 ## 8. After the run
 
 - [ ] Note what failed under **Found**.
-- [ ] Test Wax Studio stays as test data unless Angel says to delete it (deleting a client is Angel's call).
 - [ ] `npm run build`, typecheck, lint all pass.
+
+## 9. Last step: delete Test Wax Studio
+
+- [ ] **Client setup** of Test Wax Studio: the **Delete client** box says to archive first; **Delete client…** isn't offered yet.
+- [ ] Set **Status: Archived** → Save. The client leaves the sidebar switcher (still opens from Clients, with its name in the sidebar).
+- [ ] **Delete client…** shows what goes (keywords, imports + raw files, pages, notes, matrix, links, accounts, guide).
+- [ ] The red button stays off until "Test Wax Studio" is typed exactly (a typo or wrong case keeps it off).
+- [ ] Delete → back on Clients; Test Wax Studio is gone; its old address shows "This site isn't an SEO Hub client yet".
+- [ ] Settings › Claude usage still counts its calls (as "Deleted client"); agency rules still show on other clients.
+- [ ] Also delete the extra clients added from the bulk CSV in §1 the same way.
 
 ## Found
 

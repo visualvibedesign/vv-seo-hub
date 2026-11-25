@@ -6,8 +6,10 @@
 //   POST /api/clients/account { siteId, account }   -> { account }  (one checklist row)
 //   POST /api/clients/bulk-preview { rows }         -> { rows: BulkClientCheck[] }  (nothing saved)
 //   POST /api/clients/bulk-add     { rows }         -> { added, skipped, industriesAdded, rows, failed }
+//   GET  /api/clients/delete-check?site=<site id>   -> ClientDeleteCheck (counts; nothing deleted)
+//   POST /api/clients/delete  { siteId, name }      -> { filesRemoved, filesLeft } (Archived clients only, exact name typed)
 import { DatabaseError } from '../../server/clients/supabase.js'
-import { checkSiteId, ClientInputError, getClient, listClients, saveAccount, saveClient } from '../../server/services/clientService.js'
+import { checkDeleteClient, checkSiteId, ClientInputError, deleteClient, getClient, listClients, saveAccount, saveClient } from '../../server/services/clientService.js'
 import { addBulk, previewBulk } from '../../server/services/bulkClientService.js'
 import { requireSession } from '../../server/utils/auth.js'
 import { SiteUrlError } from '../../server/utils/siteId.js'
@@ -44,6 +46,11 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       const body = (await request.json().catch(() => ({}))) as { siteId?: unknown; client?: unknown }
       const siteId = typeof body.siteId === 'string' && body.siteId ? body.siteId : undefined
       return Response.json(await saveClient(body.client, siteId))
+    }
+    if (method === 'GET' && action === 'delete-check') return Response.json(await checkDeleteClient(params.get('site') ?? ''))
+    if (method === 'POST' && action === 'delete') {
+      const body = (await request.json().catch(() => ({}))) as { siteId?: unknown; name?: unknown }
+      return Response.json(await deleteClient(String(body.siteId ?? ''), body.name))
     }
     if (method === 'POST' && action === 'bulk-preview') {
       return Response.json({ rows: await previewBulk(await request.json().catch(() => null)) })

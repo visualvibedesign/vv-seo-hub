@@ -8,6 +8,7 @@ import { useClient, useSaveClient } from '../hooks/useClients'
 import { ApiError } from '../lib/api'
 import { domainName } from '../lib/autofillRules'
 import { IndustrySelect } from '../components/client/IndustryPicker'
+import DeleteClient from '../components/client/DeleteClient'
 import { BTN_GHOST, BTN_LIME, CARD, CARD_TITLE, FIELD, LABEL } from '../lib/ui'
 import type { ClientDetail, ClientStatus } from '../types/seo'
 
@@ -67,6 +68,7 @@ function EditForm({ existing }: { existing: ClientDetail }) {
   }
 
   return (
+    <div className="flex flex-col gap-6">
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
       <span className="text-[15px] text-vv-muted">
         <Link to="/clients" className="text-vv-muted no-underline hover:text-vv-purple-deep">
@@ -210,6 +212,8 @@ function EditForm({ existing }: { existing: ClientDetail }) {
         </Link>
       </div>
     </form>
+    <DeleteClient client={existing} />
+    </div>
   )
 }
 

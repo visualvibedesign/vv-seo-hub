@@ -23,6 +23,7 @@ import type {
   GuideSummary,
   SiteIdCheck,
 } from '../../src/types/seo.js'
+import type { ClientDeleteCheck } from '../../src/types/seo.js'
 import { DatabaseError, db, must } from '../clients/supabase.js'
 import { normalizeSiteUrl, siteIdFor, SiteUrlError } from '../utils/siteId.js'
 
@@ -537,4 +538,48 @@ export async function saveAccount(siteId: string, raw: unknown): Promise<ClientA
       'Saving the account checklist',
     ) as AccountRow)
   return toAccount(row)
+}
+
+// ---- Delete a client (Angel, Nov 26) -------------------------------------------------------------------------
+// Only an Archived client, and only after typing its exact name. Every seo_ table row for the client goes with it
+// (all are "on delete cascade"; the Claude call log keeps its rows with no client, so costs still add up). Agency
+// rules (notes with no client) stay. Then the raw import files in Storage (<site id>/…) are removed.
+
+const IMPORT_BUCKET = 'seo-imports'
+
+
+async function countFor(table: string, clientId: string): Promise<number> {
+  const r = await db().from(table).select('id', { count: 'exact', head: true }).eq('client_id', clientId)
+  if (r.error) throw new DatabaseError(`Counting ${table}: ${r.error.message}`)
+  return r.count ?? 0
+}
+
+/** What deleting would remove (nothing deleted). */
+export async function checkDeleteClient(siteId: string): Promise<ClientDeleteCheck> {
+  const c = await clientRow(siteId)
+  if (!c) throw new ClientInputError('That client doesn’t exist.')
+  const [keywords, imports, pages, notes] = await Promise.all(['seo_keywords', 'seo_imports', 'seo_pages', 'seo_notes'].map((t) => countFor(t, c.id)))
+  return { name: c.name, archived: c.status === 'archived', keywords, imports, pages, notes }
+}
+
+/** Deletes an Archived client after its exact name was typed. Returns whether every raw file was removed too. */
+export async function deleteClient(siteId: string, typedName: unknown): Promise<{ filesRemoved: number; filesLeft: number }> {
+  const c = await clientRow(siteId)
+  if (!c) throw new ClientInputError('That client doesn’t exist (already deleted?).')
+  if (c.status !== 'archived') throw new ClientInputError('Archive the client first (Client setup › Status: Archived), then delete it.')
+  if (typeof typedName !== 'string' || typedName.trim() !== c.name.trim()) throw new ClientInputError(`Type the client’s name exactly (“${c.name}”) to delete it.`)
+  must(await db().from('seo_clients').delete().eq('id', c.id), 'Deleting the client')
+  // Raw files: <site id>/<import id>/<file>. Last, so a Storage hiccup never leaves half a client in the database.
+  let filesRemoved = 0
+  let filesLeft = 0
+  const folders = await db().storage.from(IMPORT_BUCKET).list(c.site_id, { limit: 1000 })
+  for (const f of folders.data ?? []) {
+    const files = await db().storage.from(IMPORT_BUCKET).list(`${c.site_id}/${f.name}`, { limit: 1000 })
+    const paths = (files.data ?? []).map((x) => `${c.site_id}/${f.name}/${x.name}`)
+    if (!paths.length) continue
+    const rm = await db().storage.from(IMPORT_BUCKET).remove(paths)
+    if (rm.error) filesLeft += paths.length
+    else filesRemoved += paths.length
+  }
+  return { filesRemoved, filesLeft }
 }

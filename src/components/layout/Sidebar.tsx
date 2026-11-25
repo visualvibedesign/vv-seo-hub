@@ -76,7 +76,9 @@ function store(key: string, value: string) {
 }
 
 export default function Sidebar() {
-  const clients = (useClients().data ?? []).filter((c) => c.status !== 'archived')
+  const everyone = useClients().data ?? []
+  // The switcher lists active + paused clients; an archived client still shows its own name when it's open.
+  const clients = everyone.filter((c) => c.status !== 'archived')
   const [menuOpen, setMenuOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => readStored(COLLAPSE_KEY, false, (r) => r === '1'))
   const [phone, setPhone] = useState(() => window.matchMedia(PHONE).matches)
@@ -156,7 +158,7 @@ export default function Sidebar() {
           menuOpen ? 'phone:flex phone:max-h-[calc(100vh-72px)] phone:w-full phone:flex-col phone:gap-4 phone:overflow-y-auto phone:pb-1.5 phone:pt-3.5' : 'phone:hidden'
         }`}
       >
-        {openId ? <ClientNav siteId={openId} clients={clients} mini={mini} onGo={close} /> : <HubNav mini={mini} onGo={close} />}
+        {openId ? <ClientNav siteId={openId} clients={clients} current={everyone.find((c) => c.siteId === openId)} mini={mini} onGo={close} /> : <HubNav mini={mini} onGo={close} />}
 
         {/* Switch app: same as HQ's sidebar: one button pinned to the bottom (in the Menu on phones) that
             opens HQ's Apps page and stays signed in. */}
@@ -244,11 +246,10 @@ function HubNav({ mini, onGo }: { mini: boolean; onGo: () => void }) {
  *   - Overview (/clients/{id}, /baseline, /results, /site, /notes…): results + quick access, and the Strategy Builder button.
  *   - Strategy Builder (/clients/{id}/strategy/…): Strategy home, guide, uploads, then one foldable group per Sam day.
  */
-function ClientNav({ siteId, clients, mini, onGo }: { siteId: string; clients: ClientSummary[]; mini: boolean; onGo: () => void }) {
+function ClientNav({ siteId, clients, current, mini, onGo }: { siteId: string; clients: ClientSummary[]; current?: ClientSummary; mini: boolean; onGo: () => void }) {
   const base = clientPath(siteId)
   const { pathname } = useLocation()
   const inStrategy = pathname === strategyPath(siteId) || pathname.startsWith(`${strategyPath(siteId)}/`)
-  const current = clients.find((c) => c.siteId === siteId)
   const [folded, setFolded] = useState<string[]>(() => readStored(FOLDED_KEY, [], (r) => (JSON.parse(r) as unknown[]).filter((x): x is string => typeof x === 'string')))
   const toggleGroup = (key: string) =>
     setFolded((f) => {

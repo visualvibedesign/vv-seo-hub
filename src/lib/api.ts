@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -325,4 +325,14 @@ export function deleteLink(siteId: string, id: string): Promise<{ ok: true }> {
 /** Claude calls per client / month / task (estimates at call time). */
 export function getAiUsage(): Promise<{ usage: AiUsage }> {
   return call('/api/autofill/usage')
+}
+
+/** Counts for the Delete client confirm (nothing deleted). */
+export function checkDeleteClient(siteId: string): Promise<ClientDeleteCheck> {
+  return call(`/api/clients/delete-check?site=${encodeURIComponent(siteId)}`)
+}
+
+/** Deletes an Archived client; name = the client's name typed exactly. */
+export function deleteClient(siteId: string, name: string): Promise<{ filesRemoved: number; filesLeft: number }> {
+  return call('/api/clients/delete', json({ siteId, name }))
 }

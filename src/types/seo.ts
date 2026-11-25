@@ -673,3 +673,13 @@ export interface AiUsage {
   /** siteId null = the client was deleted (its calls still count). */
   clients: { siteId: string | null; name: string; month: AiUsageSum; all: AiUsageSum; lastAt: string }[]
 }
+
+/** What deleting a client would remove (Client setup › Delete client; nothing deleted). */
+export interface ClientDeleteCheck {
+  name: string
+  archived: boolean
+  keywords: number
+  imports: number
+  pages: number
+  notes: number
+}
