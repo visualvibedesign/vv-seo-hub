@@ -13,10 +13,6 @@ import type { AutofillDecision, AutofillItem, AutofillKind, AutofillRow, ClientD
 // suggestion names its rule; "needs a look" = two rules disagree (pick one or reject). Approving never
 // overwrites what's already set. Approve all never touches the scope list, the triage list, or a keyword on them.
 
-const CLAUDE_LATER = [
-  { title: 'Clusters', what: 'Pages drafted, no keyword on two pages' },
-]
-
 /** Kinds Approve all may touch (never scope / triage). */
 const BULK: AutofillKind[] = ['roles', 'services', 'services_ai', 'intent']
 
@@ -124,15 +120,12 @@ export default function Day2Autofill({ client: c }: { client: ClientDetail }) {
         {kind('matrix', '3×3 matrix · Claude', 'A primary + backups for each open cell (never a cell you already set). Approve cell by cell', (v) => row('matrix')?.items.find((i) => i.options[0]?.value === v)?.cell ?? v, {
           ai: { task: 'matrix', sends: 'Sends only the service names, area names and each open cell’s candidate keywords with their volumes.', empty: 'Nothing to send: every cell already has a primary, is N/A, or has no keyword with that service and city.' },
         })}
-        {CLAUDE_LATER.map((f) => (
-          <li key={f.title} className="flex items-center justify-between gap-3 border-0 border-t border-solid border-vv-line py-3.5">
-            <span className="flex min-w-0 flex-col">
-              <span className="text-[16px] font-semibold text-vv-ink">{f.title}</span>
-              <span className="text-[14px] text-vv-body">{f.what}</span>
-            </span>
-            <span className={`${PILL} flex-none bg-vv-st-todo text-vv-st-todo-ink`}>Claude · step 6c</span>
-          </li>
-        ))}
+        {kind('clusters', 'Pages · Claude', 'A new page for each matrix cell with no page, and a page for keywords on none. Approve page by page', (v) => {
+          const it = row('clusters')?.items.find((i) => i.options[0]?.value === v)
+          return it?.assign?.pageName ?? it?.page?.name ?? v
+        }, {
+          ai: { task: 'clusters', sends: 'Sends only service and area names, page names, matrix cells and the keywords on no page (text, role, service, volumes).', empty: 'Nothing to send: every matrix cell has a page and every keyword is on one.' },
+        })}
       </ul>
       <p className="m-0 border-0 border-t border-solid border-vv-line pt-3.5 text-[14px] text-vv-body">
         Rules and Claude only suggest. Nothing changes until you approve, and approving never overwrites a role, service, intent or status you already set. Approve all skips the scope and no-rule lists.
@@ -194,9 +187,13 @@ function Review({ row, label, pill, flagged, onDecide, busy }: ReviewProps) {
       </div>
       {items.length === 0 && <p className="m-0 px-1 py-2 text-[14px] text-vv-body">Nothing open here.</p>}
       <ul className="m-0 flex max-h-[420px] list-none flex-col gap-1.5 overflow-y-auto p-0">
-        {items.map((i) => (
-          <ItemRow key={i.keywordId} item={i} label={label} pill={pill} flag={flagged?.get(i.keywordId)} busy={busy || closed} onDecide={onDecide} />
-        ))}
+        {items.map((i) =>
+          i.page ? (
+            <PageItemRow key={i.keywordId} item={i} busy={busy || closed} onDecide={onDecide} />
+          ) : (
+            <ItemRow key={i.keywordId} item={i} label={label} pill={pill} flag={flagged?.get(i.keywordId)} busy={busy || closed} onDecide={onDecide} />
+          ),
+        )}
       </ul>
     </li>
   )
@@ -327,6 +324,56 @@ function AiRun({ siteId, task, hasRow, sends, emptyText }: { siteId: string; tas
         </div>
       )}
       {error && <span className="text-[13px] font-semibold text-vv-red">{error}</span>}
+    </li>
+  )
+}
+
+/** A suggested NEW page: name, category, URL (suggested from the template, editable), primary, secondaries, FAQs. */
+function PageItemRow({ item: i, busy, onDecide }: { item: AutofillItem; busy: boolean; onDecide: (d: AutofillDecision[]) => void }) {
+  const pg = i.page!
+  const [path, setPath] = useState(pg.path ?? '')
+  const edited = path.trim() !== (pg.path ?? '')
+  return (
+    <li className="flex flex-col gap-2 rounded-xl border border-solid border-vv-line bg-vv-surface px-3 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="flex min-w-0 flex-wrap items-center gap-2 text-[15px] font-semibold text-vv-ink">
+          {pg.name}
+          <span className={`${PILL} bg-vv-lavender-100 text-vv-purple-ink`}>{pg.cell} · new page</span>
+        </span>
+        {i.decision && (
+          <span className={`${PILL} ${i.decision === 'approved' ? 'bg-vv-green-100 text-vv-green-ink' : 'bg-vv-st-todo text-vv-st-todo-ink'}`}>
+            {i.decision === 'approved' ? 'Page created (planned)' : i.decision === 'skipped' ? 'Skipped · primary already on a page' : 'Rejected'}
+          </span>
+        )}
+      </div>
+      <span className="text-[13px] text-vv-body">
+        <strong>Primary:</strong> {i.keyword}
+        {pg.secondaries.length > 0 && <> · <strong>Secondary:</strong> {pg.secondaries.map((s) => s.keyword).join(', ')}</>}
+        {pg.faqs.length > 0 && <> · <strong>FAQ:</strong> {pg.faqs.map((f) => f.keyword).join(', ')}</>}
+      </span>
+      {!i.decision && (
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex min-w-0 flex-1 items-center gap-2 text-[13px] text-vv-body">
+            URL
+            <input
+              className="box-border min-h-9 min-w-0 flex-1 rounded-xl border-[1.5px] border-solid border-vv-field-line bg-vv-field px-3 font-body text-[13px] text-vv-ink"
+              value={path}
+              onChange={(e) => setPath(e.target.value)}
+              placeholder="No URL yet"
+              aria-label={`URL for ${pg.name}`}
+            />
+            <span className={`${PILL} ${edited ? 'bg-vv-green-100 text-vv-green-ink' : 'bg-vv-st-waiting text-vv-st-waiting-ink'}`}>{edited ? 'yours' : 'suggested'}</span>
+          </label>
+          <span className="flex gap-1.5">
+            <button type="button" disabled={busy} onClick={() => onDecide([{ keywordId: i.keywordId, action: 'approve', ...(edited ? { path } : {}) }])} className={`${BTN_LIME} min-h-9 px-4 text-[13px]`}>
+              Create page
+            </button>
+            <button type="button" disabled={busy} onClick={() => onDecide([{ keywordId: i.keywordId, action: 'reject' }])} className={`${BTN_GHOST} min-h-9 px-4 text-[13px]`}>
+              Reject
+            </button>
+          </span>
+        </div>
+      )}
     </li>
   )
 }

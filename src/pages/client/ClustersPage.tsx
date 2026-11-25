@@ -98,11 +98,18 @@ function PageRow({ page: p, client: c }: { page: ClusterPage; client: ClientDeta
     <li className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,1.6fr)] gap-4 border-0 border-t border-solid border-vv-line py-3.5 first:border-t-0 [@media(max-width:1100px)]:grid-cols-1 [@media(max-width:1100px)]:gap-2">
       <div className="flex min-w-0 flex-col gap-1.5">
         <span className="text-[16px] font-bold text-vv-ink">{p.name}</span>
-        {path && (
-          <a href={p.url!} target="_blank" rel="noopener noreferrer" className="truncate text-[13px] text-vv-purple-deep">
-            {path} ↗
-          </a>
-        )}
+        {path &&
+          (p.urlSuggested ? (
+            // Only a suggestion (template pattern): not a live link yet.
+            <span className="flex flex-wrap items-center gap-1.5 text-[13px] text-vv-body" title="Suggested from the template's URL pattern. Not confirmed yet.">
+              <span className="truncate">{path}</span>
+              <span className={`${PILL} border border-dashed border-vv-st-waiting-ink bg-transparent text-vv-st-waiting-ink`}>suggested</span>
+            </span>
+          ) : (
+            <a href={p.url!} target="_blank" rel="noopener noreferrer" className="truncate text-[13px] text-vv-purple-deep">
+              {path} ↗
+            </a>
+          ))}
         <span className="flex flex-wrap gap-1.5">
           <span className={priorityPill(p.priority).cls} title={p.priority ? undefined : 'No priority set yet (not in the imported sheet)'}>
             {priorityPill(p.priority).text}

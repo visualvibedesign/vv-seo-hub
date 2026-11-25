@@ -7,7 +7,9 @@
 import { z } from 'zod'
 import { AI_MODELS, AI_TASKS, costUsd, type AiTask } from '../../src/lib/aiModels.js'
 import { hasServiceName, isOwnBrand, roleOptions, serviceOptions, type KeywordLite } from '../../src/lib/autofillRules.js'
-import type { AutofillItem, AutofillKind, AutofillRow } from '../../src/types/seo.js'
+import type { AutofillItem, AutofillKind, AutofillRow, CategoryCode } from '../../src/types/seo.js'
+import { areaState } from '../../src/lib/clientSetup.js'
+import { fill, stateName } from '../../src/lib/templates.js'
 import { db, must } from '../clients/supabase.js'
 import { callStructured, countInputTokens } from './aiService.js'
 import { AutofillInputError, keywordsOf, listAutofill, scopedIds, scopeWordsOf, servicesOf, templateWords, triagedIds } from './autofillService.js'
@@ -33,7 +35,7 @@ export const AI_MAX_ITEMS = 300
 const cap = (all: KeywordLite[]) => ({ list: all.slice(0, AI_MAX_ITEMS), total: all.length })
 
 /** Which seo_autofill kind each Claude task saves as. */
-const KIND: Partial<Record<AiTask, AutofillKind>> = { intent: 'intent', services: 'services_ai', triage: 'triage', matrix: 'matrix' }
+const KIND: Partial<Record<AiTask, AutofillKind>> = { intent: 'intent', services: 'services_ai', triage: 'triage', matrix: 'matrix', clusters: 'clusters' }
 const MODEL_LABEL = (task: AiTask) => AI_MODELS[AI_TASKS[task].model].label
 
 async function client(siteId: string): Promise<ClientRow> {
@@ -345,6 +347,186 @@ async function prepMatrix(c: ClientRow): Promise<Prepared<typeof MatrixOut>> {
   }
 }
 
+// ---- Page (cluster) suggestions (Sonnet, 6c-4a) ------------------------------------------------------
+// New pages: one per matrix cell whose primary is on no page yet (primary = the cell's primary, fixed in code).
+// Leftovers: Keep keywords on no page (no scope word, not a cell primary), top 300 by volume → which page they fit.
+// Checks in code: only ids that were sent, a keyword on one page only, existing pages' keywords never touched.
+// Suggested URL = the template's URL pattern (state abbreviation), editable on Approve; existing URLs never changed.
+
+const CLUSTERS_SYSTEM = `You plan the pages of a local business website for SEO. Each page targets one primary keyword.
+Secondary keywords are close variants that support the same page; FAQ keywords are questions the page answers.
+A keyword can be on ONE page only.
+1. For each NEW page (one per matrix cell; its primary is fixed): give a short page name like "Web Design · Bentonville",
+   up to 10 secondary ids and up to 5 FAQ ids, chosen from that cell's backups or the leftover list.
+2. For each leftover keyword you did not use in step 1: the page it fits (an existing page id like P2, or a new page's
+   cell like S1-A2) as "secondary" or "faq", or "none" if it fits no page.
+Only use ids that are listed. Reasons: at most 10 words.`
+
+const ClustersOut = z.object({
+  pages: z.array(z.object({ cell: z.string(), name: z.string(), secondaries: z.array(z.number().int()), faqs: z.array(z.number().int()) })),
+  assign: z.array(z.object({ id: z.number().int(), page: z.string(), role: z.enum(['secondary', 'faq', 'none']), reason: z.string() })),
+})
+
+/** The URL pattern ("/{service}-{city}-{st}/") from the client's SEO hotspots template (industry version, else generic). */
+async function urlPattern(c: ClientRow): Promise<string | null> {
+  const rows = must(await db().from('seo_templates').select('industry, seo_template_items(kind, body)').eq('kind', 'hotspots'), 'Loading the hotspots template') as {
+    industry: string | null
+    seo_template_items: { kind: string; body: string }[]
+  }[]
+  const t = rows.find((r) => r.industry === (c.industry ?? null)) ?? rows.find((r) => r.industry === null)
+  return t?.seo_template_items.find((i) => i.kind === 'pattern' && i.body.trim().startsWith('/'))?.body.trim() ?? null
+}
+
+async function prepClusters(c: ClientRow): Promise<Prepared<typeof ClustersOut>> {
+  const [kws, svc, scope, pattern, catsR, areasR, cellsR, pagesR] = await Promise.all([
+    keywordsOf(c.id),
+    servicesOf(c),
+    scopeWordsOf(c),
+    urlPattern(c),
+    db().from('seo_client_categories').select('id, code, name').eq('client_id', c.id),
+    db().from('seo_client_areas').select('id, code, name, state, status').eq('client_id', c.id),
+    db().from('seo_matrix_cells').select('category_id, area_id, seo_matrix_keywords(kind, sort, keyword_id)').eq('client_id', c.id),
+    db().from('seo_pages').select('id, name, url, seo_client_categories(code)').eq('client_id', c.id).limit(1000),
+  ])
+  const cats = must(catsR, 'Loading categories') as { id: string; code: string; name: string }[]
+  const areas = must(areasR, 'Loading areas') as { id: string; code: string; name: string | null; state: string | null; status: string }[]
+  const cells = must(cellsR, 'Loading the matrix') as unknown as { category_id: string; area_id: string; seo_matrix_keywords: { kind: string; sort: number; keyword_id: string }[] }[]
+  const pages = must(pagesR, 'Loading pages') as unknown as { id: string; name: string; url: string | null; seo_client_categories: { code: string } | null }[]
+  // Which keywords are on a page already (and each page's primary).
+  const onPage = new Set<string>()
+  const pagePrimary = new Map<string, string>()
+  for (let i = 0; i < pages.length; i += 200) {
+    const part = must(await db().from('seo_page_keywords').select('keyword_id, page_id, role').in('page_id', pages.slice(i, i + 200).map((p) => p.id)), 'Loading page keywords') as { keyword_id: string; page_id: string; role: string }[]
+    for (const r of part) {
+      onPage.add(r.keyword_id)
+      if (r.role === 'primary') pagePrimary.set(r.page_id, r.keyword_id)
+    }
+  }
+  const byId = new Map(kws.map((k) => [k.id, k]))
+  const skip = scopedIds(kws, scope)
+  const usable = (id: string) => {
+    const k = byId.get(id)
+    return !!k && k.status === 'keep' && !skip.has(id) && !onPage.has(id)
+  }
+
+  // New pages: cells with a primary that is on no page.
+  type NewPage = { cell: string; category: string; categoryName: string; city: string; state: string; primary: KeywordLite; backups: KeywordLite[] }
+  const newPages: NewPage[] = []
+  const cellPrimaries = new Set<string>()
+  for (const cell of cells) {
+    const k = cats.find((x) => x.id === cell.category_id)
+    const a = areas.find((x) => x.id === cell.area_id)
+    const p = cell.seo_matrix_keywords.find((m) => m.kind === 'primary')
+    if (!k || !a || !p) continue
+    cellPrimaries.add(p.keyword_id)
+    if (!usable(p.keyword_id)) continue
+    const backups = cell.seo_matrix_keywords.filter((m) => m.kind === 'backup').sort((x, y) => x.sort - y.sort).map((m) => m.keyword_id).filter(usable).map((id) => byId.get(id)!)
+    newPages.push({ cell: `${k.code}-${a.code}`, category: k.code, categoryName: k.name, city: a.name ?? '', state: areaState(a, c.state), primary: byId.get(p.keyword_id)!, backups })
+  }
+  newPages.sort((x, y) => x.cell.localeCompare(y.cell))
+  const inNew = new Set(newPages.flatMap((p) => [p.primary.id, ...p.backups.map((b) => b.id)]))
+  const volRows = new Map((await kpRanges(kws.map((k) => k.id).filter((id) => usable(id) && !cellPrimaries.has(id)))).map((r) => [r.id, r]))
+  const { list: leftovers, total: leftoverTotal } = cap(
+    kws.filter((k) => usable(k.id) && !cellPrimaries.has(k.id) && !inNew.has(k.id)).sort((x, y) => (volRows.get(y.id)?.semrush ?? 0) - (volRows.get(x.id)?.semrush ?? 0)),
+  )
+  // One numbering for every keyword the model may pick.
+  const list: KeywordLite[] = []
+  const num = new Map<string, number>()
+  const idx = (k: KeywordLite) => {
+    if (!num.has(k.id)) {
+      list.push(k)
+      num.set(k.id, list.length)
+    }
+    return num.get(k.id)!
+  }
+  const svcName = new Map(svc.map((s) => [s.id, s.name]))
+  const line = (k: KeywordLite) => {
+    const v = volRows.get(k.id)
+    return `${idx(k)} | ${k.keyword} | ${k.role ?? '-'} | ${(k.serviceId && svcName.get(k.serviceId)) || '-'} | ${v?.semrush ?? '-'} | ${v?.kp ?? '-'}`
+  }
+  const existingLabel = new Map(pages.map((p, i) => [`P${i + 1}`, p]))
+  const user = [
+    `Services: ${cats.filter((k) => k.code !== 'FAQ').map((k) => `${k.code} ${k.name} (${svc.filter((s) => s.code === k.code).map((s) => s.name).join(', ') || '-'})`).join('; ')}`,
+    `Areas: ${areas.filter((a) => a.status === 'active' && a.name).map((a) => `${a.code} ${a.name}`).join('; ') || '-'}`,
+    `Existing pages (id | name | category | primary):\n${[...existingLabel].map(([id, p]) => `${id} | ${p.name} | ${p.seo_client_categories?.code ?? '-'} | ${byId.get(pagePrimary.get(p.id) ?? '')?.keyword ?? '-'}`).join('\n') || '-'}`,
+    `New pages (cell | category | city | primary):\n${newPages.map((p) => `${p.cell} | ${p.categoryName} | ${p.city} | ${p.primary.keyword}${p.backups.length ? `\n  backups (id | keyword | role | service | Semrush | KP):\n${p.backups.map((b) => `  ${line(b)}`).join('\n')}` : ''}`).join('\n') || '-'}`,
+    `Leftover keywords (id | keyword | role | service | Semrush | KP):\n${leftovers.map(line).join('\n') || '-'}`,
+  ].join('\n\n')
+
+  const pathFor = (p: NewPage) => {
+    if (p.category === 'Home') return '/'
+    if (!pattern) return null
+    const service = svc.find((s) => s.code === p.category)?.name ?? p.categoryName
+    return fill(pattern, { service, city: p.city, st: p.state, state: p.state ? stateName(p.state) : '', brand: c.name })
+  }
+  const items = newPages.length + leftovers.length
+  return {
+    list,
+    total: newPages.length + leftoverTotal,
+    count: { items, total: newPages.length + leftoverTotal, noun: newPages.length ? 'new page / keyword' : 'keyword' },
+    effort: 'medium',
+    system: CLUSTERS_SYSTEM,
+    user,
+    schema: ClustersOut,
+    toItems: (data) => {
+      const used = new Set<string>()
+      const pick = (n: number, allowed: Set<string>) => {
+        const k = list[n - 1]
+        if (!k || used.has(k.id) || !allowed.has(k.id)) return null
+        used.add(k.id)
+        return { keywordId: k.id, keyword: k.keyword }
+      }
+      const items: AutofillItem[] = []
+      const madePages = new Map<string, string>() // cell → page name
+      for (const np of newPages) {
+        used.add(np.primary.id)
+        const a = data.pages.find((x) => x.cell.trim().toUpperCase() === np.cell.toUpperCase())
+        const allowed = new Set([...np.backups.map((b) => b.id), ...leftovers.map((l) => l.id)])
+        const secondaries = (a?.secondaries ?? []).map((n) => pick(n, allowed)).filter((x): x is { keywordId: string; keyword: string } => !!x).slice(0, 10)
+        const faqs = (a?.faqs ?? []).map((n) => pick(n, allowed)).filter((x): x is { keywordId: string; keyword: string } => !!x).slice(0, 5)
+        const name = (a?.name?.trim() || `${np.categoryName} · ${np.city}`).slice(0, 80)
+        madePages.set(np.cell, name)
+        items.push({
+          keywordId: np.primary.id,
+          keyword: np.primary.keyword,
+          page: { cell: np.cell, category: np.category as CategoryCode, name, path: pathFor(np), secondaries, faqs },
+          options: [{ value: `page:${np.cell}`, rule: `New page “${name}” (${np.cell}) · ${secondaries.length} secondary · ${faqs.length} FAQ` }],
+          decision: null,
+        })
+      }
+      const leftoverIds = new Set(leftovers.map((l) => l.id))
+      let none = 0
+      for (const a of data.assign) {
+        const k = list[a.id - 1]
+        if (!k || used.has(k.id) || !leftoverIds.has(k.id)) continue
+        if (a.role === 'none') {
+          none++
+          continue
+        }
+        const target = a.page.trim().toUpperCase()
+        const existing = existingLabel.get(target)
+        const cell = newPages.find((p) => p.cell.toUpperCase() === target)?.cell ?? null
+        if (!existing && !cell) continue
+        used.add(k.id)
+        const pageName = existing?.name ?? madePages.get(cell!)!
+        items.push({
+          keywordId: k.id,
+          keyword: k.keyword,
+          assign: { pageId: existing?.id ?? null, cell: existing ? null : cell, pageName, role: a.role },
+          options: [{ value: existing ? `pageid:${existing.id}` : `cell:${cell}`, rule: `${why('clusters', a.reason)}` }],
+          decision: null,
+        })
+      }
+      const pagesN = items.filter((i) => i.page).length
+      return {
+        items,
+        unmatched: [],
+        summary: `${plural(pagesN, 'new page')} · ${plural(items.length - pagesN, 'keyword')} placed on a page · ${none} fit no page${leftoverTotal > leftovers.length ? ` · first ${leftovers.length} of ${leftoverTotal} leftovers` : ''}`,
+      }
+    },
+  }
+}
+
 /** Semrush volume (number) and KP range (text) as stored, for the keywords about to be sent. */
 async function kpRanges(ids: string[]): Promise<{ id: string; semrush: number | null; kp: string | null }[]> {
   const out: { id: string; semrush: number | null; kp: string | null }[] = []
@@ -362,6 +544,7 @@ function prepare(c: ClientRow, task: AiTask): Promise<Prepared<any>> {
   if (task === 'services') return prepServices(c)
   if (task === 'triage') return prepTriage(c)
   if (task === 'matrix') return prepMatrix(c)
+  if (task === 'clusters') return prepClusters(c)
   throw new AutofillInputError('That auto-fill task isn’t built yet.')
 }
 

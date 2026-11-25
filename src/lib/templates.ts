@@ -2,7 +2,7 @@
 // live preview and Apply. Variables: {service} {city} {st} {state} {brand}. Filled from the client's own
 // services, A1 city and state; nothing else is made up. Unknown variables are left as typed.
 import { areaState } from './clientSetup.js'
-import type { ClientDetail, TemplateItem, TemplateKind, WordGroup } from '../types/seo'
+import type { ClientDetail, TemplateItem, TemplateKind, WordGroup } from '../types/seo.js'
 
 export const TEMPLATE_KINDS: { kind: TemplateKind; label: string; step: number }[] = [
   { kind: 'keyword_research', label: 'Keyword research', step: 1 },

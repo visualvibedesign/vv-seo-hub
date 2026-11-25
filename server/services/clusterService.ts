@@ -185,13 +185,12 @@ export async function importClustersCsv(siteId: string, csvText: string, commit:
 export async function listClusters(siteId: string): Promise<ClusterPage[]> {
   const c = await clientRow(siteId)
   if (!c) throw new ClusterInputError('That client doesn’t exist.')
-  const rows = must(
-    await db()
-      .from('seo_pages')
-      .select('id, name, url, priority, status, why, content_ideas, sort, seo_client_categories(code), seo_page_keywords(role, sort, seo_keywords(id, keyword, semrush_volume, kd, kp_volume))')
-      .eq('client_id', c.id),
-    'Loading the clusters',
-  ) as unknown as {
+  // url_suggested comes with migration 0013; until it runs, the list loads without it (every URL counts as real).
+  const cols = 'id, name, url, priority, status, why, content_ideas, sort, seo_client_categories(code), seo_page_keywords(role, sort, seo_keywords(id, keyword, semrush_volume, kd, kp_volume))'
+  let res: { data: unknown; error: { message: string } | null } = await db().from('seo_pages').select(cols + ', url_suggested').eq('client_id', c.id)
+  if (res.error && /url_suggested/.test(res.error.message)) res = await db().from('seo_pages').select(cols).eq('client_id', c.id)
+  const rows = must(res, 'Loading the clusters') as unknown as {
+    url_suggested?: boolean
     id: string
     name: string
     url: string | null
@@ -211,6 +210,7 @@ export async function listClusters(siteId: string): Promise<ClusterPage[]> {
       category: r.seo_client_categories?.code ?? 'FAQ',
       name: r.name,
       url: r.url,
+      urlSuggested: !!r.url_suggested,
       priority: r.priority,
       status: r.status,
       why: r.why,

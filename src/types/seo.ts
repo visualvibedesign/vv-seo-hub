@@ -399,6 +399,8 @@ export interface ClusterPage {
   category: CategoryCode
   name: string
   url: string | null
+  /** The URL is only a suggestion (template pattern), not confirmed yet (migration 0013). */
+  urlSuggested: boolean
   /** null = not set yet (shown as "Medium (default)"; migration 0012). */
   priority: 'high' | 'medium' | 'low' | null
   status: PageStatus
@@ -466,6 +468,20 @@ export interface AutofillItem {
   /** Matrix only: the cell ("S1 Web Design × A2 Bentonville") and the suggested backups. */
   cell?: string
   backups?: { keywordId: string; keyword: string }[]
+  /** Page suggestions (6c-4a): a NEW page for a matrix cell (keywordId = its primary). */
+  page?: {
+    cell: string
+    category: CategoryCode
+    name: string
+    /** Suggested path from the template's URL pattern ("/web-design-bentonville-ar/"), editable on Approve. */
+    path: string | null
+    secondaries: { keywordId: string; keyword: string }[]
+    faqs: { keywordId: string; keyword: string }[]
+    /** Set on Approve: the page that was created. */
+    pageId?: string
+  }
+  /** Page suggestions (6c-4a): put a leftover keyword on a page (existing, or a new one from this list). */
+  assign?: { pageId: string | null; cell: string | null; pageName: string; role: 'secondary' | 'faq' }
 }
 
 export interface AutofillRow {
@@ -489,6 +505,8 @@ export interface AutofillDecision {
   action: 'approve' | 'reject'
   /** For "needs a look": the option picked. */
   value?: string
+  /** Page suggestions: the URL path as edited on Approve ('' = no URL). */
+  path?: string
 }
 
 // ---- Sam's Guide sheet import (migration 0011) ------------------------------------------------------------

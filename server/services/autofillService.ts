@@ -214,7 +214,7 @@ const TARGET: Partial<Record<AutofillKind, 'role' | 'service_id' | 'intent' | 's
 const DecideSchema = z.object({
   siteId: z.string(),
   autofillId: z.string().uuid(),
-  decisions: z.array(z.object({ keywordId: z.string().uuid(), action: z.enum(['approve', 'reject']), value: z.string().max(100).optional() })).min(1).max(5000),
+  decisions: z.array(z.object({ keywordId: z.string().uuid(), action: z.enum(['approve', 'reject']), value: z.string().max(100).optional(), path: z.string().max(300).optional() })).min(1).max(5000),
 })
 
 /**
@@ -229,6 +229,7 @@ export async function decide(raw: unknown): Promise<AutofillRow[]> {
   if (!row) throw new AutofillInputError('That suggestion doesn’t exist.')
   if (row.status !== 'ready') throw new AutofillInputError('This suggestion was already closed or replaced by a newer run.')
   if (row.kind === 'matrix') return decideMatrix(c, row, p.data.decisions as AutofillDecision[], p.data.siteId)
+  if (row.kind === 'clusters') return decideClusters(c, row, p.data.decisions as AutofillDecision[], p.data.siteId)
   const target = TARGET[row.kind]
   if (!target) throw new AutofillInputError('This kind can’t be approved here yet.')
 
@@ -340,6 +341,110 @@ async function decideMatrix(c: ClientRow, row: Row, decisions: AutofillDecision[
     must(await db().from('seo_keywords').update({ role: 'primary' }).eq('id', item.keywordId).is('role', null), 'Setting the Primary role')
     item.decision = 'approved'
     item.applied = item.options[0].value
+  }
+  const open = items.some((i) => !i.decision)
+  must(
+    await db()
+      .from('seo_autofill')
+      .update({ payload: row.payload, applied_count: items.filter((i) => i.decision === 'approved').length, ...(open ? {} : { status: 'approved', decided_at: new Date().toISOString() }) })
+      .eq('id', row.id)
+      .eq('status', 'ready'),
+    'Saving the decisions',
+  )
+  return listAutofill(siteId)
+}
+
+/** "/Web Design Bentonville AR/" → "/web-design-bentonville-ar/"; '' → null. Only a path, never a full address. */
+function cleanPath(raw: string | null | undefined): string | null {
+  const p = (raw ?? '').trim()
+  if (!p) return null
+  if (p === '/') return '/'
+  const slug = p
+    .toLowerCase()
+    .replace(/^https?:\/\/[^/]+/, '')
+    .split('/')
+    .map((part) => part.replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''))
+    .filter(Boolean)
+    .join('/')
+  return slug ? `/${slug}/` : null
+}
+
+/**
+ * Page suggestions (Claude, 6c-4a). Approve a NEW page → a planned page (priority not set) with the suggested URL
+ * (or Angel's edit; "suggested" only if unchanged), its primary, secondaries and FAQs, each only if that keyword is
+ * still on no page. Approve a leftover keyword → added to its page (an existing one, or a new page approved first),
+ * only if still on no page. Existing pages' keywords and URLs are never changed. Reject changes nothing.
+ */
+async function decideClusters(c: ClientRow, row: Row, decisions: AutofillDecision[], siteId: string): Promise<AutofillRow[]> {
+  const items = row.payload.items
+  const byId = new Map(items.map((i) => [i.keywordId, i]))
+  const site = c.site_url.replace(/\/+$/, '')
+  const cats = must(await db().from('seo_client_categories').select('id, code').eq('client_id', c.id), 'Loading categories') as { id: string; code: string }[]
+  const freeIds = async (ids: string[]) => {
+    if (!ids.length) return new Set<string>()
+    const own = must(await db().from('seo_keywords').select('id').eq('client_id', c.id).neq('status', 'rejected').in('id', ids), 'Checking keywords') as { id: string }[]
+    const taken = must(await db().from('seo_page_keywords').select('keyword_id').in('keyword_id', ids), 'Checking pages') as { keyword_id: string }[]
+    const on = new Set(taken.map((t) => t.keyword_id))
+    return new Set(own.map((o) => o.id).filter((id) => !on.has(id)))
+  }
+  // Pages first, so a leftover can go on a page approved in the same click.
+  const ordered = [...decisions].sort((a, b) => Number(!byId.get(a.keywordId)?.page) - Number(!byId.get(b.keywordId)?.page))
+  for (const d of ordered) {
+    const item = byId.get(d.keywordId)
+    if (!item) throw new AutofillInputError('That suggestion isn’t part of this list.')
+    if (item.decision) continue
+    if (d.action === 'reject') {
+      item.decision = 'rejected'
+      continue
+    }
+    if (item.page) {
+      const pg = item.page
+      const free = await freeIds([item.keywordId, ...pg.secondaries.map((s) => s.keywordId), ...pg.faqs.map((f) => f.keywordId)])
+      const cat = cats.find((k) => k.code === pg.category)
+      if (!free.has(item.keywordId) || !cat) {
+        item.decision = 'skipped' // its primary is on a page now (or gone): nothing created
+        continue
+      }
+      const edited = d.path !== undefined ? cleanPath(d.path) : null
+      const path = d.path !== undefined ? edited : pg.path
+      const url = path ? site + path : null
+      if (url) {
+        const clash = must(await db().from('seo_pages').select('name').eq('client_id', c.id).eq('url', url).maybeSingle(), 'Checking the URL') as { name: string } | null
+        if (clash) throw new AutofillInputError(`“${path}” is already the URL of “${clash.name}”. Edit the URL or leave it empty.`)
+      }
+      const last = must(await db().from('seo_pages').select('sort').eq('client_id', c.id).order('sort', { ascending: false }).limit(1), 'Loading pages') as { sort: number }[]
+      const ins = await db()
+        .from('seo_pages')
+        .insert({ client_id: c.id, category_id: cat.id, name: pg.name, url, url_suggested: !!url && path === pg.path, status: 'planned', sort: (last[0]?.sort ?? 0) + 1 })
+        .select('id')
+        .single()
+      if (ins.error && /url_suggested/.test(ins.error.message)) throw new AutofillInputError('Run supabase/migrations/0013_seo_page_url_suggested.sql in Supabase first (suggested URLs).')
+      const page = must(ins, 'Adding the page') as { id: string }
+      const links = [
+        { keyword_id: item.keywordId, page_id: page.id, role: 'primary', sort: 0 },
+        ...pg.secondaries.filter((s) => free.has(s.keywordId)).map((s, i) => ({ keyword_id: s.keywordId, page_id: page.id, role: 'secondary', sort: i + 1 })),
+        ...pg.faqs.filter((f) => free.has(f.keywordId)).map((f, i) => ({ keyword_id: f.keywordId, page_id: page.id, role: 'faq', sort: i + 1 })),
+      ]
+      must(await db().from('seo_page_keywords').insert(links), 'Adding the page keywords')
+      pg.pageId = page.id
+      item.decision = 'approved'
+      item.applied = page.id
+      continue
+    }
+    if (item.assign) {
+      const a = item.assign
+      const pageId = a.pageId ?? items.find((i) => i.page?.cell === a.cell)?.page?.pageId ?? null
+      if (!pageId) throw new AutofillInputError(`Approve the new page “${a.pageName}” first, then “${item.keyword}”.`)
+      const free = await freeIds([item.keywordId])
+      const pageOk = must(await db().from('seo_pages').select('id').eq('id', pageId).eq('client_id', c.id).maybeSingle(), 'Checking the page') as { id: string } | null
+      if (!free.has(item.keywordId) || !pageOk) {
+        item.decision = 'skipped'
+        continue
+      }
+      must(await db().from('seo_page_keywords').insert({ keyword_id: item.keywordId, page_id: pageId, role: a.role, sort: 99 }), 'Adding the keyword to the page')
+      item.decision = 'approved'
+      item.applied = pageId
+    }
   }
   const open = items.some((i) => !i.decision)
   must(

@@ -24,6 +24,7 @@ file was run wasn't recorded before this log existed.
 | 0010 | `0010_seo_account_links.sql` | `seo_client_accounts.link` (a per-client link, https only, no logins); new account rows start Ready | Nov 25 | Yes (checked) |
 | 0011 | `0011_seo_sams_guide.sql` | Import type `sams_guide`; `seo_competitors` (C1–C4, names only) | Nov 25 | Yes (checked) |
 | 0012 | `0012_seo_page_priority_unset.sql` | `seo_pages.priority` can be empty ("not set yet", shown as "Medium (default)") | Nov 25 | Yes (checked) |
+| 0013 | `0013_seo_page_url_suggested.sql` | `seo_pages.url_suggested`: a URL that is only a suggestion (from the template pattern), shown as "suggested" | Nov 25 | **No** |
 
 ## One-time data fixes (not migrations)
 
