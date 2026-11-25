@@ -49,6 +49,13 @@ interface Mention {
 }
 
 /** Everything the dry run shows + what Apply needs (ids). Read-only. */
+/** Matrix entries, new cells and competitor names a Sam's Guide import added (seo_imports.column_map.samsGuide). */
+export interface SamsGuideAdded {
+  matrix: { cell_id: string; keyword_id: string; kind: 'primary' | 'backup' }[]
+  cells: string[]
+  competitors: { code: string; name: string }[]
+}
+
 /** Whole-Sheet import options: pagesFromClusters = a Clusters tab in the same file decides pages (Angel, Nov 25). */
 export interface SamsGuideOptions {
   pagesFromClusters?: boolean
@@ -367,6 +374,8 @@ export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text
     'Saving the import',
   ) as { id: string }
   const createdIds: string[] = []
+  // What this import adds to the matrix + competitors, saved on the import so "Delete this import" can undo it.
+  const added: SamsGuideAdded = { matrix: [], cells: [], competitors: [] }
   let storagePath: string | null = null
   try {
     const bytes = file.bytes
@@ -428,6 +437,7 @@ export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text
       let cellId = m.cellId
       if (!cellId) {
         cellId = (must(await db().from('seo_matrix_cells').insert({ client_id: c.id, category_id: m.categoryId, area_id: m.areaId, state: m.state, note: m.note || null }).select('id').single(), 'Saving the matrix') as { id: string }).id
+        added.cells.push(cellId)
       } else {
         const cur = b.cells.find((x) => x.id === cellId)!
         const upd: Record<string, unknown> = {}
@@ -443,12 +453,16 @@ export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text
         must(await db().from('seo_matrix_keywords').delete().eq('cell_id', cellId).eq('kind', 'primary'), 'Saving the matrix')
         must(await db().from('seo_matrix_keywords').delete().eq('cell_id', cellId).eq('keyword_id', primaryId!), 'Saving the matrix')
         must(await db().from('seo_matrix_keywords').insert({ cell_id: cellId, keyword_id: primaryId!, kind: 'primary', sort: 0 }), 'Saving the matrix')
+        added.matrix.push({ cell_id: cellId!, keyword_id: primaryId!, kind: 'primary' })
         have.add(primaryId!)
         // The sheet's primaries are Angel's own picks: the keyword gets the Primary role (only if it has none yet).
         must(await db().from('seo_keywords').update({ role: 'primary' }).eq('id', primaryId!).is('role', null), 'Setting the Primary role')
       }
       const backups = m.backups.map((k) => ids.get(keywordKey(k))).filter((x): x is string => !!x && !have.has(x) && x !== primaryId)
-      if (backups.length) must(await db().from('seo_matrix_keywords').insert([...new Set(backups)].map((keyword_id, i) => ({ cell_id: cellId, keyword_id, kind: 'backup', sort: i + 1 }))), 'Saving the matrix')
+      if (backups.length) {
+        must(await db().from('seo_matrix_keywords').insert([...new Set(backups)].map((keyword_id, i) => ({ cell_id: cellId, keyword_id, kind: 'backup', sort: i + 1 }))), 'Saving the matrix')
+        for (const keyword_id of new Set(backups)) added.matrix.push({ cell_id: cellId!, keyword_id, kind: 'backup' })
+      }
     }
 
     // 7. Pages + their keywords (#1 = primary); a keyword on another page moves only if ticked
@@ -480,9 +494,15 @@ export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text
     // 9. Competitors: names only
     for (const x of plan.competitors) {
       if (!x.name) continue
-      if (x.action === 'Save name only') must(await db().from('seo_competitors').insert({ client_id: c.id, code: x.code, name: x.name }), 'Saving competitors')
+      if (x.action === 'Save name only') {
+        must(await db().from('seo_competitors').insert({ client_id: c.id, code: x.code, name: x.name }), 'Saving competitors')
+        added.competitors.push({ code: x.code, name: x.name })
+      }
       else if (x.action.startsWith('Conflict') && tick.has(`comp:${x.code}`)) must(await db().from('seo_competitors').update({ name: x.name }).eq('client_id', c.id).eq('code', x.code), 'Saving competitors')
     }
+
+    // Record what was added (used by "Delete this import")
+    must(await db().from('seo_imports').update({ column_map: { samsGuide: added } }).eq('id', imp.id), 'Saving the import')
 
     // 10. "More areas" → one Note in Notes & links (tagged Day 1, where areas are chosen)
     if (b.areaNote) {

@@ -29,9 +29,10 @@ export default function ClientSheetImport({ client: c }: { client: ClientDetail 
   const [readError, setReadError] = useState('')
   const [replace, setReplace] = useState<Set<string>>(new Set())
   const [approve, setApprove] = useState<Set<string>>(new Set())
+  const [confirmOwner, setConfirmOwner] = useState(false)
   const preview = useMutation({ mutationFn: (f: { name: string; base64: string }) => previewSheet(c.siteId, f.name, f.base64).then((r) => r.plan) })
   const apply = useMutation({
-    mutationFn: () => applySheet(c.siteId, file!.name, file!.base64, [...replace], [...approve]),
+    mutationFn: () => applySheet(c.siteId, file!.name, file!.base64, [...replace], [...approve], confirmOwner),
     onSuccess: () => {
       for (const key of [['imports', c.siteId], ['client', c.siteId], ['clients'], ['keywords', c.siteId], ['matrix', c.siteId], ['clusters', c.siteId], ['guide', c.siteId], ['notes', c.siteId]])
         void qc.invalidateQueries({ queryKey: key })
@@ -45,6 +46,7 @@ export default function ClientSheetImport({ client: c }: { client: ClientDetail 
     preview.reset()
     setReplace(new Set())
     setApprove(new Set())
+    setConfirmOwner(false)
     setReadError('')
     if (!/\.xlsx$/i.test(f.name)) return setReadError('Choose an .xlsx file (Google Sheets: File › Download › Microsoft Excel).')
     if (f.size > XLSX_MAX_BYTES) return setReadError(`That file is ${(f.size / 1024 / 1024).toFixed(1)} MB. The cap is 3 MB.`)
@@ -93,10 +95,26 @@ export default function ClientSheetImport({ client: c }: { client: ClientDetail 
         fields. Nothing is saved until you click Apply.
       </p>
       {(readError || preview.error) && <p className="m-0 text-[14px] font-semibold text-vv-red">{readError || errText(preview.error, 'Couldn’t read that file.')}</p>}
+      {plan && !plan.owner.matches && (
+        <div role="alert" className="flex flex-col gap-2 rounded-2xl border-2 border-solid border-vv-red bg-vv-red-100 px-5 py-4">
+          <strong className="text-[18px] text-vv-red">
+            This Sheet looks like it’s for {plan.owner.otherName ?? 'another client'}, not {c.name}.
+          </strong>
+          <ul className="m-0 pl-5 text-[14px] text-vv-red">
+            {plan.owner.reasons.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+          <label className="flex min-h-11 cursor-pointer items-center gap-2.5 text-[15px] font-semibold text-vv-ink">
+            <input type="checkbox" className="h-5 w-5 accent-vv-purple" checked={confirmOwner} onChange={(e) => setConfirmOwner(e.target.checked)} />
+            Yes, it’s for {c.name}
+          </label>
+        </div>
+      )}
       {plan && <SheetPlanView plan={plan} client={c} replace={replace} setReplace={setReplace} approve={approve} setApprove={setApprove} />}
       {plan && !apply.data && (
         <div className="flex flex-wrap items-center gap-3 border-0 border-t border-solid border-vv-line pt-4">
-          <button type="button" className={BTN_LIME} disabled={apply.isPending || !usable.length} onClick={() => apply.mutate()}>
+          <button type="button" className={BTN_LIME} disabled={apply.isPending || !usable.length || (!plan.owner.matches && !confirmOwner)} onClick={() => apply.mutate()}>
             {apply.isPending && <Spinner />}
             Apply to {c.name}
           </button>

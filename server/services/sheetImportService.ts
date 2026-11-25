@@ -8,9 +8,9 @@
 import Papa from 'papaparse'
 import { isOwnBrand } from '../../src/lib/autofillRules.js'
 import { autoMatch, cleanKeyword, keywordKey, looksLikeAddress } from '../../src/lib/importRules.js'
-import { competitorKey, competitorName, parseSamsGuide, sameCompetitor } from '../../src/lib/samsGuide.js'
+import { competitorKey, competitorName, domainOf, parseSamsGuide, sameCompetitor } from '../../src/lib/samsGuide.js'
 import { readXlsx, XlsxError, XLSX_MAX_BYTES, type XlsxTab } from '../../src/lib/xlsx.js'
-import type { ImportPayload, ImportRow, SheetApplyResult, SheetCompetitor, SheetPlan, SheetTabKind, SheetTabPlan } from '../../src/types/seo.js'
+import type { ImportPayload, ImportRow, SheetApplyResult, SheetCompetitor, SheetOwner, SheetPlan, SheetTabKind, SheetTabPlan } from '../../src/types/seo.js'
 import { db, DatabaseError, must } from '../clients/supabase.js'
 import { clientRow, type ClientRow } from './clientService.js'
 import { ClusterInputError, importClustersCsv } from './clusterService.js'
@@ -105,6 +105,55 @@ function competitorNames(rows: string[][], at: number): string[] {
   return out.slice(0, 30)
 }
 
+/** Is this name / domain this client? (brand words, business name, website domain; capitals, punctuation, https / www ignored) */
+function isThisClient(c: ClientRow, text: string): boolean {
+  const t = clean(text)
+  if (!t) return false
+  return isOwnBrand(t, { brandWords: c.brand_words ?? [], name: c.name, siteUrl: c.site_url }) || sameCompetitor(t, c.name) || sameCompetitor(t, c.site_url)
+}
+
+/**
+ * Whose Sheet is this? Before the dry run is trusted (Angel, Nov 26: an Anassa Sheet dropped on Visual Vibe gave no
+ * warning). Signals, for any client: the Competitors "(us)" row, Sam's Guide title, the tab titles ("Baseline rankings ·
+ * Name", "On-page fixes · domain.com"), the file name, and whether the keywords name this client's city / areas.
+ * A name counts as "another business" when it's a "(us)" row, the Sam's Guide client, a domain, or in 2+ tab titles.
+ */
+function ownerCheck(c: ClientRow, fileName: string, list: { rows: string[][] }[], placeWords: string[], keywords: string[], samsClient: string | null): SheetOwner {
+  const positives: string[] = []
+  const others = new Map<string, { name: string; strong: boolean; count: number }>()
+  const note = (name: string, strong: boolean) => {
+    const n = clean(name.replace(/\([^)]*\)|\[[^\]]*\]/g, ' '))
+    if (!n || n.length > 80) return
+    if (isThisClient(c, n)) return void positives.push(n)
+    const key = competitorKey(n)
+    if (!key) return
+    const o = others.get(key) ?? { name: n, strong: false, count: 0 }
+    o.count++
+    o.strong = o.strong || strong || !!domainOf(n)
+    others.set(key, o)
+  }
+  for (const t of list) {
+    // "(us)" rows: the business the Sheet is about
+    for (const r of t.rows.slice(0, 200)) for (const cell of r.slice(0, 3)) if (/\(us\)/i.test(cell)) note(cell, true)
+    // Tab title: "Competitor review · Name (City)", "Ideal sitemap · domain.com", "Sam's Guide · Keyword research: Name"
+    const title = clean(t.rows.find((r) => r.some((x) => clean(x)))?.find((x) => clean(x)))
+    const part = title.includes(':') ? title.split(':').pop()! : title.includes(' · ') ? title.split(' · ').pop()! : ''
+    if (part && part.split(/\s+/).length <= 8) note(part, false)
+  }
+  if (samsClient) note(samsClient, true)
+  if (isThisClient(c, fileName.replace(/\.xlsx$/i, '').replace(/[_–-]+/g, ' '))) positives.push(fileName)
+  const strong = [...others.values()].filter((o) => o.strong || o.count >= 2)
+  // Keywords: do they name this client's city / areas? (only when there are enough to tell)
+  const places = placeWords.map((w) => w.toLowerCase()).filter((w) => w.length >= 3)
+  const withPlace = keywords.filter((k) => places.some((p) => ` ${k.toLowerCase()} `.includes(` ${p} `))).length
+  const placeLow = places.length > 0 && keywords.length >= 20 && withPlace / keywords.length < 0.05
+  const reasons: string[] = []
+  for (const o of strong) reasons.push(`The Sheet names “${o.name}”${o.count > 1 ? ` (${o.count} places)` : ''}.`)
+  if (placeLow) reasons.push(`Only ${withPlace} of ${keywords.length} keywords name ${placeWords.slice(0, 3).join(' / ')}.`)
+  const matches = positives.length > 0 || (!strong.length && !placeLow)
+  return { matches, otherName: matches ? null : (strong[0]?.name ?? null), reasons: matches ? [] : reasons }
+}
+
 function planCompetitors(c: ClientRow, written: string[], taken: Map<string, string>): SheetCompetitor[] {
   const free = CODES.filter((code) => !taken.has(code))
   const seen: string[] = []
@@ -113,7 +162,9 @@ function planCompetitors(c: ClientRow, written: string[], taken: Map<string, str
     const key = competitorKey(name)
     const base = { key: `comp:${key}`, written: w, name: name || null, code: null as string | null, approvable: false }
     if (!name || !key) return { ...base, name: null, action: 'Skipped: no name' }
-    if (/\(us\)/i.test(w) || isOwnBrand(name, { brandWords: c.brand_words ?? [], name: c.name, siteUrl: c.site_url })) return { ...base, action: 'Skipped: the client itself' }
+    // The client itself only when the name is this client's; a "(us)" row naming another business is never saved.
+    if (isThisClient(c, name)) return { ...base, action: 'Skipped: the client itself' }
+    if (/\(us\)/i.test(w)) return { ...base, action: `Skipped: the “(us)” row is ${name}, not this client` }
     if (looksLikeAddress(name)) return { ...base, name: null, action: 'Refused: looks like an address' }
     if (seen.some((x) => sameCompetitor(x, name))) return { ...base, action: 'Skipped: listed twice' }
     seen.push(name)
@@ -223,7 +274,16 @@ async function build(siteId: string, fileName: string, tabs: XlsxTab[]): Promise
 
   const rank = (k: SheetTabKind) => (k === 'unused' ? ORDER.length : ORDER.indexOf(k)) // used tabs in apply order, then the rest
   const sorted = [...list].sort((x, y) => rank(x.plan.kind) - rank(y.plan.kind))
-  return { c, plan: { fileName, tabs: sorted.map((t) => t.plan), crossCheck: crossCheck.slice(0, 200) }, tabs: list, pagesFromClusters }
+  // 4. Whose Sheet is it? (before the dry run is trusted)
+  const areas = must(await db().from('seo_client_areas').select('name, status').eq('client_id', c.id), 'Loading areas') as { name: string | null; status: string }[]
+  const placeWords = [c.city, ...areas.filter((a) => a.status === 'active').map((a) => a.name), ...(c.neighbourhood_words ?? [])]
+    .filter((w): w is string => !!w)
+    .filter((w, i, all) => all.findIndex((x) => x.toLowerCase() === w.toLowerCase()) === i)
+  const keywords = mdb?.payload?.rows.map((r) => r.keyword) ?? []
+  const samsClient = sg ? (sg.plan.samsGuide?.sheetClient ?? parseSamsGuide(toCsv(sg.rows)).clientName) : null
+  const owner = ownerCheck(c, fileName, list, placeWords, keywords, samsClient)
+
+  return { c, plan: { fileName, owner, tabs: sorted.map((t) => t.plan), crossCheck: crossCheck.slice(0, 200) }, tabs: list, pagesFromClusters }
 }
 
 const fileNameOf = (raw: unknown) => (typeof raw === 'string' && raw.trim() ? raw.trim().slice(0, 200) : 'client-sheet.xlsx')
@@ -239,10 +299,12 @@ export async function previewSheet(siteId: string, rawFileName: unknown, base64:
  * conflicts ticked; `competitors` = new competitor names ticked (comp:<key>). Tabs run in order; if one fails, the
  * ones before it stay applied and the failed one undoes itself (each importer's own undo), later ones don't run.
  */
-export async function applySheet(siteId: string, rawFileName: unknown, base64: unknown, replace: string[], approved: string[]): Promise<SheetApplyResult> {
+export async function applySheet(siteId: string, rawFileName: unknown, base64: unknown, replace: string[], approved: string[], confirmOwner = false): Promise<SheetApplyResult> {
   const fileName = fileNameOf(rawFileName)
   const { bytes, tabs } = decode(base64)
   const b = await build(siteId, fileName, tabs)
+  if (!b.plan.owner.matches && !confirmOwner)
+    throw new SheetInputError(`This Sheet looks like it’s for ${b.plan.owner.otherName ?? "another client"}, not ${b.c.name}. Tick “Yes, it’s for this client” to import it anyway.`)
   const work = b.tabs.filter((t) => t.plan.kind !== 'unused' && !t.plan.blocked).sort((x, y) => ORDER.indexOf(x.plan.kind) - ORDER.indexOf(y.plan.kind))
   if (!work.length) throw new SheetInputError('Nothing in this file can be imported (see each tab’s reason).')
   const base = fileName.replace(/\.xlsx$/i, '').slice(0, 120) || 'client-sheet'

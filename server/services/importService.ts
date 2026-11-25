@@ -14,6 +14,7 @@ import { keywordKey, looksLikeAddress, parseCpc, parseKd, parseRole, parseVolume
 import type { DeleteImportCheck, ImportDifference, ImportPayload, ImportPreview, ImportRecord, ImportRow, NumberField } from '../../src/types/seo.js'
 import { db, DatabaseError, must, pagedRows } from '../clients/supabase.js'
 import { retireStale } from './autofillService.js'
+import type { SamsGuideAdded } from './samsGuideService.js'
 
 export class ImportInputError extends Error {}
 
@@ -432,7 +433,7 @@ async function importFor(siteId: string, importId: string) {
   const imp = must(
     await db().from('seo_imports').select('id, file_name, storage_path, report, note, column_map').eq('id', importId).eq('client_id', clientId).maybeSingle(),
     'Loading the import',
-  ) as { id: string; file_name: string; storage_path: string | null; report: string; note: string | null; column_map: { added?: { code: string; name: string }[] } | null } | null
+  ) as { id: string; file_name: string; storage_path: string | null; report: string; note: string | null; column_map: { added?: { code: string; name: string }[]; samsGuide?: SamsGuideAdded } | null } | null
   if (!imp) throw new ImportInputError('That import doesn’t exist (already deleted?).')
   return { clientId, imp }
 }
@@ -460,6 +461,23 @@ async function splitKeywords(importIds: string[]) {
   return { historyRows: own.length, remove: ids.filter((id) => !shared.has(id)), keep: ids.filter((id) => shared.has(id)) }
 }
 
+/** What a Sam's Guide import recorded as added (null = an older import that didn't record it). */
+async function samsGuideAdded(importId: string): Promise<SamsGuideAdded | null> {
+  const r = await db().from('seo_imports').select('column_map').eq('id', importId).maybeSingle()
+  return ((r.data as { column_map: { samsGuide?: SamsGuideAdded } | null } | null)?.column_map?.samsGuide) ?? null
+}
+
+/** Removes the matrix entries, then the cells it created if they're now empty, then the competitor names (same name only). */
+async function undoSamsGuide(clientId: string, a: SamsGuideAdded): Promise<void> {
+  for (const m of a.matrix) must(await db().from('seo_matrix_keywords').delete().eq('cell_id', m.cell_id).eq('keyword_id', m.keyword_id).eq('kind', m.kind), 'Removing matrix entries')
+  for (const cellId of a.cells) {
+    const left = await db().from('seo_matrix_keywords').select('keyword_id', { count: 'exact', head: true }).eq('cell_id', cellId)
+    if (left.error) throw new DatabaseError(`Checking the matrix: ${left.error.message}`)
+    if (!left.count) must(await db().from('seo_matrix_cells').delete().eq('id', cellId).eq('client_id', clientId), 'Removing matrix cells')
+  }
+  for (const x of a.competitors) must(await db().from('seo_competitors').delete().eq('client_id', clientId).eq('code', x.code).eq('name', x.name), 'Removing competitor names')
+}
+
 /** Tab imports that came from this .xlsx (whole-Sheet import). Empty for every other import. */
 async function childImports(importId: string): Promise<{ id: string; report: string; note: string | null }[]> {
   const r = await db().from('seo_imports').select('id, report, note').eq('parent_import_id', importId)
@@ -485,7 +503,14 @@ export async function checkDeleteImport(siteId: string, importId: string): Promi
       inUse.add(r.keyword_id)
     removedInUse += inUse.size
   }
-  const notes = [imp, ...children].map((x) => x.report === 'clusters' ? 'Pages added from the Clusters tab stay (only the import record goes).' : x.report === 'competitors' ? 'Competitor names this import added are removed.' : '').filter(Boolean)
+  const all = [imp, ...children]
+  const sg = all.find((x) => x.report === 'sams_guide')
+  const sgNote = !sg
+    ? ''
+    : (sg === imp ? imp.column_map?.samsGuide : await samsGuideAdded(sg.id))
+      ? 'Sam’s Guide: the matrix primaries and backups, new matrix cells and competitor names it added are removed. Track, Later / Rejected statuses, pages and its note stay.'
+      : 'Sam’s Guide (older import): what it added to the matrix wasn’t recorded, so the matrix stays as it is.'
+  const notes = [...all.map((x) => (x.report === 'clusters' ? 'Pages added from the Clusters tab stay (only the import record goes).' : x.report === 'competitors' ? 'Competitor names this import added are removed.' : '')), sgNote].filter(Boolean)
   return { fileName: imp.file_name, historyRows, keywordsRemoved: remove.length, keywordsKept: keep.length, removedWithEdits, removedInUse, hasFile: !!imp.storage_path, tabImports: children.length, notes: [...new Set(notes)] }
 }
 
@@ -495,6 +520,8 @@ export async function deleteImport(siteId: string, importId: string): Promise<{ 
   let childRemoved = 0
   for (const child of await childImports(importId)) childRemoved += (await deleteImport(siteId, child.id)).keywordsRemoved
   const { remove } = await splitKeywords([importId])
+  // 0. Sam's Guide: undo what it added to the matrix + competitors (only entries still exactly as it saved them)
+  if (imp.report === 'sams_guide' && imp.column_map?.samsGuide) await undoSamsGuide(clientId, imp.column_map.samsGuide)
   // 1. Keywords that only came from this import (their history rows, matrix and cluster links go with them)
   for (let i = 0; i < remove.length; i += 200) {
     must(await db().from('seo_keywords').delete().in('id', remove.slice(i, i + 200)), 'Removing keywords')

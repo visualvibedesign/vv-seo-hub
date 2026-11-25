@@ -632,8 +632,17 @@ export interface SheetTabPlan {
 }
 
 /** The whole-Sheet dry run. Nothing is saved until Apply. Tabs apply in this order: Master DB, Sam's Guide, Clusters, Competitors. */
+/** Whose Sheet is it? matches = false → a red warning, and Apply needs “Yes, it’s for this client”. */
+export interface SheetOwner {
+  matches: boolean
+  /** The business the Sheet seems to be about (when it isn’t this client). */
+  otherName: string | null
+  reasons: string[]
+}
+
 export interface SheetPlan {
   fileName: string
+  owner: SheetOwner
   tabs: SheetTabPlan[]
   /** Keywords Sam's Guide Top 10 and the Clusters tab put on different pages (Clusters wins). */
   crossCheck: { keyword: string; samsGuide: string; clusters: string }[]

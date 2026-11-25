@@ -52,11 +52,11 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       return Response.json(await applySamsGuide(siteId, file, fileName, replace))
     }
     if (method === 'POST' && (action === 'sheet-preview' || action === 'sheet-apply')) {
-      const body = (await request.json().catch(() => ({}))) as { siteId?: unknown; fileName?: unknown; base64?: unknown; replace?: unknown; competitors?: unknown }
+      const body = (await request.json().catch(() => ({}))) as { siteId?: unknown; fileName?: unknown; base64?: unknown; replace?: unknown; competitors?: unknown; confirmOwner?: unknown }
       const siteId = String(body.siteId ?? '')
       if (action === 'sheet-preview') return Response.json({ plan: await previewSheet(siteId, body.fileName, body.base64) })
       const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 500) : [])
-      return Response.json(await applySheet(siteId, body.fileName, body.base64, list(body.replace), list(body.competitors)))
+      return Response.json(await applySheet(siteId, body.fileName, body.base64, list(body.replace), list(body.competitors), body.confirmOwner === true))
     }
     if (method === 'GET' && action === 'list') {
       return Response.json({ imports: await listImports(params.get('site') ?? '') })

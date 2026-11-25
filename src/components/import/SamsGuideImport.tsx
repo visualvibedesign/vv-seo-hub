@@ -127,11 +127,12 @@ export function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuideP
           [`${n.matrixCells} matrix cells`, PILL_DONE],
           [`${n.pages} pages · ${n.pageKeywords} page keywords`, PILL_DONE],
           [`${n.track} Track on`, PILL_DONE],
-          [`${n.later} Later / Rejected`, PILL_DONE],
+          [`${p.later.length} keep for later · ${n.later} to save`, PILL_DONE],
           [`${n.competitors} competitors`, PILL_DONE],
           [`${n.conflicts} conflicts`, n.conflicts ? PILL_WAITING : PILL_TODO],
           [`${n.heldBack} held back`, PILL_TODO],
           [`${n.notUnderstood} not understood`, n.notUnderstood ? PILL_WAITING : PILL_TODO],
+          [`${p.skipped.length} sections skipped`, PILL_TODO],
         ].map(([t, cls]) => (
           <span key={t} className={cls}>
             {t}
@@ -190,7 +191,7 @@ export function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuideP
           rows={p.fills.map((f) => [`${f.keyword}${f.isNew ? ' (new)' : ''}`, f.semrush?.toLocaleString('en-US') ?? '—', f.kp ?? '—', f.kd ?? '—', f.cpc != null ? `$${f.cpc}` : '—'])}
         />
       </Fold>
-      <Fold title={`Keep for later (${p.later.length})`}>
+      <Fold title={`Keep for later (${p.later.length} · ${n.later} to save as Later / Rejected)`}>
         <Table head={['Type', 'Keyword', 'Action']} rows={p.later.map((l) => [l.type, l.keyword, <Act key="a" a={l.action} />])} />
         {p.areaNote && (
           <p className="m-0 mt-2 text-[13px] text-vv-body">
@@ -204,7 +205,7 @@ export function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuideP
       <Fold title={`Competitors (${p.competitors.length}), names only`}>
         <Table head={['#', 'Saved as', 'In the sheet', 'Action']} rows={p.competitors.map((x) => [x.code, x.name ?? '—', x.written, <Act key="a" a={x.action} />])} />
       </Fold>
-      <Fold title={`Skipped and not understood (${p.skipped.length + p.notUnderstood.length + p.heldBack.length})`}>
+      <Fold title={`Not understood (${p.notUnderstood.length}) · sections skipped (${p.skipped.length}) · held back (${p.heldBack.length})`}>
         <ul className="m-0 flex flex-col gap-0.5 pl-5 text-[13px] text-vv-body">
           {p.skipped.map((s) => (
             <li key={`s${s.line}`}>

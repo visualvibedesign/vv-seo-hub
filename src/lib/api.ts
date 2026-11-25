@@ -251,8 +251,8 @@ export function previewSheet(siteId: string, fileName: string, base64: string): 
 }
 
 /** Apply (only on Angel's click). replace = Sam's Guide conflicts ticked; competitors = new names ticked. */
-export function applySheet(siteId: string, fileName: string, base64: string, replace: string[], competitors: string[]): Promise<SheetApplyResult> {
-  return call('/api/imports/sheet-apply', json({ siteId, fileName, base64, replace, competitors }))
+export function applySheet(siteId: string, fileName: string, base64: string, replace: string[], competitors: string[], confirmOwner: boolean): Promise<SheetApplyResult> {
+  return call('/api/imports/sheet-apply', json({ siteId, fileName, base64, replace, competitors, confirmOwner }))
 }
 
 // ---- Bulk add clients from CSV ---------------------------------------------------------------
