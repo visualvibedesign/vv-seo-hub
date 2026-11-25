@@ -683,3 +683,37 @@ export interface ClientDeleteCheck {
   pages: number
   notes: number
 }
+
+// ---- Phase 2a · Google (Search Console + GA4) per client, migration 0016 ------------------------------------
+
+export interface GoogleLink {
+  /** "sc-domain:example.com" or "https://example.com/" */
+  gscProperty: string | null
+  /** "properties/123456" */
+  ga4Property: string | null
+  queryWords: string[]
+  lastSyncAt: string | null
+  lastSyncOk: boolean | null
+  lastError: string | null
+}
+
+/** What the Connect panel needs: the email to add, the client's saved link, and what the service account can see. */
+export interface GoogleSetup {
+  /** null = GOOGLE_SERVICE_ACCOUNT_JSON isn't set on the server */
+  serviceEmail: string | null
+  /** false = migration 0016 hasn't been run yet */
+  tableReady: boolean
+  link: GoogleLink | null
+  gscSites: { property: string; permission: string }[]
+  ga4Properties: { property: string; name: string; account: string }[]
+  /** Why a list is empty (no access yet, API not enabled…) */
+  listErrors: string[]
+}
+
+/** A 7-day pull that saves nothing (the Test button). null = not asked. */
+export interface GoogleTestResult {
+  from: string
+  to: string
+  gsc: { ok: true; clicks: number; impressions: number; ctr: number; position: number } | { ok: false; error: string } | null
+  ga4: { ok: true; sessions: number; engagedSessions: number; users: number } | { ok: false; error: string } | null
+}

@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -335,4 +335,19 @@ export function checkDeleteClient(siteId: string): Promise<ClientDeleteCheck> {
 /** Deletes an Archived client; name = the client's name typed exactly. */
 export function deleteClient(siteId: string, name: string): Promise<{ filesRemoved: number; filesLeft: number }> {
   return call('/api/clients/delete', json({ siteId, name }))
+}
+
+// ---- Phase 2 · Google (Search Console + GA4) ----------------------------------------------------------------
+
+export function getGoogleSetup(siteId: string): Promise<GoogleSetup> {
+  return call(`/api/metrics/google?site=${encodeURIComponent(siteId)}`)
+}
+
+/** 7 days of totals, nothing saved. */
+export function testGoogle(gscProperty: string, ga4Property: string): Promise<GoogleTestResult> {
+  return call('/api/metrics/google-test', json({ gscProperty, ga4Property }))
+}
+
+export function saveGoogleLink(siteId: string, link: { gscProperty: string; ga4Property: string; queryWords: string[] }): Promise<{ link: GoogleLink }> {
+  return call('/api/metrics/google-save', json({ siteId, ...link }))
 }

@@ -5,6 +5,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/health",
+      "destination": "/api/auth/health"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

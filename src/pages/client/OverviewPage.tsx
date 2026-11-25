@@ -6,6 +6,8 @@ import { Dash, LilacTable, PageHead, Panel, Soon } from '../../components/overvi
 import { useSaveAccount } from '../../hooks/useClients'
 import { useKeywords } from '../../hooks/useKeywords'
 import { useNotes } from '../../hooks/useNotes'
+import { useGoogleSetup } from '../../hooks/useGoogle'
+import ConnectGoogle from '../../components/overview/ConnectGoogle'
 import { LinkEditor, OpenButton } from '../../components/client/AccountParts'
 import { ApiError } from '../../lib/api'
 import { ACCOUNT_ICON, ACCOUNTS, ACCOUNT_STATUS_LABEL, accountOpenUrl, clientPath, strategyPath } from '../../lib/clientSetup'
@@ -65,22 +67,7 @@ export default function OverviewPage() {
 
       <Sources client={c} />
 
-      <section className={`${CARD} !rounded-[20px] !border-dashed !border-vv-lavender !gap-2.5 !p-8 phone:!p-5 items-start`} aria-labelledby="ov-google">
-        <span className={`${PILL} bg-vv-lavender-100 text-vv-purple-ink`}>Search Console + GA4 · not connected</span>
-        <h2 id="ov-google" className="m-0 font-display text-[26px] font-semibold leading-tight">
-          Connect Google to see searches, clicks and CTR here.
-        </h2>
-        <p className="m-0 max-w-[640px] text-[15px] leading-normal text-vv-body">
-          Impressions, clicks, CTR, average position, top searches, top pages and organic sessions come from the free Google APIs, updated every day. The baseline is kept so every month compares
-          like with like.
-        </p>
-        <span className="flex flex-wrap items-center gap-3">
-          <button type="button" className={BTN_GHOST} disabled>
-            Connect Search Console + GA4
-          </button>
-          <Soon>Comes in phase 2</Soon>
-        </span>
-      </section>
+      <ConnectGoogle client={c} />
 
       <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] items-start gap-4 [@media(max-width:1200px)]:grid-cols-2 [@media(max-width:760px)]:grid-cols-1">
         <Rankings client={c} />
@@ -141,9 +128,10 @@ const DOT: Record<'live' | 'soon' | 'part', string> = { live: 'bg-vv-green', soo
 /** Where each number comes from, and whether we have it yet (real state only). */
 function Sources({ client: c }: { client: ClientDetail }) {
   const tracked = c.counts.tracked
+  const link = useGoogleSetup(c.siteId).data?.link ?? null
   const list: { name: string; note: string; dot: keyof typeof DOT }[] = [
-    { name: 'Search Console', note: 'Not connected · phase 2', dot: 'soon' },
-    { name: 'GA4', note: 'Not connected · phase 2', dot: 'soon' },
+    { name: 'Search Console', note: link?.gscProperty ? 'Linked · daily numbers in step 2b' : 'Not connected', dot: link?.gscProperty ? 'part' : 'soon' },
+    { name: 'GA4', note: link?.ga4Property ? 'Linked · daily numbers in step 2b' : 'Not connected', dot: link?.ga4Property ? 'part' : 'soon' },
     { name: 'Semrush', note: tracked ? `${tracked} keywords tracked · positions CSV in phase 2` : 'No keywords tracked yet', dot: tracked ? 'part' : 'soon' },
     { name: 'Whitespark', note: 'No map grid yet', dot: 'soon' },
     { name: 'GBP', note: 'Not typed in yet', dot: 'soon' },

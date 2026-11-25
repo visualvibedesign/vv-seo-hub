@@ -18,6 +18,8 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
 
 ## Decisions for Angel
 
+> **Answered Nov 26:** 1 service account (key in env vars only) · 2 Whitespark typed for now, sample CSV later · 3 GBP typed monthly · 4 one daily Vercel cron + "Update numbers" · 5 health folded into auth (done in 2a).
+
 1. **Google access: one agency service account (recommended) or OAuth?**
    - **Service account (recommended):** a Google Cloud service account (free). Its email is added once per client as a
      user on the client's Search Console property and a Viewer on the GA4 property. Its key lives only in Vercel / `.env.local`

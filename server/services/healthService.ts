@@ -1,9 +1,8 @@
-// API route: GET /api/health
+// Setup check for GET /api/auth/health (also /api/health via a rewrite in vercel.json and the dev server).
 //   -> { ok, app, database: { configured, tables: { seo_clients: 'ok' | 'missing' | 'error', … }, bucket } }
 // Setup check: is the api/ folder running, and can the server reach the SEO tables in Supabase?
 // Shows only table names and whether they exist: no client data, no counts. Signed-in only.
-import { db } from '../server/clients/supabase.js'
-import { requireSession } from '../server/utils/auth.js'
+import { db } from '../clients/supabase.js'
 
 const TABLES = [
   'seo_clients',
@@ -22,9 +21,8 @@ const TABLES = [
 
 type TableState = 'ok' | 'missing' | 'error'
 
-export async function GET(request: Request) {
-  const denied = await requireSession(request)
-  if (denied) return denied
+/** The caller checks the sign-in first. */
+export async function healthCheck(): Promise<Response> {
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return Response.json({ ok: false, app: 'seo-hub', database: { configured: false } })
   }

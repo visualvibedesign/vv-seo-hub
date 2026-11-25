@@ -23,7 +23,9 @@ export function apiDevPlugin(): Plugin {
         if (!req.url?.startsWith('/api/')) return next()
         const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`)
         try {
-          const file = findRoute(apiDir, url.pathname.slice('/api/'.length))
+          // Same rewrites as vercel.json (/api/health → /api/auth/health)
+          const routePath = url.pathname === '/api/health' ? 'auth/health' : url.pathname.slice('/api/'.length)
+          const file = findRoute(apiDir, routePath)
           if (!file) return send(res, Response.json({ error: 'Not found' }, { status: 404 }))
 
           const mod = await server.ssrLoadModule(file)

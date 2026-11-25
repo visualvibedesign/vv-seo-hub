@@ -2,8 +2,10 @@
 //   POST /api/auth/login   { password, remember }  -> signs this browser in (same password + cookie as HQ)
 //   POST /api/auth/logout                          -> signs this browser out
 //   GET  /api/auth/me                              -> { signedIn: true | false }
+//   GET  /api/auth/health                          -> setup check (signed-in only; /api/health rewrites here)
 // No change/forgot password here: the team password is managed in HQ only (SEO Hub reads it).
-import { AuthConfigError, checkPassword, clearSessionCookies, isSignedIn, sessionCookies, withCookies } from '../../server/utils/auth.js'
+import { AuthConfigError, checkPassword, clearSessionCookies, isSignedIn, requireSession, sessionCookies, withCookies } from '../../server/utils/auth.js'
+import { healthCheck } from '../../server/services/healthService.js'
 
 const WRONG_PASSWORD_DELAY_MS = 800 // slows down guessing
 
@@ -22,6 +24,8 @@ export async function POST(request: Request) {
 async function handle(request: Request, method: 'GET' | 'POST') {
   const action = actionOf(request)
   try {
+    if (action === 'health' && method === 'GET') return (await requireSession(request)) ?? (await healthCheck())
+
     if (action === 'me' && method === 'GET') {
       return Response.json({ signedIn: await isSignedIn(request) })
     }
