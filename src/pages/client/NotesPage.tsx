@@ -348,7 +348,7 @@ function EarlierNotes({ siteId, text, author }: { siteId: string; text: string; 
       <ConfirmDialog
         open={asking}
         title="Move the earlier notes?"
-        body="The text becomes one Note in the feed (as written, you can edit it after), and the old Notes box in Edit client is emptied. Nothing is lost."
+        body="The text becomes one Day 1 Note in the feed (as written, you can edit it after), and the old Notes box in Edit client is emptied. Nothing is lost."
         confirmLabel="Move to notes"
         cancelLabel="Not now"
         busy={move.isPending}

@@ -116,7 +116,8 @@ export async function moveEarlier(raw: unknown): Promise<ClientNote> {
   const problem = noteProblem(text)
   if (problem) throw new NotesInputError(`${problem} Fix it in Edit client → Notes first.`)
   const row = must(
-    await db().from('seo_notes').insert({ client_id: c.id, kind: 'note', body: text, author: n.author || null, day: null }).select(NOTE_COLS).single(),
+    // Day 1: the old box holds client-setup notes (typed in Add / Edit client, or Sam's Guide's "Possible areas" line).
+    await db().from('seo_notes').insert({ client_id: c.id, kind: 'note', body: text, author: n.author || null, day: 0 }).select(NOTE_COLS).single(),
     'Moving the notes',
   ) as NoteRow
   const cleared = await db().from('seo_clients').update({ notes: null }).eq('id', c.id)
