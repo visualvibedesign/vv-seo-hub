@@ -21,6 +21,7 @@ Website first (SEO Hub phases 1–4), then the Vibe SEO plugin + site connection
 - Team-only. Login = HQ's shared team password + signed `vv_session` cookie. No Supabase Auth, no user list.
 - Same Supabase project as HQ; SEO tables kept separate from HQ's; RLS on every table. `.env` is never committed.
 - Never store or show a client's private address.
+- Anassa is test data only. Never hard-code a client's name, services, city or industry words.
 - No Semrush API: CSV imports only, volumes kept exactly as exported (KP ranges stay text like "10–100").
 - GSC + GA4 via free Google APIs. GBP typed in. Whitespark CSV or screenshot. Rank tracking stays in Semrush.
 - Don't rebuild what other tools do (Yoast, ClickUp tasks, rank tracking).
