@@ -12,7 +12,7 @@
 import { z } from 'zod'
 import { keywordKey, looksLikeAddress, parseCpc, parseKd, parseRole, parseVolume, sourceOf } from '../../src/lib/importRules.js'
 import type { DeleteImportCheck, ImportDifference, ImportPayload, ImportPreview, ImportRecord, ImportRow, NumberField } from '../../src/types/seo.js'
-import { db, DatabaseError, must } from '../clients/supabase.js'
+import { db, DatabaseError, must, pagedRows } from '../clients/supabase.js'
 
 export class ImportInputError extends Error {}
 
@@ -428,7 +428,7 @@ async function splitKeywords(importId: string) {
   const own: { keyword_id: string }[] = []
   for (let from = 0; ; from += 1000) {
     const page = must(
-      await db().from('seo_keyword_sources').select('keyword_id').eq('import_id', importId).range(from, from + 999),
+      await db().from('seo_keyword_sources').select('keyword_id').eq('import_id', importId).order('id').range(from, from + 999),
       'Loading the import history',
     ) as { keyword_id: string }[]
     own.push(...page)
@@ -438,11 +438,10 @@ async function splitKeywords(importId: string) {
   const shared = new Set<string>()
   for (let i = 0; i < ids.length; i += 200) {
     const part = ids.slice(i, i + 200)
-    const others = must(
-      await db().from('seo_keyword_sources').select('keyword_id').in('keyword_id', part).neq('import_id', importId),
-      'Checking other imports',
-    ) as { keyword_id: string }[]
-    for (const r of others) shared.add(r.keyword_id)
+    // Paged: 200 keywords can have well over 1,000 history rows (PostgREST returns at most 1,000 per request).
+    // Missing one would mark a shared keyword as "only from this import" and delete it.
+    for await (const r of pagedRows<{ keyword_id: string }>((from, to) => db().from('seo_keyword_sources').select('keyword_id').in('keyword_id', part).neq('import_id', importId).order('id').range(from, to), 'Checking other imports'))
+      shared.add(r.keyword_id)
   }
   return { historyRows: own.length, remove: ids.filter((id) => !shared.has(id)), keep: ids.filter((id) => shared.has(id)) }
 }
@@ -454,13 +453,15 @@ export async function checkDeleteImport(siteId: string, importId: string): Promi
   let removedInUse = 0
   for (let i = 0; i < remove.length; i += 200) {
     const part = remove.slice(i, i + 200)
-    const [edited, matrix, pages] = await Promise.all([
-      db().from('seo_keywords').select('id', { count: 'exact', head: true }).in('id', part).or('kp_volume_by.eq.typed,role.not.is.null,service_id.not.is.null'),
-      db().from('seo_matrix_keywords').select('keyword_id').in('keyword_id', part),
-      db().from('seo_page_keywords').select('keyword_id').in('keyword_id', part),
-    ])
+    const edited = await db().from('seo_keywords').select('id', { count: 'exact', head: true }).in('id', part).or('kp_volume_by.eq.typed,role.not.is.null,service_id.not.is.null')
+    if (edited.error) throw new DatabaseError(`Checking edited keywords: ${edited.error.message}`)
     removedWithEdits += edited.count ?? 0
-    removedInUse += new Set([...((matrix.data ?? []) as { keyword_id: string }[]), ...((pages.data ?? []) as { keyword_id: string }[])].map((r) => r.keyword_id)).size
+    const inUse = new Set<string>()
+    for await (const r of pagedRows<{ keyword_id: string }>((from, to) => db().from('seo_matrix_keywords').select('keyword_id').in('keyword_id', part).order('cell_id').order('keyword_id').range(from, to), 'Checking the matrix'))
+      inUse.add(r.keyword_id)
+    for await (const r of pagedRows<{ keyword_id: string }>((from, to) => db().from('seo_page_keywords').select('keyword_id').in('keyword_id', part).order('keyword_id').range(from, to), 'Checking pages'))
+      inUse.add(r.keyword_id)
+    removedInUse += inUse.size
   }
   return { fileName: imp.file_name, historyRows, keywordsRemoved: remove.length, keywordsKept: keep.length, removedWithEdits, removedInUse, hasFile: !!imp.storage_path }
 }

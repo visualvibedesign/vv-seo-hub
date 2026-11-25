@@ -23,6 +23,21 @@ export function must<T>(result: { data: T; error: { message: string } | null }, 
   return result.data
 }
 
+/** PostgREST returns at most this many rows per request. */
+export const MAX_ROWS = 1000
+
+/**
+ * Every row of a query, 1,000 at a time. `query(from, to)` must add `.range(from, to)` and a stable order
+ * (e.g. `.order('id')`), or pages can skip or repeat rows. Use it for anything that can grow past 1,000 rows.
+ */
+export async function* pagedRows<T>(query: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>, what: string): AsyncGenerator<T> {
+  for (let from = 0; ; from += MAX_ROWS) {
+    const page = must(await query(from, from + MAX_ROWS - 1), what) as T[] | null
+    for (const r of page ?? []) yield r
+    if (!page || page.length < MAX_ROWS) return
+  }
+}
+
 /** Like must(), for calls that always return rows (insert/upsert ... select). */
 export function mustHave<T>(result: { data: T; error: { message: string } | null }, what: string): NonNullable<T> {
   const data = must(result, what)

@@ -47,7 +47,7 @@ async function client(siteId: string): Promise<ClientRow> {
 export async function listAutofill(siteId: string): Promise<AutofillRow[]> {
   const c = await client(siteId)
   const rows = must(
-    await db().from('seo_autofill').select(COLS).eq('client_id', c.id).neq('status', 'superseded').order('created_at', { ascending: false }),
+    await db().from('seo_autofill').select(COLS).eq('client_id', c.id).neq('status', 'superseded').order('created_at', { ascending: false }).limit(100), // latest per kind is all the screen needs
     'Loading auto-fill',
   ) as Row[]
   const latest = new Map<AutofillKind, Row>()
@@ -99,7 +99,7 @@ export async function keywordsOf(clientId: string): Promise<KeywordLite[]> {
   const out: KeywordLite[] = []
   for (let from = 0; ; from += 1000) {
     const part = must(
-      await db().from('seo_keywords').select('id, keyword, role, service_id, status').eq('client_id', clientId).order('keyword').range(from, from + 999),
+      await db().from('seo_keywords').select('id, keyword, role, service_id, status').eq('client_id', clientId).order('keyword').order('id').range(from, from + 999),
       'Loading keywords',
     ) as { id: string; keyword: string; role: KeywordRole | null; service_id: string | null; status: string }[]
     out.push(...part.map((k) => ({ id: k.id, keyword: k.keyword, role: k.role, serviceId: k.service_id, status: k.status })))

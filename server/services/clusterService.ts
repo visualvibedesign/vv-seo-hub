@@ -94,7 +94,7 @@ export async function importClustersCsv(siteId: string, csvText: string, commit:
     (async () => {
       const out: { id: string; keyword_key: string }[] = []
       for (let from = 0; ; from += 1000) {
-        const part = must(await db().from('seo_keywords').select('id, keyword_key').eq('client_id', c.id).range(from, from + 999), 'Loading keywords') as { id: string; keyword_key: string }[]
+        const part = must(await db().from('seo_keywords').select('id, keyword_key').eq('client_id', c.id).order('id').range(from, from + 999), 'Loading keywords') as { id: string; keyword_key: string }[]
         out.push(...part)
         if (part.length < 1000) return out
       }
