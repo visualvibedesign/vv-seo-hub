@@ -46,7 +46,7 @@ async function client(siteId: string): Promise<ClientRow> {
   return c
 }
 
-type Unmatched = { keywordId: string; keyword: string }[]
+type Unmatched = { keywordId: string; keyword: string; note?: string }[]
 
 /** A prepared run: what goes to Claude, and how its answer becomes suggestions. */
 interface Prepared<T extends z.ZodType> {
@@ -362,6 +362,8 @@ A keyword can be on ONE page only.
    up to 10 secondary ids and up to 5 FAQ ids, chosen from that cell's backups or the leftover list.
 2. For each leftover keyword you did not use in step 1: the page it fits (an existing page id like P2, or a new page's
    cell like S1-A2) as "secondary" or "faq", or "none" if it fits no page.
+Keywords marked "generic" name no city: put them only on a page marked "hub" (the category's main page), never on a
+"city" page or a new page; otherwise "none". New pages are city pages.
 Only use ids that are listed. Reasons: at most 10 words.`
 
 const ClustersOut = z.object({
@@ -410,6 +412,11 @@ async function prepClusters(c: ClientRow): Promise<Prepared<typeof ClustersOut>>
     const k = byId.get(id)
     return !!k && k.status === 'keep' && !skip.has(id) && !onPage.has(id)
   }
+  // Sam's rule: generic "near me" terms stay in the database but are never page targets.
+  const isNearMe = (k: KeywordLite) => k.role === 'near_me' || /\bnear me\b/i.test(k.keyword)
+  // Generic = names none of the client's active areas or neighbourhoods: only for a hub page, never a city page.
+  const placeWords = [...areas.filter((a) => a.status === 'active' && a.name).map((a) => a.name!), ...(c.neighbourhood_words ?? [])]
+  const isGeneric = (k: KeywordLite) => !placeWords.some((w) => hasServiceName(k.keyword, [{ name: w }]))
 
   // New pages: cells with a primary that is on no page.
   type NewPage = { cell: string; category: string; categoryName: string; city: string; state: string; primary: KeywordLite; backups: KeywordLite[] }
@@ -422,15 +429,20 @@ async function prepClusters(c: ClientRow): Promise<Prepared<typeof ClustersOut>>
     if (!k || !a || !p) continue
     cellPrimaries.add(p.keyword_id)
     if (!usable(p.keyword_id)) continue
-    const backups = cell.seo_matrix_keywords.filter((m) => m.kind === 'backup').sort((x, y) => x.sort - y.sort).map((m) => m.keyword_id).filter(usable).map((id) => byId.get(id)!)
+    const backups = cell.seo_matrix_keywords.filter((m) => m.kind === 'backup').sort((x, y) => x.sort - y.sort).map((m) => m.keyword_id).filter(usable).map((id) => byId.get(id)!).filter((b) => !isNearMe(b))
     newPages.push({ cell: `${k.code}-${a.code}`, category: k.code, categoryName: k.name, city: a.name ?? '', state: areaState(a, c.state), primary: byId.get(p.keyword_id)!, backups })
   }
   newPages.sort((x, y) => x.cell.localeCompare(y.cell))
   const inNew = new Set(newPages.flatMap((p) => [p.primary.id, ...p.backups.map((b) => b.id)]))
   const volRows = new Map((await kpRanges(kws.map((k) => k.id).filter((id) => usable(id) && !cellPrimaries.has(id)))).map((r) => [r.id, r]))
-  const { list: leftovers, total: leftoverTotal } = cap(
-    kws.filter((k) => usable(k.id) && !cellPrimaries.has(k.id) && !inNew.has(k.id)).sort((x, y) => (volRows.get(y.id)?.semrush ?? 0) - (volRows.get(x.id)?.semrush ?? 0)),
-  )
+  const pool = kws.filter((k) => usable(k.id) && !cellPrimaries.has(k.id) && !inNew.has(k.id))
+  const nearMe = pool.filter(isNearMe) // never sent, never placed: listed as "Near me — not a page target"
+  const { list: leftovers, total: leftoverTotal } = cap(pool.filter((k) => !isNearMe(k)).sort((x, y) => (volRows.get(y.id)?.semrush ?? 0) - (volRows.get(x.id)?.semrush ?? 0)))
+  // Hub = the category's main page: named "hub", the home page, or a primary that names no area. Others are city pages.
+  const isHub = (p: { id: string; name: string; url: string | null }) => {
+    const primary = byId.get(pagePrimary.get(p.id) ?? '')
+    return /\bhub\b/i.test(p.name) || /^https?:\/\/[^/]+\/?$/.test(p.url ?? '') || (!!primary && isGeneric(primary))
+  }
   // One numbering for every keyword the model may pick.
   const list: KeywordLite[] = []
   const num = new Map<string, number>()
@@ -444,15 +456,15 @@ async function prepClusters(c: ClientRow): Promise<Prepared<typeof ClustersOut>>
   const svcName = new Map(svc.map((s) => [s.id, s.name]))
   const line = (k: KeywordLite) => {
     const v = volRows.get(k.id)
-    return `${idx(k)} | ${k.keyword} | ${k.role ?? '-'} | ${(k.serviceId && svcName.get(k.serviceId)) || '-'} | ${v?.semrush ?? '-'} | ${v?.kp ?? '-'}`
+    return `${idx(k)} | ${k.keyword} | ${k.role ?? '-'} | ${(k.serviceId && svcName.get(k.serviceId)) || '-'} | ${v?.semrush ?? '-'} | ${v?.kp ?? '-'} | ${isGeneric(k) ? 'generic' : 'local'}`
   }
   const existingLabel = new Map(pages.map((p, i) => [`P${i + 1}`, p]))
   const user = [
     `Services: ${cats.filter((k) => k.code !== 'FAQ').map((k) => `${k.code} ${k.name} (${svc.filter((s) => s.code === k.code).map((s) => s.name).join(', ') || '-'})`).join('; ')}`,
     `Areas: ${areas.filter((a) => a.status === 'active' && a.name).map((a) => `${a.code} ${a.name}`).join('; ') || '-'}`,
-    `Existing pages (id | name | category | primary):\n${[...existingLabel].map(([id, p]) => `${id} | ${p.name} | ${p.seo_client_categories?.code ?? '-'} | ${byId.get(pagePrimary.get(p.id) ?? '')?.keyword ?? '-'}`).join('\n') || '-'}`,
-    `New pages (cell | category | city | primary):\n${newPages.map((p) => `${p.cell} | ${p.categoryName} | ${p.city} | ${p.primary.keyword}${p.backups.length ? `\n  backups (id | keyword | role | service | Semrush | KP):\n${p.backups.map((b) => `  ${line(b)}`).join('\n')}` : ''}`).join('\n') || '-'}`,
-    `Leftover keywords (id | keyword | role | service | Semrush | KP):\n${leftovers.map(line).join('\n') || '-'}`,
+    `Existing pages (id | name | category | primary | hub or city):\n${[...existingLabel].map(([id, p]) => `${id} | ${p.name} | ${p.seo_client_categories?.code ?? '-'} | ${byId.get(pagePrimary.get(p.id) ?? '')?.keyword ?? '-'} | ${isHub(p) ? 'hub' : 'city'}`).join('\n') || '-'}`,
+    `New pages (cell | category | city | primary):\n${newPages.map((p) => `${p.cell} | ${p.categoryName} | ${p.city} | ${p.primary.keyword}${p.backups.length ? `\n  backups (id | keyword | role | service | Semrush | KP | generic or local):\n${p.backups.map((b) => `  ${line(b)}`).join('\n')}` : ''}`).join('\n') || '-'}`,
+    `Leftover keywords (id | keyword | role | service | Semrush | KP | generic or local):\n${leftovers.map(line).join('\n') || '-'}`,
   ].join('\n\n')
 
   const pathFor = (p: NewPage) => {
@@ -483,7 +495,8 @@ async function prepClusters(c: ClientRow): Promise<Prepared<typeof ClustersOut>>
       for (const np of newPages) {
         used.add(np.primary.id)
         const a = data.pages.find((x) => x.cell.trim().toUpperCase() === np.cell.toUpperCase())
-        const allowed = new Set([...np.backups.map((b) => b.id), ...leftovers.map((l) => l.id)])
+        // New pages are city pages: no generic keywords on them.
+        const allowed = new Set([...np.backups, ...leftovers].filter((k) => !isGeneric(k)).map((k) => k.id))
         const secondaries = (a?.secondaries ?? []).map((n) => pick(n, allowed)).filter((x): x is { keywordId: string; keyword: string } => !!x).slice(0, 10)
         const faqs = (a?.faqs ?? []).map((n) => pick(n, allowed)).filter((x): x is { keywordId: string; keyword: string } => !!x).slice(0, 5)
         const name = (a?.name?.trim() || `${np.categoryName} · ${np.city}`).slice(0, 80)
@@ -498,6 +511,7 @@ async function prepClusters(c: ClientRow): Promise<Prepared<typeof ClustersOut>>
       }
       const leftoverIds = new Set(leftovers.map((l) => l.id))
       let none = 0
+      const genericOff: { keywordId: string; keyword: string; note: string }[] = []
       for (const a of data.assign) {
         const k = list[a.id - 1]
         if (!k || used.has(k.id) || !leftoverIds.has(k.id)) continue
@@ -509,21 +523,28 @@ async function prepClusters(c: ClientRow): Promise<Prepared<typeof ClustersOut>>
         const existing = existingLabel.get(target)
         const cell = newPages.find((p) => p.cell.toUpperCase() === target)?.cell ?? null
         if (!existing && !cell) continue
+        // Code check: a generic keyword only on a hub page (never a city page or a new page).
+        if (isGeneric(k) && (cell || !isHub(existing!))) {
+          used.add(k.id)
+          genericOff.push({ keywordId: k.id, keyword: k.keyword, note: 'Generic: hub page only (Claude picked a city page)' })
+          continue
+        }
         used.add(k.id)
         const pageName = existing?.name ?? madePages.get(cell!)!
         items.push({
           keywordId: k.id,
           keyword: k.keyword,
           assign: { pageId: existing?.id ?? null, cell: existing ? null : cell, pageName, role: a.role },
-          options: [{ value: existing ? `pageid:${existing.id}` : `cell:${cell}`, rule: `${why('clusters', a.reason)}` }],
+          options: [{ value: existing ? `pageid:${existing.id}` : `cell:${cell}`, rule: `${isGeneric(k) ? 'generic · ' : ''}${why('clusters', a.reason)}` }],
           decision: null,
         })
       }
       const pagesN = items.filter((i) => i.page).length
       return {
         items,
-        unmatched: [],
-        summary: `${plural(pagesN, 'new page')} · ${plural(items.length - pagesN, 'keyword')} placed on a page · ${none} fit no page${leftoverTotal > leftovers.length ? ` · first ${leftovers.length} of ${leftoverTotal} leftovers` : ''}`,
+        // Shown under Review, never approvable: near me (not page targets) and generic keywords Claude put on a city page.
+        unmatched: [...nearMe.map((k) => ({ keywordId: k.id, keyword: k.keyword, note: 'Near me — not a page target' })), ...genericOff],
+        summary: `${plural(pagesN, 'new page')} · ${plural(items.length - pagesN, 'keyword')} placed on a page · ${none} fit no page · ${nearMe.length} near me (not page targets)${genericOff.length ? ` · ${genericOff.length} generic kept off city pages` : ''}${leftoverTotal > leftovers.length ? ` · first ${leftovers.length} of ${leftoverTotal} leftovers` : ''}`,
       }
     },
   }

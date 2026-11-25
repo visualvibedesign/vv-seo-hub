@@ -502,7 +502,8 @@ export interface AutofillRow {
   status: AutofillStatus
   summary: string
   items: AutofillItem[]
-  unmatched: { keywordId: string; keyword: string }[]
+  /** Keywords left as they are; `note` says why (e.g. "Near me — not a page target"). */
+  unmatched: { keywordId: string; keyword: string; note?: string }[]
   appliedCount: number | null
   createdAt: string
   decidedAt: string | null

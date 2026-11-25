@@ -16,7 +16,7 @@ type Row = {
   source: 'rules' | 'claude'
   status: AutofillStatus
   summary: string
-  payload: { items: AutofillItem[]; unmatched: { keywordId: string; keyword: string }[] }
+  payload: { items: AutofillItem[]; unmatched: { keywordId: string; keyword: string; note?: string }[] }
   applied_count: number | null
   created_at: string
   decided_at: string | null

@@ -195,6 +195,18 @@ export function Review({ row, label, pill, flagged, onDecide, busy }: ReviewProp
           ),
         )}
       </ul>
+      {/* Kept off pages on purpose (e.g. "Near me — not a page target"): shown, nothing to approve. */}
+      {[...new Set(row.unmatched.filter((u) => u.note).map((u) => u.note!))].map((note) => {
+        const kws = row.unmatched.filter((u) => u.note === note)
+        return (
+          <details key={note} className="rounded-xl border border-solid border-vv-line bg-vv-surface px-3 py-2 text-[13px] text-vv-body">
+            <summary className="cursor-pointer font-semibold text-vv-ink">
+              {note} ({kws.length})
+            </summary>
+            <p className="m-0 pt-1.5">{kws.map((k) => k.keyword).join(' · ')}</p>
+          </details>
+        )
+      })}
     </li>
   )
 }
