@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Site connection · Anassa</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f8f5ff}
+a{color:#5b3fd0}a:hover{color:#432bb0}
+</style>
+</helmet>
+<div style="background: linear-gradient(180deg,#f8f5ff 0%,#fdf3f8 100%); min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #1d2327; font-size: 14px">
+<div style="max-width: 1360px; margin: 0 auto; padding: 28px 32px 48px; display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 13px; color: #50575e">Clients › Anassa Wax &amp; Beauty › <strong style="color: #1d2327">Site connection</strong></div>
+<h1 style="margin: 0; font-family: Fraunces, Georgia, serif; font-size: 44px; font-weight: 600; letter-spacing: -0.5px; line-height: 1.1">Site connection, <em style="color: #5b3fd0">via Vibe SEO.</em></h1>
+<div style="color: #50575e; font-size: 15px">The plugin on anassabeauty.com checks in once a day. Nothing is pushed to the site without your OK.</div>
+</div>
+
+<sc-if value="{{on}}" hint-placeholder-val="{{ true }}">
+<div style="background: #eaf7d6; border-radius: 24px; padding: 22px 24px; display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; align-items: center">
+<div style="display: flex; gap: 16px; align-items: center">
+<span style="width: 52px; height: 52px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center"><span style="width: 18px; height: 18px; border-radius: 50%; background: #2e8b57; box-shadow: 0 0 0 6px rgba(46,139,87,0.18)"></span></span>
+<div><div style="font-family: Fraunces, Georgia, serif; font-size: 28px; font-weight: 600">Connected</div><div style="font-size: 13px; color: #3f4a2b">Last check-in today 6:02 AM · Vibe SEO 1.3.0 · site id c6e74adc…</div></div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px">
+<a href="https://anassabeauty.com" style="border: 1px solid #c9df9e; background: #fff; color: #1d2327; border-radius: 999px; padding: 11px 18px; font-weight: 600; font-size: 13px; text-decoration: none; min-height: 44px; box-sizing: border-box; display: flex; align-items: center">Open site ↗</a>
+<button style="background: #5b3fd0; color: #fff; border: 0; border-radius: 999px; padding: 10px 20px; font: 600 14px Inter, sans-serif; min-height: 44px">Ask for a check-in</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{off}}" hint-placeholder-val="{{ false }}">
+<div style="background: #fff; border: 1px dashed #cfc3f3; border-radius: 24px; padding: 24px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; gap: 12px; align-items: center"><span style="background: #fde7f1; color: #b2336f; border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 700">Not connected</span><span style="font-size: 13px; color: #50575e">No check-in yet</span></div>
+<div style="font-family: Fraunces, Georgia, serif; font-size: 26px; font-weight: 600">Connect anassabeauty.com in 4 steps</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="4">
+<div style="background: #faf8ff; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 6px"><span style="width: 30px; height: 30px; border-radius: 50%; background: #5b3fd0; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center">{{s.n}}</span><div style="font-weight: 700">{{s.t}}</div><div style="font-size: 13px; color: #50575e; line-height: 1.5">{{s.d}}</div></div>
+</sc-for>
+</div>
+<button style="align-self: flex-start; background: #c8e46a; color: #1d2327; border: 0; border-radius: 999px; padding: 12px 22px; font: 700 14px Inter, sans-serif; min-height: 44px">Generate SEO Hub key</button>
+</div>
+</sc-if>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+<div style="flex: 1 1 400px; min-width: 0; background: #fff; border-radius: 20px; border: 1px solid #ece6fb; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Connection key</div>
+<div style="background: #faf8ff; border-radius: 14px; padding: 14px; display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap"><div><div style="font-family: ui-monospace, Menlo, monospace; font-size: 15px; letter-spacing: 2px">••••••••••••9f2c</div><div style="font-size: 12px; color: #50575e">Made Nov 26 · shown once, stored safely, never shown again</div></div><button style="border: 1px solid #f0c3c0; background: #fff; color: #a3322a; border-radius: 999px; padding: 8px 14px; font: 600 13px Inter, sans-serif; min-height: 40px">Make a new key</button></div>
+<div style="font-size: 13px; color: #50575e; line-height: 1.6">One key per site. A new key stops the old one right away; paste it in WordPress › Vibe SEO › SEO Hub key.</div>
+</div>
+<div style="flex: 1 1 400px; min-width: 0; background: #fff; border-radius: 20px; border: 1px solid #ece6fb; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">What syncs</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="font-size: 11px; font-weight: 700; color: #3f6b12; text-transform: uppercase; letter-spacing: 0.5px">Site → SEO Hub</div>
+<sc-for list="{{inbound}}" as="x" hint-placeholder-count="5"><div style="font-size: 13px; display: flex; gap: 8px"><span style="color: #2e8b57; font-weight: 700">✓</span>{{x}}</div></sc-for></div>
+<div style="display: flex; flex-direction: column; gap: 8px"><div style="font-size: 11px; font-weight: 700; color: #5b3fd0; text-transform: uppercase; letter-spacing: 0.5px">SEO Hub → site · later</div>
+<sc-for list="{{outbound}}" as="x" hint-placeholder-count="4"><div style="font-size: 13px; display: flex; gap: 8px; color: #50575e"><span style="color: #b7a9ef; font-weight: 700">○</span>{{x}}</div></sc-for></div>
+</div>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+<div style="flex: 999 1 600px; min-width: 0; background: #fff; border-radius: 20px; border: 1px solid #ece6fb; overflow: hidden">
+<div style="padding: 18px 20px 12px; font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Check-in log</div>
+<div style="overflow-x: auto">
+<table style="width: 100%; border-collapse: collapse; font-size: 13px; min-width: 560px">
+<thead><tr style="background: #f3efff; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #4a3a8c"><th style="padding: 10px 20px">When</th><th style="padding: 10px 8px">Result</th><th style="padding: 10px 8px">Pages</th><th style="padding: 10px 20px 10px 8px">What changed on the site</th></tr></thead>
+<tbody>
+<sc-for list="{{log}}" as="l" hint-placeholder-count="5">
+<tr style="border-top: 1px solid #f1edfb"><td style="padding: 11px 20px; white-space: nowrap">{{l.t}}</td><td style="padding: 11px 8px"><span style="{{l.chip}}">{{l.r}}</span></td><td style="padding: 11px 8px">{{l.p}}</td><td style="padding: 11px 20px 11px 8px; color: #3c4146">{{l.c}}</td></tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</div>
+<div style="flex: 1 1 340px; min-width: 0; background: #fff; border-radius: 20px; border: 1px solid #ece6fb; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between; align-items: center"><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Work log</div><span style="background: #eaf7d6; color: #3f6b12; border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 700">LATER</span></div>
+<div style="font-size: 13px; color: #50575e; line-height: 1.6">Every title, meta or keyphrase pushed from SEO Hub shows here: before → after, who and when. Pushes wait for your confirm first.</div>
+<div style="background: #faf8ff; border-radius: 14px; padding: 12px; font-size: 13px"><div style="font-weight: 600">/brazilian-wax/ · meta description</div><div style="color: #50575e; font-size: 12px">(empty) → “Smooth, gentle Brazilian waxing…” · waiting for confirm</div></div>
+</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"connected":{"editor":"boolean","default":true},"$preview":{"width":1440,"height":1350}}'>
+class Component extends DCLogic {
+  renderVals(){
+    const on = this.props.connected ?? true;
+    const chip = (ok)=>'border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;'+(ok?'background:#e3f3ea;color:#1f6b43':'background:#fbe5e2;color:#a3322a');
+    return {
+      on, off: !on,
+      steps: [
+        {n:'1',t:'Make a key',d:'SEO Hub makes a key for this site. It is shown once, so copy it.'},
+        {n:'2',t:'Paste it in WordPress',d:'Vibe SEO › Settings › SEO Hub key.'},
+        {n:'3',t:'Add the SEO Hub address',d:'Same screen: the SEO Hub web address.'},
+        {n:'4',t:'Save + check in',d:'Saving sends the first check-in. This page turns green.'}],
+      inbound: ['Every page’s title, meta, keyphrase + score','Missing alt text, orphan pages','Form entries + visitors','QA scan summary','What changed this week'],
+      outbound: ['Approved titles + metas','Focus keyphrases','Redirects','Target keyword in WP pages list'],
+      log: [
+        {t:'Today 6:02 AM',r:'OK',chip:chip(1),p:'18',c:'Nothing new'},
+        {t:'Yesterday 6:01 AM',r:'OK',chip:chip(1),p:'18',c:'Plugin updates: Yoast 24.1'},
+        {t:'Nov 24 6:03 AM',r:'OK',chip:chip(1),p:'18',c:'New page: /eyebrow-tint/ · 3 form entries'},
+        {t:'Nov 23 2:15 PM',r:'Wrong key',chip:chip(0),p:'—',c:'Old key used after “Make a new key”'},
+        {t:'Nov 23 6:02 AM',r:'OK',chip:chip(1),p:'17',c:'Meta changed on /brow-lamination/'}]
+    };
+  }
+}
+</script>
+</body>
+</html>

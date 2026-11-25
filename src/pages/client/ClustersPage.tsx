@@ -45,7 +45,7 @@ export default function ClustersPage() {
           </p>
         </div>
         <HeaderTools>
-          <Link to={`/clients/${c.siteId}/keywords`} className={BTN_GHOST}>
+          <Link to={`/clients/${c.siteId}/strategy/keywords`} className={BTN_GHOST}>
             Matrix
           </Link>
         </HeaderTools>

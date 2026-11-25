@@ -11,7 +11,7 @@
 //   * competitors C1–C4: names only (brackets / addresses stripped, never stored)
 //   * one Sam's Guide import per client (delete it in Import history to import again); the raw CSV is kept untouched
 import { looksLikeAddress, keywordKey } from '../../src/lib/importRules.js'
-import { parseSamsGuide, type RegisterRow, type SamsGuide, type SheetVolume } from '../../src/lib/samsGuide.js'
+import { parseSamsGuide, sameCompetitor, type RegisterRow, type SamsGuide, type SheetVolume } from '../../src/lib/samsGuide.js'
 import type { SamsGuideConflict, SamsGuidePlan } from '../../src/types/seo.js'
 import { DatabaseError, db, must } from '../clients/supabase.js'
 import { clientRow, type ClientRow } from './clientService.js'
@@ -49,7 +49,21 @@ interface Mention {
 }
 
 /** Everything the dry run shows + what Apply needs (ids). Read-only. */
-async function build(c: ClientRow, csvText: string) {
+/** Matrix entries, new cells and competitor names a Sam's Guide import added (seo_imports.column_map.samsGuide). */
+export interface SamsGuideAdded {
+  matrix: { cell_id: string; keyword_id: string; kind: 'primary' | 'backup' }[]
+  cells: string[]
+  competitors: { code: string; name: string }[]
+}
+
+/** Whole-Sheet import options: pagesFromClusters = a Clusters tab in the same file decides pages (Angel, Nov 25). */
+export interface SamsGuideOptions {
+  pagesFromClusters?: boolean
+  /** The .xlsx this tab came from (seo_imports.parent_import_id, migration 0015). */
+  parentImportId?: string
+}
+
+async function build(c: ClientRow, csvText: string, opts: SamsGuideOptions = {}) {
   const g: SamsGuide = parseSamsGuide(csvText)
   if (!g.register.length && !g.pages.length) throw new SamsGuideInputError('This doesn’t look like a Sam’s Guide tab: no Page 2 register or Page 5 Top 10 found.')
 
@@ -252,19 +266,29 @@ async function build(c: ClientRow, csvText: string) {
     return `${words.join(' / ')}${l.why ? ` (${l.why})` : ''}`
   })
   const areaNote = areaLines.length ? `Possible areas (Sam’s Guide, Page 3): ${areaLines.join('; ')}` : null
-  const noteAlready = !!areaNote && (c.notes ?? '').includes(areaNote)
+  // Already there = in the Notes feed (step 7) or still in the old one-box notes.
+  const noteAlready =
+    !!areaNote &&
+    ((c.notes ?? '').includes(areaNote) ||
+      (must(await db().from('seo_notes').select('id').eq('client_id', c.id).eq('body', areaNote).limit(1), 'Checking notes') as unknown[]).length > 0)
 
   // ---- Competitors: names only ---------------------------------------------------------------------------
   const competitors = g.competitors.map((x) => {
     const bad = !x.name || looksLikeAddress(x.name)
     const ex = comps.find((y) => y.code === x.code)
     let action = bad ? 'Refused: still looks like an address' : 'Save name only'
-    if (!bad && ex && ex.name !== x.name) {
+    if (!bad && ex && !sameCompetitor(ex.name, x.name!)) {
       action = `Conflict: ${x.code} is “${ex.name}” now: kept unless you tick replace`
       conflicts.push({ key: `comp:${x.code}`, kind: 'competitor', text: `${x.code} is “${ex.name}” now; the sheet says “${x.name}”.`, replaceable: true })
     } else if (!bad && ex) action = 'No change (same name)'
     return { code: x.code, name: bad ? null : x.name, written: x.written, action }
   })
+
+  // A Clusters tab in the same Sheet decides pages: Sam's Guide Top 10 is shown, but adds no pages or page keywords.
+  if (opts.pagesFromClusters) {
+    for (let i = conflicts.length - 1; i >= 0; i--) if (conflicts[i].kind === 'page') conflicts.splice(i, 1)
+    for (const p of planPages) p.keywords = p.keywords.map((k) => ({ ...k, action: 'Skipped: the Clusters tab decides pages' }))
+  }
 
   const plan: SamsGuidePlan = {
     sheetClient: g.clientName,
@@ -278,7 +302,7 @@ async function build(c: ClientRow, csvText: string) {
       fills: fills.length,
       matrixCells: matrix.length,
       track: track.filter((t) => !t.already).length,
-      pages: planPages.filter((p) => p.categoryId).length,
+      pages: opts.pagesFromClusters ? 0 : planPages.filter((p) => p.categoryId).length,
       pageKeywords: planPages.filter((p) => p.categoryId).reduce((n, p) => n + p.keywords.filter((k) => k.action === 'Add').length, 0),
       later: later.filter((l) => /^(Set|Create)/.test(l.action)).length,
       competitors: competitors.filter((x) => x.action === 'Save name only').length,
@@ -301,8 +325,8 @@ async function build(c: ClientRow, csvText: string) {
   return { plan, g, c, byKey, mentions, held, matrix, planPages, laterRows, cells, pagesWithPrimary, areaNote: plan.areaNote }
 }
 
-export async function planSamsGuide(siteId: string, csvText: string): Promise<SamsGuidePlan> {
-  return (await build(await client(siteId), csvText)).plan
+export async function planSamsGuide(siteId: string, csvText: string, opts: SamsGuideOptions = {}): Promise<SamsGuidePlan> {
+  return (await build(await client(siteId), csvText, opts)).plan
 }
 
 const MAX_BYTES = 1024 * 1024
@@ -320,9 +344,9 @@ export function decodeSheet(base64: unknown): { bytes: Buffer; text: string } {
  * Undo on failure: the new keywords, the import record and the raw file are removed (everything else only fills
  * empty fields, so running it again is safe).
  */
-export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text: string }, fileName: string, replace: string[]): Promise<{ importId: string; plan: SamsGuidePlan }> {
+export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text: string }, fileName: string, replace: string[], opts: SamsGuideOptions = {}): Promise<{ importId: string; plan: SamsGuidePlan }> {
   const c = await client(siteId)
-  const b = await build(c, file.text)
+  const b = await build(c, file.text, opts)
   const { plan } = b
   if (plan.alreadyImported) throw new SamsGuideInputError('This client already has a Sam’s Guide import. Delete it in Import history first to import again.')
   if (!plan.sameClient) throw new SamsGuideInputError(`This sheet is for “${plan.sheetClient}”, not ${c.name}.`)
@@ -343,12 +367,15 @@ export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text
         rows_merged: plan.counts.existingKeywords,
         rows_skipped: plan.counts.heldBack,
         note: 'Sam’s Guide sheet',
+        ...(opts.parentImportId ? { parent_import_id: opts.parentImportId } : {}),
       })
       .select('id')
       .single(),
     'Saving the import',
   ) as { id: string }
   const createdIds: string[] = []
+  // What this import adds to the matrix + competitors, saved on the import so "Delete this import" can undo it.
+  const added: SamsGuideAdded = { matrix: [], cells: [], competitors: [] }
   let storagePath: string | null = null
   try {
     const bytes = file.bytes
@@ -410,6 +437,7 @@ export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text
       let cellId = m.cellId
       if (!cellId) {
         cellId = (must(await db().from('seo_matrix_cells').insert({ client_id: c.id, category_id: m.categoryId, area_id: m.areaId, state: m.state, note: m.note || null }).select('id').single(), 'Saving the matrix') as { id: string }).id
+        added.cells.push(cellId)
       } else {
         const cur = b.cells.find((x) => x.id === cellId)!
         const upd: Record<string, unknown> = {}
@@ -425,17 +453,21 @@ export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text
         must(await db().from('seo_matrix_keywords').delete().eq('cell_id', cellId).eq('kind', 'primary'), 'Saving the matrix')
         must(await db().from('seo_matrix_keywords').delete().eq('cell_id', cellId).eq('keyword_id', primaryId!), 'Saving the matrix')
         must(await db().from('seo_matrix_keywords').insert({ cell_id: cellId, keyword_id: primaryId!, kind: 'primary', sort: 0 }), 'Saving the matrix')
+        added.matrix.push({ cell_id: cellId!, keyword_id: primaryId!, kind: 'primary' })
         have.add(primaryId!)
         // The sheet's primaries are Angel's own picks: the keyword gets the Primary role (only if it has none yet).
         must(await db().from('seo_keywords').update({ role: 'primary' }).eq('id', primaryId!).is('role', null), 'Setting the Primary role')
       }
       const backups = m.backups.map((k) => ids.get(keywordKey(k))).filter((x): x is string => !!x && !have.has(x) && x !== primaryId)
-      if (backups.length) must(await db().from('seo_matrix_keywords').insert([...new Set(backups)].map((keyword_id, i) => ({ cell_id: cellId, keyword_id, kind: 'backup', sort: i + 1 }))), 'Saving the matrix')
+      if (backups.length) {
+        must(await db().from('seo_matrix_keywords').insert([...new Set(backups)].map((keyword_id, i) => ({ cell_id: cellId, keyword_id, kind: 'backup', sort: i + 1 }))), 'Saving the matrix')
+        for (const keyword_id of new Set(backups)) added.matrix.push({ cell_id: cellId!, keyword_id, kind: 'backup' })
+      }
     }
 
     // 7. Pages + their keywords (#1 = primary); a keyword on another page moves only if ticked
     let sort = 0
-    for (const p of b.planPages) {
+    for (const p of opts.pagesFromClusters ? [] : b.planPages) {
       if (!p.categoryId) continue
       let pageId = p.pageId
       if (!pageId) {
@@ -462,14 +494,19 @@ export async function applySamsGuide(siteId: string, file: { bytes: Buffer; text
     // 9. Competitors: names only
     for (const x of plan.competitors) {
       if (!x.name) continue
-      if (x.action === 'Save name only') must(await db().from('seo_competitors').insert({ client_id: c.id, code: x.code, name: x.name }), 'Saving competitors')
+      if (x.action === 'Save name only') {
+        must(await db().from('seo_competitors').insert({ client_id: c.id, code: x.code, name: x.name }), 'Saving competitors')
+        added.competitors.push({ code: x.code, name: x.name })
+      }
       else if (x.action.startsWith('Conflict') && tick.has(`comp:${x.code}`)) must(await db().from('seo_competitors').update({ name: x.name }).eq('client_id', c.id).eq('code', x.code), 'Saving competitors')
     }
 
-    // 10. "More areas" → one line added to the client's notes
+    // Record what was added (used by "Delete this import")
+    must(await db().from('seo_imports').update({ column_map: { samsGuide: added } }).eq('id', imp.id), 'Saving the import')
+
+    // 10. "More areas" → one Note in Notes & links (tagged Day 1, where areas are chosen)
     if (b.areaNote) {
-      const notes = c.notes?.trim() ? `${c.notes.trim()}\n\n${b.areaNote}` : b.areaNote
-      must(await db().from('seo_clients').update({ notes }).eq('id', c.id), 'Saving the client note')
+      must(await db().from('seo_notes').insert({ client_id: c.id, kind: 'note', body: b.areaNote.slice(0, 4000), author: 'Sam’s Guide import', day: 0 }), 'Saving the client note')
     }
   } catch (err) {
     for (let i = 0; i < createdIds.length; i += CHUNK) await db().from('seo_keywords').delete().in('id', createdIds.slice(i, i + CHUNK))

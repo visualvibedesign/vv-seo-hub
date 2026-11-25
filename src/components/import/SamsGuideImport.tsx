@@ -97,7 +97,8 @@ export default function SamsGuideImport({ client: c }: { client: ClientDetail })
   )
 }
 
-function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuidePlan; client: ClientDetail; ticks: Set<string>; setTicks: (s: Set<string>) => void }) {
+/** The Sam's Guide dry run (also shown for a Sam's Guide tab in a whole-Sheet import). */
+export function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuidePlan; client: ClientDetail; ticks: Set<string>; setTicks: (s: Set<string>) => void }) {
   const toggle = (k: string) => {
     const next = new Set(ticks)
     if (next.has(k)) next.delete(k)
@@ -126,11 +127,12 @@ function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuidePlan; cl
           [`${n.matrixCells} matrix cells`, PILL_DONE],
           [`${n.pages} pages · ${n.pageKeywords} page keywords`, PILL_DONE],
           [`${n.track} Track on`, PILL_DONE],
-          [`${n.later} Later / Rejected`, PILL_DONE],
+          [`${p.later.length} keep for later · ${n.later} to save`, PILL_DONE],
           [`${n.competitors} competitors`, PILL_DONE],
           [`${n.conflicts} conflicts`, n.conflicts ? PILL_WAITING : PILL_TODO],
           [`${n.heldBack} held back`, PILL_TODO],
           [`${n.notUnderstood} not understood`, n.notUnderstood ? PILL_WAITING : PILL_TODO],
+          [`${p.skipped.length} sections skipped`, PILL_TODO],
         ].map(([t, cls]) => (
           <span key={t} className={cls}>
             {t}
@@ -189,11 +191,11 @@ function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuidePlan; cl
           rows={p.fills.map((f) => [`${f.keyword}${f.isNew ? ' (new)' : ''}`, f.semrush?.toLocaleString('en-US') ?? '—', f.kp ?? '—', f.kd ?? '—', f.cpc != null ? `$${f.cpc}` : '—'])}
         />
       </Fold>
-      <Fold title={`Keep for later (${p.later.length})`}>
+      <Fold title={`Keep for later (${p.later.length} · ${n.later} to save as Later / Rejected)`}>
         <Table head={['Type', 'Keyword', 'Action']} rows={p.later.map((l) => [l.type, l.keyword, <Act key="a" a={l.action} />])} />
         {p.areaNote && (
           <p className="m-0 mt-2 text-[13px] text-vv-body">
-            <strong>Client note added:</strong> {p.areaNote}
+            <strong>Note added (Notes &amp; links):</strong> {p.areaNote}
           </p>
         )}
       </Fold>
@@ -203,7 +205,7 @@ function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuidePlan; cl
       <Fold title={`Competitors (${p.competitors.length}), names only`}>
         <Table head={['#', 'Saved as', 'In the sheet', 'Action']} rows={p.competitors.map((x) => [x.code, x.name ?? '—', x.written, <Act key="a" a={x.action} />])} />
       </Fold>
-      <Fold title={`Skipped and not understood (${p.skipped.length + p.notUnderstood.length + p.heldBack.length})`}>
+      <Fold title={`Not understood (${p.notUnderstood.length}) · sections skipped (${p.skipped.length}) · held back (${p.heldBack.length})`}>
         <ul className="m-0 flex flex-col gap-0.5 pl-5 text-[13px] text-vv-body">
           {p.skipped.map((s) => (
             <li key={`s${s.line}`}>
@@ -226,11 +228,11 @@ function Plan({ plan: p, client: c, ticks, setTicks }: { plan: SamsGuidePlan; cl
   )
 }
 
-function Act({ a }: { a: string }) {
+export function Act({ a }: { a: string }) {
   return <span className={`${tone(a)} whitespace-normal`}>{a}</span>
 }
 
-function Fold({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
+export function Fold({ title, open, children }: { title: string; open?: boolean; children: ReactNode }) {
   return (
     <details open={open} className="group rounded-2xl border border-solid border-vv-line px-3 py-2">
       <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between text-[14px] font-semibold text-vv-ink [&::-webkit-details-marker]:hidden">
@@ -244,7 +246,7 @@ function Fold({ title, open, children }: { title: string; open?: boolean; childr
   )
 }
 
-function Table({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
+export function Table({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
   if (!rows.length) return <p className="m-0 text-[13px] text-vv-muted">None</p>
   return (
     <div className="max-h-[420px] overflow-auto">

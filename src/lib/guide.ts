@@ -24,7 +24,7 @@ export type GuideStep = {
   tasks: GuideTask[]
   tools: string
   tip: string
-  /** Section to open (client path, see CLIENT_TOP / CLIENT_GROUPS). */
+  /** Section to open (path under /clients/{site id}, see src/lib/clientSetup.ts). */
   open: { label: string; path: string }
   videos: { label: string; url: string }[]
 }
@@ -37,7 +37,7 @@ export const GUIDE: GuideStep[] = [
     day: 'Day 1',
     short: 'Setup',
     title: 'Client setup',
-    overview: { title: 'Client setup', blurb: 'services, areas, accounts' },
+    overview: { title: 'Client setup', blurb: 'services, areas, scope and brand words' },
     why: 'Know what matters before touching anything: the 3 services and areas that bring the most money.',
     tasks: [
       { key: 'services', label: 'Name Home + S1–S3 and the services under each', auto: true, hint: 'Ticks itself when Home and S1–S3 are named and S1–S3 each have a service.' },
@@ -47,7 +47,7 @@ export const GUIDE: GuideStep[] = [
     ],
     tools: 'The client’s Services page · account checklist',
     tip: 'Pick the services and areas that bring the most money or are most wanted, not every service they offer.',
-    open: { label: 'Edit client', path: 'edit' },
+    open: { label: 'Client setup', path: 'strategy/setup' },
     videos: [{ label: 'Day 1', url: yt('euNC0aNL_Iw') }],
   },
   {
@@ -68,7 +68,7 @@ export const GUIDE: GuideStep[] = [
     ],
     tools: 'Keyword Planner · Semrush (US) · SEO Hub import',
     tip: 'Record volumes exactly as shown. KP ranges stay ranges, never the 50/500 stand-ins.',
-    open: { label: 'Open Keywords', path: 'keywords/database' },
+    open: { label: 'Open Keywords', path: 'strategy/keywords/database' },
     videos: [{ label: 'Day 2', url: yt('P_5S33738yE') }],
   },
   {
@@ -88,7 +88,7 @@ export const GUIDE: GuideStep[] = [
     ],
     tools: 'Semrush Position Tracking · Whitespark · Search Console · GA4 · GBP',
     tip: 'Missing or still-processing data is Pending, never 0. Screenshots with dates are fine.',
-    open: { label: 'Baseline + reports', path: 'reports' },
+    open: { label: 'Baseline', path: 'baseline' },
     videos: [{ label: 'Day 3', url: yt('A6sGzviQfiM') }],
   },
   {
@@ -107,7 +107,7 @@ export const GUIDE: GuideStep[] = [
     ],
     tools: 'Google Maps (guest profile) · Pleper · Whitespark factors',
     tip: 'Check the last 3–5 review dates. If competitors get ~2 a quarter, a monthly ask of 2–3 beats them.',
-    open: { label: 'GBP check', path: 'gbp' },
+    open: { label: 'GBP check', path: 'strategy/gbp' },
     videos: [{ label: 'Day 4', url: yt('oIAxdwHHYRY') }],
   },
   {
@@ -126,7 +126,7 @@ export const GUIDE: GuideStep[] = [
     ],
     tools: 'SEO Hub pages · Google search (owner check)',
     tip: 'If Google flips between two pages for one keyword, that’s cannibalization: de-optimize one.',
-    open: { label: 'Sitemap + hotspots', path: 'pages' },
+    open: { label: 'Sitemap + hotspots', path: 'strategy/pages' },
     videos: [{ label: 'Day 5', url: yt('jv-m3bOy-Ks') }],
   },
   {
@@ -145,7 +145,7 @@ export const GUIDE: GuideStep[] = [
     ],
     tools: 'BrandScript · Elementor · Search Console',
     tip: 'Unknown facts stay in [brackets]. Never invent prices, guarantees or reviews.',
-    open: { label: 'Page briefs', path: 'briefs' },
+    open: { label: 'Page briefs', path: 'strategy/briefs' },
     videos: [{ label: 'Day 6', url: yt('DUMr4S5CIm0') }],
   },
   {
@@ -164,7 +164,7 @@ export const GUIDE: GuideStep[] = [
     ],
     tools: 'Google Business Profile · UTM links',
     tip: 'Ask for reviews right after the job. One follow-up after 1–3 days, never paid reviews.',
-    open: { label: 'GBP care', path: 'gbp-care' },
+    open: { label: 'GBP care', path: 'strategy/gbp-care' },
     videos: [{ label: 'Day 7', url: yt('0YeOuk54oaU') }],
   },
   {
@@ -183,7 +183,7 @@ export const GUIDE: GuideStep[] = [
     ],
     tools: 'BrightLocal · Semrush Backlink Gap',
     tip: 'Sent, Approved and Live stay separate. Live only after you’ve clicked the link and checked it.',
-    open: { label: 'Links', path: 'links' },
+    open: { label: 'Link database', path: 'strategy/links' },
     videos: [
       { label: 'Day 8', url: yt('WIdB0gpFm5I') },
       { label: 'Day 9', url: yt('2B2uumZN7ak') },
@@ -205,7 +205,7 @@ export const GUIDE: GuideStep[] = [
     ],
     tools: 'Semrush · Search Console · GA4 · GBP · Whitespark',
     tip: 'Flat is flat. If one thing improved and another slipped, show both.',
-    open: { label: 'Day 10 review', path: 'review' },
+    open: { label: 'Results', path: 'results' },
     videos: [{ label: 'Day 10', url: yt('y1NgXdpIMJM') }],
   },
 ]
@@ -222,4 +222,24 @@ export function stepLabel(current: number): string {
 export function stepDay(current: number): string {
   const s = GUIDE[current]
   return s ? s.day.replace(' + monthly', '') : 'Monthly'
+}
+
+// ---- Two areas (Angel, Nov 26): Day 3 (baseline) and Day 10 (results) live in the client Overview; every other day is
+// in the Strategy Builder. Step numbers never change (they are stored: guide progress, templates, auto-fill, note days).
+
+/** Steps shown and ticked in the client Overview (Baseline, Results), not in the Strategy Builder's guide. */
+export const OVERVIEW_STEPS: readonly number[] = [2, 8]
+export const isOverviewStep = (n: number) => OVERVIEW_STEPS.includes(n)
+/** The Strategy Builder's days: Day 1, 2, 4, 5, 6, 7, 8–9. */
+export const STRATEGY_GUIDE = GUIDE.filter((s) => !isOverviewStep(s.n))
+
+/** First Strategy Builder step not done (GUIDE_STEPS when all of them are). */
+export function strategyCurrent(isDone: (n: number) => boolean): number {
+  return STRATEGY_GUIDE.find((s) => !isDone(s.n))?.n ?? GUIDE_STEPS
+}
+
+/** The thin line for a step that lives in the Overview: "Day 3 · Tracking + baseline", "Day 10 · Results". */
+export function overviewLine(n: number): string {
+  const s = GUIDE[n]
+  return `${s.day.replace(' + monthly', '')} · ${n === 8 ? 'Results' : s.title}`
 }

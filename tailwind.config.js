@@ -71,6 +71,7 @@ export default {
         'vv-avatar-none': 'var(--vv-avatar-none)',
         'vv-avatar-pink': 'var(--vv-avatar-pink)',
         'vv-pink-100': 'var(--vv-pink-100)',
+        'vv-pink-ink': 'var(--vv-pink-ink)',
         'vv-col-ready': 'var(--vv-col-ready)',
         'vv-col-prog': 'var(--vv-col-prog)',
         'vv-col-qa': 'var(--vv-col-qa)',

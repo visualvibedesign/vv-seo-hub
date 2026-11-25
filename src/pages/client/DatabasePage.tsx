@@ -150,7 +150,7 @@ export default function DatabasePage() {
       <section className={`${CARD} items-start`}>
         <h2 className={CARD_TITLE}>No keywords <em className="font-medium text-vv-purple">yet</em></h2>
         <p className="m-0 max-w-[640px] text-[15px] text-vv-body">Import Keyword Planner or Semrush exports and every keyword shows up here, with both volumes kept exactly as exported.</p>
-        <Link to={`/clients/${c.siteId}/keywords/import`} className={BTN_LIME}>Import keywords</Link>
+        <Link to={`/clients/${c.siteId}/strategy/keywords/import`} className={BTN_LIME}>Import keywords</Link>
       </section>
       </>
     )
@@ -569,7 +569,7 @@ function DbHeader({ siteId, onExport }: { siteId: string; onExport?: () => void 
         <button type="button" className={BTN_GHOST} disabled={!onExport} onClick={onExport} title={onExport ? undefined : 'No keyword has Track on yet'}>
           Export tracked list
         </button>
-        <Link to={`/clients/${siteId}/keywords/import`} className={BTN_LIME}>
+        <Link to={`/clients/${siteId}/strategy/keywords/import`} className={BTN_LIME}>
           Upload CSVs
         </Link>
       </HeaderTools>

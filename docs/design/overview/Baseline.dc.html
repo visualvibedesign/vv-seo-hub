@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Baseline · Anassa</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f8f5ff}
+a{color:#5b3fd0}a:hover{color:#432bb0}
+</style>
+</helmet>
+<div style="background: linear-gradient(180deg,#f8f5ff 0%,#fdf3f8 100%); min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #1d2327; font-size: 14px">
+<div style="max-width: 1360px; margin: 0 auto; padding: 28px 32px 48px; display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: flex-end">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
+<div style="font-size: 13px; color: #50575e">Clients › Anassa Wax &amp; Beauty › <strong style="color: #1d2327">Baseline</strong></div>
+<h1 style="margin: 0; font-family: Fraunces, Georgia, serif; font-size: 44px; font-weight: 600; letter-spacing: -0.5px; line-height: 1.1">Baseline, <em style="color: #5b3fd0">where we started.</em></h1>
+<div style="color: #50575e; font-size: 15px">Day 3 · the starting numbers, each saved with its exact date. Results compares everything against this.</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<span style="background: #eaf7d6; color: #3f6b12; border-radius: 999px; padding: 8px 14px; font-size: 13px; font-weight: 700">5 of 6 saved · Sep 1, 2026</span>
+<button style="border: 1px solid #dcdcde; background: #fff; color: #1d2327; border-radius: 999px; padding: 10px 18px; font: 600 13px Inter, sans-serif; min-height: 44px">Start a new baseline</button>
+</div>
+</div>
+
+<div style="background: #fff; border-radius: 20px; border: 1px solid #ece6fb; padding: 16px 20px; display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center">
+<span style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 18px">Day 3 checklist</span>
+<sc-for list="{{checks}}" as="c" hint-placeholder-count="6">
+<span style="display: flex; gap: 8px; align-items: center; font-size: 13px"><span style="{{c.box}}">{{c.mark}}</span>{{c.t}}</span>
+</sc-for>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 16px">
+<sc-for list="{{sources}}" as="s" hint-placeholder-count="6">
+<div style="background: #fff; border-radius: 20px; border: 1px solid #ece6fb; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; justify-content: space-between; gap: 10px; align-items: flex-start">
+<div style="display: flex; gap: 12px; align-items: center">
+<span style="width: 42px; height: 42px; border-radius: 14px; background: {{s.bg}}; color: {{s.ink}}; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center; flex: none">{{s.i}}</span>
+<div><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 19px">{{s.name}}</div><div style="font-size: 12px; color: #50575e">{{s.how}}</div></div>
+</div>
+<span style="{{s.chip}}">{{s.status}}</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{s.nums}}" as="n" hint-placeholder-count="4">
+<div style="background: #faf8ff; border-radius: 14px; padding: 10px 12px"><div style="font-family: Fraunces, Georgia, serif; font-size: 22px; font-weight: 600">{{n.v}}</div><div style="font-size: 12px; color: #50575e">{{n.l}}</div></div>
+</sc-for>
+</div>
+<div style="display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; border-top: 1px solid #f1edfb; padding-top: 12px">
+<span style="font-size: 12px; color: #50575e">{{s.date}}</span>
+<button style="border: 1px solid #e3dcf7; background: #fff; color: #5b3fd0; border-radius: 999px; padding: 8px 14px; font: 600 13px Inter, sans-serif; min-height: 40px">{{s.action}}</button>
+</div>
+</div>
+</sc-for>
+</div>
+
+<div style="font-size: 12px; color: #50575e">Semrush stays in Semrush: we only import its CSV, numbers exactly as exported. The studio’s private address is never stored or shown.</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1450}}'>
+class Component extends DCLogic {
+  renderVals(){
+    const chip = (ok)=>'border-radius:999px;padding:4px 11px;font-size:12px;font-weight:700;white-space:nowrap;'+(ok?'background:#e3f3ea;color:#1f6b43':'background:#fdf3dc;color:#8a5a00');
+    const box = (ok)=>'width:20px;height:20px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;'+(ok?'background:#5b3fd0;color:#fff':'background:#fff;border:1.5px solid #cfc3f3;color:#fff');
+    const S = (i,name,how,bg,ink,ok,nums,date,action)=>({i,name,how,bg,ink,status:ok?'Saved':'Missing',chip:chip(ok),nums:nums.map(([v,l])=>({v,l})),date,action});
+    return {
+      checks: [['Semrush tracking set up (US, national)',1],['Search Console numbers',1],['GA4 numbers',1],['GBP numbers',1],['Map grid',1],['Site check snapshot',0]]
+        .map(([t,ok])=>({t,box:box(ok),mark:ok?'✓':''})),
+      sources: [
+        S('SR','Semrush Position Tracking','CSV import · US national · 42 keywords','#fde7f1','#b2336f',true,[['23.4','Avg position'],['7','In top 10'],['2','In top 3'],['4.1%','Visibility']],'Exported Sep 1, 2026','Replace CSV'),
+        S('SC','Search Console','Pulled from Google · last 28 days','#efeaff','#5b3fd0',true,[['13.9K','Impressions'],['434','Clicks'],['3.1%','CTR'],['20.3','Avg position']],'Aug 4 – Aug 31, 2026','Pull again'),
+        S('GA','GA4','Pulled from Google · organic search','#eaf7d6','#3f6b12',true,[['930','Sessions'],['702','Users'],['31','Bookings'],['1m 28s','Avg time']],'Aug 4 – Aug 31, 2026','Pull again'),
+        S('GB','Google Business Profile','Typed in · last 28 days','#fff0e2','#a44e12',true,[['2,780','Profile views'],['66','Calls'],['120','Directions'],['118 · ★4.8','Reviews']],'Typed Sep 1 · newest review Aug 28','Edit numbers'),
+        S('WS','Whitespark map grid','CSV + screenshot · “brazilian wax” · 5×5','#efeaff','#5b3fd0',true,[['8.2','Avg rank'],['6 / 25','In top 3'],['1.2 mi','Grid spacing'],['5×5','Points']],'Scanned Aug 30, 2026','Replace CSV'),
+        S('PG','Site check snapshot','From the Site check tab · all live pages','#fde7f1','#b2336f',false,[['—','Site health'],['—','Pages'],['—','Problems'],['—','Mobile speed']],'Not saved yet','Save snapshot')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

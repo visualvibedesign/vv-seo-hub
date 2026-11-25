@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { ACCOUNTS, ACCOUNT_KINDS, accountLinkProblem, AREA_CODES, CATEGORY_CODES, CORE_ACCOUNT_KINDS, DEFAULT_FAQ_NAME } from '../../src/lib/clientSetup.js'
 import { checkIndustry, IndustryInputError } from './industryService.js'
 import { GUIDE_STEPS } from '../../src/lib/guide.js'
+import { stripStateSuffix } from '../../src/lib/templates.js'
 import type {
   AccountKind,
   AccountStatus,
@@ -23,6 +24,7 @@ import type {
   GuideSummary,
   SiteIdCheck,
 } from '../../src/types/seo.js'
+import type { ClientDeleteCheck } from '../../src/types/seo.js'
 import { DatabaseError, db, must } from '../clients/supabase.js'
 import { normalizeSiteUrl, siteIdFor, SiteUrlError } from '../utils/siteId.js'
 
@@ -222,7 +224,7 @@ const InputSchema = z.object({
       z.object({
         code: z.enum(['Home', 'S1', 'S2', 'S3', 'FAQ']),
         name: text(80),
-        services: z.array(z.object({ id: z.string().uuid().optional(), name: text(80) })).max(60),
+        services: z.array(z.object({ id: z.string().uuid().optional(), name: text(80).refine((n) => !n.startsWith('~'), 'A service name was lost (it shows as “~…”). Type its real name again.') })).max(60),
       }),
     )
     .length(5),
@@ -287,6 +289,9 @@ function validate(raw: unknown): ClientInput {
       seen.add(key)
     }
   }
+  // "Staten Island, NY" with state NY is stored as "Staten Island" (the state is its own field: never "…, NY, NY").
+  input.city = stripStateSuffix(input.city, input.state)
+  for (const a of input.areas) a.name = stripStateSuffix(a.name, a.state || input.state)
   for (const a of input.areas) {
     if (a.status === 'active' && !a.name) throw new ClientInputError(`Name area ${a.code}, or mark it N/A.`)
   }
@@ -375,6 +380,7 @@ async function writeClient(input: ClientInput, fields: Record<string, unknown>, 
  * The caller has already checked the row (site id free, industry in the list, no address).
  */
 export async function addClientBasic(row: { name: string; siteUrl: string; siteId: string; city: string; state: string; industry: string | null }): Promise<{ siteId: string }> {
+  row = { ...row, city: stripStateSuffix(row.city, row.state) }
   const input: ClientInput = {
     siteUrl: row.siteUrl,
     name: row.name,
@@ -473,9 +479,9 @@ async function saveServices(clientId: string, input: ClientInput) {
     'id' | 'code'
   >[]
   const catId = new Map(cats.map((c) => [c.code, c.id]))
-  const existing = must(await db().from('seo_client_services').select('id, name').eq('client_id', clientId), 'Loading services') as Pick<
+  const existing = must(await db().from('seo_client_services').select('id, name, category_id, sort').eq('client_id', clientId), 'Loading services') as Pick<
     ServiceRow,
-    'id' | 'name'
+    'id' | 'name' | 'category_id' | 'sort'
   >[]
   const keep = new Set<string>()
   const wanted = input.categories.flatMap((cat) =>
@@ -483,16 +489,26 @@ async function saveServices(clientId: string, input: ClientInput) {
   )
   for (const w of wanted) if (w.id) keep.add(w.id)
 
-  // 1. Delete removed ones first, and park renamed ones on a temporary name, so swapping two names never
-  //    trips the "one name per client" rule.
+  // 1. Delete removed ones first. Only RENAMED services are parked on a temporary name (so swapping two names
+  //    never trips the "one name per client" rule); unchanged rows aren't touched. Writes are batched (Found #4/#5:
+  //    a slow save left 8 services on "~…" names).
   const removed = existing.filter((e) => !keep.has(e.id)).map((e) => e.id)
   if (removed.length) must(await db().from('seo_client_services').delete().in('id', removed), 'Removing services')
-  for (const w of wanted.filter((w) => w.id)) {
-    must(await db().from('seo_client_services').update({ name: `~${w.id}` }).eq('id', w.id!), 'Saving services')
-  }
-  // 2. Final names, categories and order.
-  for (const w of wanted.filter((w) => w.id)) {
-    must(await db().from('seo_client_services').update({ name: w.name, category_id: w.category_id, sort: w.sort }).eq('id', w.id!), 'Saving services')
+  const before = new Map(existing.map((e) => [e.id, e]))
+  const changed = wanted.filter((w) => {
+    const e = w.id ? before.get(w.id) : undefined
+    return !!e && (e.name !== w.name || e.category_id !== w.category_id || e.sort !== w.sort)
+  })
+  const renamed = changed.filter((w) => before.get(w.id!)!.name !== w.name)
+  if (renamed.length)
+    must(await db().from('seo_client_services').upsert(renamed.map((w) => ({ id: w.id!, client_id: clientId, name: `~${w.id}`, category_id: before.get(w.id!)!.category_id, sort: before.get(w.id!)!.sort })), { onConflict: 'id' }), 'Saving services')
+  // 2. Final names, categories and order, in one request. If it fails, the parked names go back.
+  if (changed.length) {
+    const final = await db().from('seo_client_services').upsert(changed.map((w) => ({ id: w.id!, client_id: clientId, name: w.name, category_id: w.category_id, sort: w.sort })), { onConflict: 'id' })
+    if (final.error) {
+      if (renamed.length) await db().from('seo_client_services').upsert(renamed.map((w) => ({ id: w.id!, client_id: clientId, name: before.get(w.id!)!.name, category_id: before.get(w.id!)!.category_id, sort: before.get(w.id!)!.sort })), { onConflict: 'id' })
+      must(final, 'Saving services')
+    }
   }
   const added = wanted.filter((w) => !w.id).map((w) => ({ client_id: clientId, name: w.name, category_id: w.category_id, sort: w.sort }))
   if (added.length) must(await db().from('seo_client_services').insert(added), 'Adding services')
@@ -537,4 +553,48 @@ export async function saveAccount(siteId: string, raw: unknown): Promise<ClientA
       'Saving the account checklist',
     ) as AccountRow)
   return toAccount(row)
+}
+
+// ---- Delete a client (Angel, Nov 26) -------------------------------------------------------------------------
+// Only an Archived client, and only after typing its exact name. Every seo_ table row for the client goes with it
+// (all are "on delete cascade"; the Claude call log keeps its rows with no client, so costs still add up). Agency
+// rules (notes with no client) stay. Then the raw import files in Storage (<site id>/…) are removed.
+
+const IMPORT_BUCKET = 'seo-imports'
+
+
+async function countFor(table: string, clientId: string): Promise<number> {
+  const r = await db().from(table).select('id', { count: 'exact', head: true }).eq('client_id', clientId)
+  if (r.error) throw new DatabaseError(`Counting ${table}: ${r.error.message}`)
+  return r.count ?? 0
+}
+
+/** What deleting would remove (nothing deleted). */
+export async function checkDeleteClient(siteId: string): Promise<ClientDeleteCheck> {
+  const c = await clientRow(siteId)
+  if (!c) throw new ClientInputError('That client doesn’t exist.')
+  const [keywords, imports, pages, notes] = await Promise.all(['seo_keywords', 'seo_imports', 'seo_pages', 'seo_notes'].map((t) => countFor(t, c.id)))
+  return { name: c.name, archived: c.status === 'archived', keywords, imports, pages, notes }
+}
+
+/** Deletes an Archived client after its exact name was typed. Returns whether every raw file was removed too. */
+export async function deleteClient(siteId: string, typedName: unknown): Promise<{ filesRemoved: number; filesLeft: number }> {
+  const c = await clientRow(siteId)
+  if (!c) throw new ClientInputError('That client doesn’t exist (already deleted?).')
+  if (c.status !== 'archived') throw new ClientInputError('Archive the client first (Client setup › Status: Archived), then delete it.')
+  if (typeof typedName !== 'string' || typedName.trim() !== c.name.trim()) throw new ClientInputError(`Type the client’s name exactly (“${c.name}”) to delete it.`)
+  must(await db().from('seo_clients').delete().eq('id', c.id), 'Deleting the client')
+  // Raw files: <site id>/<import id>/<file>. Last, so a Storage hiccup never leaves half a client in the database.
+  let filesRemoved = 0
+  let filesLeft = 0
+  const folders = await db().storage.from(IMPORT_BUCKET).list(c.site_id, { limit: 1000 })
+  for (const f of folders.data ?? []) {
+    const files = await db().storage.from(IMPORT_BUCKET).list(`${c.site_id}/${f.name}`, { limit: 1000 })
+    const paths = (files.data ?? []).map((x) => `${c.site_id}/${f.name}/${x.name}`)
+    if (!paths.length) continue
+    const rm = await db().storage.from(IMPORT_BUCKET).remove(paths)
+    if (rm.error) filesLeft += paths.length
+    else filesRemoved += paths.length
+  }
+  return { filesRemoved, filesLeft }
 }

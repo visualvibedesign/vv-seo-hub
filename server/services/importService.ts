@@ -14,6 +14,7 @@ import { keywordKey, looksLikeAddress, parseCpc, parseKd, parseRole, parseVolume
 import type { DeleteImportCheck, ImportDifference, ImportPayload, ImportPreview, ImportRecord, ImportRow, NumberField } from '../../src/types/seo.js'
 import { db, DatabaseError, must, pagedRows } from '../clients/supabase.js'
 import { retireStale } from './autofillService.js'
+import type { SamsGuideAdded } from './samsGuideService.js'
 
 export class ImportInputError extends Error {}
 
@@ -270,7 +271,14 @@ export async function previewImport(raw: unknown): Promise<ImportPreview> {
 
 const safeFileName = (n: string) => n.replace(/[^\w.\- ]+/g, '_').replace(/\s+/g, '_').slice(0, 150) || 'import.csv'
 
-export async function commitImport(raw: unknown, file: { base64: string; type: string } | null): Promise<{ importId: string; preview: ImportPreview }> {
+/** The dry run plus the keyword keys it would create (whole-Sheet import: later tabs count them as found). */
+export async function previewImportKeys(raw: unknown): Promise<{ preview: ImportPreview; newKeys: string[] }> {
+  const pl = await plan(validate(raw))
+  return { preview: pl.preview, newKeys: pl.creates.map((c) => String(c.keyword_key)) }
+}
+
+/** opts.parentImportId: the .xlsx this tab came from (whole-Sheet import, migration 0015). */
+export async function commitImport(raw: unknown, file: { base64: string; type: string } | null, opts: { parentImportId?: string } = {}): Promise<{ importId: string; preview: ImportPreview }> {
   const p = validate(raw)
   const pl = await plan(p)
 
@@ -290,6 +298,7 @@ export async function commitImport(raw: unknown, file: { base64: string; type: s
         rows_added: pl.preview.newKeywords,
         rows_merged: pl.preview.existing,
         rows_skipped: pl.preview.skippedDuplicates,
+        ...(opts.parentImportId ? { parent_import_id: opts.parentImportId } : {}),
       })
       .select('id')
       .single(),
@@ -369,6 +378,9 @@ type ImportDbRow = {
   rows_skipped: number
   column_map: { totals?: { segment: string; volume: string }[] } | null
   storage_path: string | null
+  note: string | null
+  /** Undefined until migration 0015 runs. */
+  parent_import_id?: string | null
   created_at: string
 }
 
@@ -391,6 +403,8 @@ export async function listImports(siteId: string): Promise<ImportRecord[]> {
     rowsSkipped: r.rows_skipped,
     totals: r.column_map?.totals ?? [],
     hasFile: !!r.storage_path,
+    note: r.note,
+    parentImportId: r.parent_import_id ?? null,
     createdAt: r.created_at,
   }))
 }
@@ -417,19 +431,19 @@ async function importFor(siteId: string, importId: string) {
   if (!/^[0-9a-f-]{36}$/.test(importId)) throw new ImportInputError('That import doesn’t exist.')
   const clientId = await clientIdFor(siteId)
   const imp = must(
-    await db().from('seo_imports').select('id, file_name, storage_path').eq('id', importId).eq('client_id', clientId).maybeSingle(),
+    await db().from('seo_imports').select('id, file_name, storage_path, report, note, column_map').eq('id', importId).eq('client_id', clientId).maybeSingle(),
     'Loading the import',
-  ) as { id: string; file_name: string; storage_path: string | null } | null
+  ) as { id: string; file_name: string; storage_path: string | null; report: string; note: string | null; column_map: { added?: { code: string; name: string }[]; samsGuide?: SamsGuideAdded } | null } | null
   if (!imp) throw new ImportInputError('That import doesn’t exist (already deleted?).')
   return { clientId, imp }
 }
 
-/** Which keywords only came from this import, and which also came from others. */
-async function splitKeywords(importId: string) {
+/** Which keywords only came from these imports (one import, or an .xlsx with its tab imports), and which also came from others. */
+async function splitKeywords(importIds: string[]) {
   const own: { keyword_id: string }[] = []
   for (let from = 0; ; from += 1000) {
     const page = must(
-      await db().from('seo_keyword_sources').select('keyword_id').eq('import_id', importId).order('id').range(from, from + 999),
+      await db().from('seo_keyword_sources').select('keyword_id').in('import_id', importIds).order('id').range(from, from + 999),
       'Loading the import history',
     ) as { keyword_id: string }[]
     own.push(...page)
@@ -441,15 +455,40 @@ async function splitKeywords(importId: string) {
     const part = ids.slice(i, i + 200)
     // Paged: 200 keywords can have well over 1,000 history rows (PostgREST returns at most 1,000 per request).
     // Missing one would mark a shared keyword as "only from this import" and delete it.
-    for await (const r of pagedRows<{ keyword_id: string }>((from, to) => db().from('seo_keyword_sources').select('keyword_id').in('keyword_id', part).neq('import_id', importId).order('id').range(from, to), 'Checking other imports'))
+    for await (const r of pagedRows<{ keyword_id: string }>((from, to) => db().from('seo_keyword_sources').select('keyword_id').in('keyword_id', part).not('import_id', 'in', `(${importIds.join(',')})`).order('id').range(from, to), 'Checking other imports'))
       shared.add(r.keyword_id)
   }
   return { historyRows: own.length, remove: ids.filter((id) => !shared.has(id)), keep: ids.filter((id) => shared.has(id)) }
 }
 
+/** What a Sam's Guide import recorded as added (null = an older import that didn't record it). */
+async function samsGuideAdded(importId: string): Promise<SamsGuideAdded | null> {
+  const r = await db().from('seo_imports').select('column_map').eq('id', importId).maybeSingle()
+  return ((r.data as { column_map: { samsGuide?: SamsGuideAdded } | null } | null)?.column_map?.samsGuide) ?? null
+}
+
+/** Removes the matrix entries, then the cells it created if they're now empty, then the competitor names (same name only). */
+async function undoSamsGuide(clientId: string, a: SamsGuideAdded): Promise<void> {
+  for (const m of a.matrix) must(await db().from('seo_matrix_keywords').delete().eq('cell_id', m.cell_id).eq('keyword_id', m.keyword_id).eq('kind', m.kind), 'Removing matrix entries')
+  for (const cellId of a.cells) {
+    const left = await db().from('seo_matrix_keywords').select('keyword_id', { count: 'exact', head: true }).eq('cell_id', cellId)
+    if (left.error) throw new DatabaseError(`Checking the matrix: ${left.error.message}`)
+    if (!left.count) must(await db().from('seo_matrix_cells').delete().eq('id', cellId).eq('client_id', clientId), 'Removing matrix cells')
+  }
+  for (const x of a.competitors) must(await db().from('seo_competitors').delete().eq('client_id', clientId).eq('code', x.code).eq('name', x.name), 'Removing competitor names')
+}
+
+/** Tab imports that came from this .xlsx (whole-Sheet import). Empty for every other import. */
+async function childImports(importId: string): Promise<{ id: string; report: string; note: string | null }[]> {
+  const r = await db().from('seo_imports').select('id, report, note').eq('parent_import_id', importId)
+  if (r.error) return [] // before migration 0015: no tab imports
+  return r.data as { id: string; report: string; note: string | null }[]
+}
+
 export async function checkDeleteImport(siteId: string, importId: string): Promise<DeleteImportCheck> {
   const { imp } = await importFor(siteId, importId)
-  const { historyRows, remove, keep } = await splitKeywords(importId)
+  const children = await childImports(importId)
+  const { historyRows, remove, keep } = await splitKeywords([importId, ...children.map((x) => x.id)])
   let removedWithEdits = 0
   let removedInUse = 0
   for (let i = 0; i < remove.length; i += 200) {
@@ -464,16 +503,32 @@ export async function checkDeleteImport(siteId: string, importId: string): Promi
       inUse.add(r.keyword_id)
     removedInUse += inUse.size
   }
-  return { fileName: imp.file_name, historyRows, keywordsRemoved: remove.length, keywordsKept: keep.length, removedWithEdits, removedInUse, hasFile: !!imp.storage_path }
+  const all = [imp, ...children]
+  const sg = all.find((x) => x.report === 'sams_guide')
+  const sgNote = !sg
+    ? ''
+    : (sg === imp ? imp.column_map?.samsGuide : await samsGuideAdded(sg.id))
+      ? 'Sam’s Guide: the matrix primaries and backups, new matrix cells and competitor names it added are removed. Track, Later / Rejected statuses, pages and its note stay.'
+      : 'Sam’s Guide (older import): what it added to the matrix wasn’t recorded, so the matrix stays as it is.'
+  const notes = [...all.map((x) => (x.report === 'clusters' ? 'Pages added from the Clusters tab stay (only the import record goes).' : x.report === 'competitors' ? 'Competitor names this import added are removed.' : '')), sgNote].filter(Boolean)
+  return { fileName: imp.file_name, historyRows, keywordsRemoved: remove.length, keywordsKept: keep.length, removedWithEdits, removedInUse, hasFile: !!imp.storage_path, tabImports: children.length, notes: [...new Set(notes)] }
 }
 
 export async function deleteImport(siteId: string, importId: string): Promise<{ keywordsRemoved: number; fileRemoved: boolean }> {
-  const { imp } = await importFor(siteId, importId)
-  const { remove } = await splitKeywords(importId)
+  const { imp, clientId } = await importFor(siteId, importId)
+  // An .xlsx goes with its tab imports: each one first, by its own rules (keywords shared between tabs go with the last one).
+  let childRemoved = 0
+  for (const child of await childImports(importId)) childRemoved += (await deleteImport(siteId, child.id)).keywordsRemoved
+  const { remove } = await splitKeywords([importId])
+  // 0. Sam's Guide: undo what it added to the matrix + competitors (only entries still exactly as it saved them)
+  if (imp.report === 'sams_guide' && imp.column_map?.samsGuide) await undoSamsGuide(clientId, imp.column_map.samsGuide)
   // 1. Keywords that only came from this import (their history rows, matrix and cluster links go with them)
   for (let i = 0; i < remove.length; i += 200) {
     must(await db().from('seo_keywords').delete().in('id', remove.slice(i, i + 200)), 'Removing keywords')
   }
+  // 1b. A Competitors tab import: the names it added go too (only while they still have the name it saved)
+  if (imp.report === 'competitors')
+    for (const a of imp.column_map?.added ?? []) must(await db().from('seo_competitors').delete().eq('client_id', clientId).eq('code', a.code).eq('name', a.name), 'Removing competitor names')
   // 2. The import itself: its remaining history rows (on keywords that stay) go with it
   must(await db().from('seo_imports').delete().eq('id', imp.id), 'Removing the import')
   // 2b. Open auto-fill lists that pointed to the removed keywords are now stale: retire them (kept, marked replaced)
@@ -484,5 +539,5 @@ export async function deleteImport(siteId: string, importId: string): Promise<{ 
     const rm = await db().storage.from(BUCKET).remove([imp.storage_path])
     fileRemoved = !rm.error
   }
-  return { keywordsRemoved: remove.length, fileRemoved }
+  return { keywordsRemoved: remove.length + childRemoved, fileRemoved }
 }

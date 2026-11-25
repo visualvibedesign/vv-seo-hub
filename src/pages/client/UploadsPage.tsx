@@ -10,6 +10,7 @@ import { useAutofill } from '../../hooks/useAutofill'
 import Day1Autofill from '../../components/autofill/Day1Autofill'
 import ErrorBoundary from '../../components/ui/ErrorBoundary'
 import Day2Autofill from '../../components/autofill/Day2Autofill'
+import ClientSheetImport from '../../components/import/ClientSheetImport'
 import { ApiError } from '../../lib/api'
 import { areaState, CORE_ACCOUNT_KINDS } from '../../lib/clientSetup'
 import { guessFilter, REPORTS, sourceOf } from '../../lib/importRules'
@@ -84,6 +85,11 @@ export default function UploadsPage() {
           </div>
         </div>
       )}
+      {day.live && day.key === 'day2' && (
+        <ErrorBoundary name="Client Sheet import" resetKey={day.key}>
+          <ClientSheetImport client={c} />
+        </ErrorBoundary>
+      )}
     </>
   )
 }
@@ -96,7 +102,7 @@ function Day1Needs({ client: c }: { client: ClientDetail }) {
   const a1 = c.areas.find((a) => a.code === 'A1')
   const pending = c.accounts.filter((a) => CORE_ACCOUNT_KINDS.includes(a.kind) && a.status === 'pending').length
   const items = [
-    { title: 'Services & areas', how: 'Home + S1–S3 with their services, A1 (and A2 / A3 or N/A)', done: servicesOk && !!a1?.name, link: `/clients/${c.siteId}/edit`, label: 'Edit client' },
+    { title: 'Services & areas', how: 'Home + S1–S3 with their services, A1 (and A2 / A3 or N/A)', done: servicesOk && !!a1?.name, link: `/clients/${c.siteId}/strategy/setup`, label: 'Client setup' },
     { title: 'Account checklist', how: 'Search Console, GA4, GBP, Semrush, Whitespark, Clarity', done: pending === 0, link: `/clients/${c.siteId}`, label: 'Overview › Accounts' },
   ]
   const n = items.filter((i) => i.done).length
@@ -472,7 +478,7 @@ function NeedsYou({ client: c, day }: { client: ClientDetail; day: string }) {
         <ul className="m-0 flex list-none flex-col p-0">
           {items.map((i) => (
             <li key={i.text} className="border-0 border-t border-solid border-[#f0d894] dark:border-vv-line">
-              <Link to={`/clients/${c.siteId}/${i.to}`} className="flex items-center gap-3 py-3.5 text-[16px] text-vv-ink no-underline hover:underline">
+              <Link to={`/clients/${c.siteId}/strategy/${i.to}`} className="flex items-center gap-3 py-3.5 text-[16px] text-vv-ink no-underline hover:underline">
                 <span aria-hidden="true" className="h-2.5 w-2.5 flex-none rounded-full bg-[#d39b16]" />
                 {i.text}
               </Link>

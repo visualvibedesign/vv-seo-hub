@@ -1,20 +1,21 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link, NavLink, useLocation, useMatch, useNavigate } from 'react-router'
 import { useClients } from '../../hooks/useClients'
-import { CLIENT_GROUPS, CLIENT_TOP, HUB_SECTIONS, type ClientGroup, type ClientSection } from '../../lib/clientSetup'
-import { stepDay, stepLabel } from '../../lib/guide'
+import { clientPath, HUB_SECTIONS, OVERVIEW_SECTIONS, STRATEGY_GROUPS, STRATEGY_TOP, strategyPath, type ClientGroup, type ClientSection } from '../../lib/clientSetup'
+import { stepDay, stepLabel, strategyCurrent } from '../../lib/guide'
 import type { ClientSummary } from '../../types/seo'
 import Logo from '../ui/Logo'
 import NavIcon, { type NavIconName } from '../ui/NavIcon'
 import ThemeToggle from '../ui/ThemeToggle'
 
 // Left navigation (design: docs/design/Sidebar.png, Client.png). Same colors, Switch app and phone Menu as HQ.
-// Two modes:
-//   - Hub (no client open): Overview · All clients · Templates · Automation, + Add client. Clients are
-//     NEVER listed here (50+ clients): they live on All clients and in the client switcher.
-//   - Client (/clients/{site id}/…): ← All clients, the client switcher (with search), the top items, then
-//     the groups KEYWORDS / RESULTS / PAGES / LOCAL / SITE with dividers; each group folds open/closed
-//     (remembered in this browser).
+// Modes:
+//   - Hub (no client open): Overview · Clients · Templates · Settings, + Add client. Clients are NEVER listed
+//     here (50+ clients): they live on Clients and in the client switcher.
+//   - Client Overview (/clients/{site id}, /baseline, /results, /site, /notes…): ← All clients, the switcher,
+//     the Overview items, and the Strategy Builder button.
+//   - Strategy Builder (/clients/{site id}/strategy/…): ← Client overview, the switcher, Strategy home, guide,
+//     uploads, then one group per Sam day; each folds (remembered in this browser), the current day is always open.
 // Collapse-to-icons (desktop) is kept (Angel, Nov 25): icons only show in that mode, like a rail.
 
 // HQ's Apps page (the one-login portal). On localhost: HQ's dev server (cookies ignore ports, so you
@@ -32,7 +33,13 @@ const ICON: Record<string, NavIconName> = {
   clients: 'projects',
   templates: 'sops',
   automation: 'automations',
+  settings: 'settings',
   overview: 'overview',
+  baseline: 'reports',
+  results: 'review',
+  'site-check': 'seo',
+  strategy: 'plan',
+  setup: 'settings',
   guide: 'plan',
   uploads: 'queue',
   matrix: 'seo',
@@ -69,7 +76,9 @@ function store(key: string, value: string) {
 }
 
 export default function Sidebar() {
-  const clients = (useClients().data ?? []).filter((c) => c.status !== 'archived')
+  const everyone = useClients().data ?? []
+  // The switcher lists active + paused clients; an archived client still shows its own name when it's open.
+  const clients = everyone.filter((c) => c.status !== 'archived')
   const [menuOpen, setMenuOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => readStored(COLLAPSE_KEY, false, (r) => r === '1'))
   const [phone, setPhone] = useState(() => window.matchMedia(PHONE).matches)
@@ -149,7 +158,7 @@ export default function Sidebar() {
           menuOpen ? 'phone:flex phone:max-h-[calc(100vh-72px)] phone:w-full phone:flex-col phone:gap-4 phone:overflow-y-auto phone:pb-1.5 phone:pt-3.5' : 'phone:hidden'
         }`}
       >
-        {openId ? <ClientNav siteId={openId} clients={clients} mini={mini} onGo={close} /> : <HubNav mini={mini} onGo={close} />}
+        {openId ? <ClientNav siteId={openId} clients={clients} current={everyone.find((c) => c.siteId === openId)} mini={mini} onGo={close} /> : <HubNav mini={mini} onGo={close} />}
 
         {/* Switch app: same as HQ's sidebar: one button pinned to the bottom (in the Menu on phones) that
             opens HQ's Apps page and stays signed in. */}
@@ -232,10 +241,15 @@ function HubNav({ mini, onGo }: { mini: boolean; onGo: () => void }) {
   )
 }
 
-/** A client open: back link, client switcher, top items, then the foldable groups. */
-function ClientNav({ siteId, clients, mini, onGo }: { siteId: string; clients: ClientSummary[]; mini: boolean; onGo: () => void }) {
-  const base = `/clients/${siteId}`
-  const current = clients.find((c) => c.siteId === siteId)
+/**
+ * A client open. Two areas (Angel, Nov 26), picked from the address:
+ *   - Overview (/clients/{id}, /baseline, /results, /site, /notes…): results + quick access, and the Strategy Builder button.
+ *   - Strategy Builder (/clients/{id}/strategy/…): Strategy home, guide, uploads, then one foldable group per Sam day.
+ */
+function ClientNav({ siteId, clients, current, mini, onGo }: { siteId: string; clients: ClientSummary[]; current?: ClientSummary; mini: boolean; onGo: () => void }) {
+  const base = clientPath(siteId)
+  const { pathname } = useLocation()
+  const inStrategy = pathname === strategyPath(siteId) || pathname.startsWith(`${strategyPath(siteId)}/`)
   const [folded, setFolded] = useState<string[]>(() => readStored(FOLDED_KEY, [], (r) => (JSON.parse(r) as unknown[]).filter((x): x is string => typeof x === 'string')))
   const toggleGroup = (key: string) =>
     setFolded((f) => {
@@ -243,18 +257,21 @@ function ClientNav({ siteId, clients, mini, onGo }: { siteId: string; clients: C
       store(FOLDED_KEY, JSON.stringify(next))
       return next
     })
+  const done = new Set(current?.guide.doneSteps ?? [])
+  const strategyNow = strategyCurrent((n) => done.has(n))
+  const back = inStrategy ? { to: base, label: 'Client overview' } : { to: '/clients', label: 'All clients' }
 
   return (
     <>
       <div className="flex flex-col gap-2">
         <Link
-          to="/clients"
+          to={back.to}
           onClick={onGo}
-          title={mini ? 'All clients' : undefined}
+          title={mini ? back.label : undefined}
           className={`flex min-h-8 items-center gap-1.5 rounded-[14px] text-[15px] font-medium text-vv-body no-underline hover:text-vv-purple-deep ${mini ? 'justify-center' : 'px-3'}`}
         >
           <span aria-hidden="true">←</span>
-          <span className={mini ? 'sr-only' : ''}>All clients</span>
+          <span className={mini ? 'sr-only' : ''}>{back.label}</span>
         </Link>
         {mini ? (
           <Link to={base} onClick={onGo} title={current?.name ?? 'Client'} className="mx-auto no-underline">
@@ -265,29 +282,55 @@ function ClientNav({ siteId, clients, mini, onGo }: { siteId: string; clients: C
         )}
       </div>
 
-      <div className="flex flex-col gap-1">
-        {CLIENT_TOP.map((s) => (
-          <Item
-            key={s.key}
-            to={s.path ? `${base}/${s.path}` : base}
-            end
-            label={s.label}
-            iconKey={s.key}
-            mini={mini}
-            tag={s.key === 'guide' && current ? stepDay(current.guide.current) : sidebarTag(s)}
-            onGo={onGo}
-          />
-        ))}
-      </div>
-
-      {CLIENT_GROUPS.map((g) => (
-        <Group key={g.key} group={g} base={base} mini={mini} open={mini || !folded.includes(g.key)} onToggle={() => toggleGroup(g.key)} onGo={onGo} />
-      ))}
+      {inStrategy ? (
+        <>
+          {!mini && <span className="-mb-4 px-4 text-xs font-bold uppercase tracking-[0.18em] text-vv-purple-deep">Strategy Builder</span>}
+          <div className="flex flex-col gap-1">
+            {STRATEGY_TOP.map((s) => (
+              <Item
+                key={s.key}
+                to={clientPath(siteId, s.path)}
+                end
+                label={s.label}
+                iconKey={s.key}
+                mini={mini}
+                tag={s.key === 'guide' && current ? stepDay(strategyNow) : sidebarTag(s)}
+                onGo={onGo}
+              />
+            ))}
+          </div>
+          {STRATEGY_GROUPS.map((g) => (
+            <Group key={g.key} group={g} siteId={siteId} mini={mini} open={mini || g.step === strategyNow || !folded.includes(g.key)} onToggle={() => toggleGroup(g.key)} onGo={onGo} />
+          ))}
+          <div className="-mt-2 flex flex-col gap-1 border-0 border-t border-solid border-vv-field-line pt-3">
+            <Item to={clientPath(siteId, 'notes')} end label="Notes & links" iconKey="notes" mini={mini} onGo={onGo} />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-col gap-1">
+            {OVERVIEW_SECTIONS.map((s) => (
+              <Item key={s.key} to={clientPath(siteId, s.path)} end label={s.label} iconKey={s.key} mini={mini} tag={sidebarTag(s)} onGo={onGo} />
+            ))}
+          </div>
+          <Link
+            to={strategyPath(siteId)}
+            onClick={onGo}
+            title={mini ? 'Strategy Builder' : undefined}
+            aria-label={mini ? 'Strategy Builder' : undefined}
+            className={`box-border inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full bg-vv-green text-[16px] font-bold text-vv-on-green no-underline hover:text-vv-on-green ${
+              mini ? 'mx-auto h-[50px] w-[50px] px-0' : 'mx-1'
+            }`}
+          >
+            {mini ? <NavIcon name="plan" /> : <>Strategy Builder <span aria-hidden="true">→</span></>}
+          </Link>
+        </>
+      )}
     </>
   )
 }
 
-function Group({ group: g, base, mini, open, onToggle, onGo }: { group: ClientGroup; base: string; mini: boolean; open: boolean; onToggle: () => void; onGo: () => void }) {
+function Group({ group: g, siteId, mini, open, onToggle, onGo }: { group: ClientGroup; siteId: string; mini: boolean; open: boolean; onToggle: () => void; onGo: () => void }) {
   const listId = useId()
   return (
     <div className="-mt-2 flex flex-col gap-1 border-0 border-t border-solid border-vv-field-line pt-3">
@@ -308,7 +351,7 @@ function Group({ group: g, base, mini, open, onToggle, onGo }: { group: ClientGr
       {open && (
         <div id={listId} className="flex flex-col gap-1">
           {g.items.map((s) => (
-            <Item key={s.key} to={`${base}/${s.path}`} end label={s.label} iconKey={s.key} mini={mini} tag={sidebarTag(s)} onGo={onGo} />
+            <Item key={s.key} to={clientPath(siteId, s.path)} end label={s.label} iconKey={s.key} mini={mini} tag={sidebarTag(s)} onGo={onGo} />
           ))}
         </div>
       )}
@@ -364,7 +407,7 @@ function ClientSwitcher({ siteId, current, clients, onGo }: { siteId: string; cu
   const go = (id: string) => {
     setOpen(false)
     setQ('')
-    if (id !== siteId) navigate(`/clients/${id}${rest === '/edit' ? '' : rest}`)
+    if (id !== siteId) navigate(`/clients/${id}${rest}`) // same page, other client (…/strategy/keywords → its Matrix)
     onGo()
   }
 

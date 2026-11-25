@@ -23,27 +23,39 @@ const router = createBrowserRouter([
           { path: '/clients', lazy: page(() => import('./pages/ClientsPage')) },
           { path: '/clients/new', lazy: page(() => import('./pages/AddClientPage')) },
           { path: '/clients/import', lazy: page(() => import('./pages/AddClientsCsvPage')) },
-          { path: '/clients/:siteId/edit', lazy: page(() => import('./pages/ClientFormPage')) },
-          // Hub pages not built yet (Templates: phase 1, Automation: phase 5)
           { path: '/templates', lazy: page(() => import('./pages/TemplatesPage')) },
           { path: '/templates/new', lazy: page(() => import('./pages/TemplateEditorPage')) },
           { path: '/templates/:id/edit', lazy: page(() => import('./pages/TemplateEditorPage')) },
-          { path: '/automation', lazy: page(() => import('./pages/HubComingSoonPage')) },
-          // Client workspace: /clients/{site id} is the address the agency hub + Vibe SEO plugin link to.
-          // Its sections are in the sidebar (src/lib/clientSetup.ts CLIENT_TOP + CLIENT_GROUPS).
+          // Settings: Industries, Claude usage, Automation (phase 5 card). /automation is now a Settings card.
+          { path: '/settings', lazy: page(() => import('./pages/SettingsPage')) },
+          { path: '/automation', element: <Navigate to="/settings" replace /> },
+          // Client setup (Strategy Builder › Day 1) is the client form: its own page frame (title, breadcrumb, save bar).
+          { path: '/clients/:siteId/strategy/setup', lazy: page(() => import('./pages/ClientFormPage')) },
+          // A client: /clients/{site id} = the client Overview (results + quick access; the address the agency hub and
+          // Vibe SEO plugin link to). /clients/{site id}/strategy/… = the Strategy Builder. See src/lib/clientSetup.ts.
           {
             path: '/clients/:siteId',
             lazy: page(() => import('./components/layout/ClientLayout')),
             children: [
+              // Overview area
               { index: true, lazy: page(() => import('./pages/client/OverviewPage')) },
-              { path: 'guide', lazy: page(() => import('./pages/client/GuidePage')) },
-              { path: 'uploads', lazy: page(() => import('./pages/client/UploadsPage')) },
-              { path: 'keywords/import', lazy: page(() => import('./pages/client/ImportPage')) },
-              { path: 'keywords/database', lazy: page(() => import('./pages/client/DatabasePage')) },
-              { path: 'keywords/clusters', lazy: page(() => import('./pages/client/ClustersPage')) },
-              { path: 'keywords/*', lazy: page(() => import('./pages/client/ComingSoonPage')) },
-              { path: 'keywords', lazy: page(() => import('./pages/client/MatrixPage')) },
-              { path: ':tab', lazy: page(() => import('./pages/client/ComingSoonPage')) },
+              { path: 'baseline', lazy: page(() => import('./pages/client/BaselinePage')) },
+              { path: 'results', lazy: page(() => import('./pages/client/ResultsPage')) },
+              { path: 'site-check', lazy: page(() => import('./pages/client/SiteCheckPage')) },
+              { path: 'notes', lazy: page(() => import('./pages/client/NotesPage')) },
+              { path: 'site', lazy: page(() => import('./pages/client/ConnectionPage')) },
+              { path: 'conversions', lazy: page(() => import('./pages/client/ComingSoonPage')) },
+              // Strategy Builder
+              { path: 'strategy', lazy: page(() => import('./pages/client/StrategyHomePage')) },
+              { path: 'strategy/guide', lazy: page(() => import('./pages/client/GuidePage')) },
+              { path: 'strategy/uploads', lazy: page(() => import('./pages/client/UploadsPage')) },
+              { path: 'strategy/keywords', lazy: page(() => import('./pages/client/MatrixPage')) },
+              { path: 'strategy/keywords/import', lazy: page(() => import('./pages/client/ImportPage')) },
+              { path: 'strategy/keywords/database', lazy: page(() => import('./pages/client/DatabasePage')) },
+              { path: 'strategy/keywords/clusters', lazy: page(() => import('./pages/client/ClustersPage')) },
+              { path: 'strategy/*', lazy: page(() => import('./pages/client/ComingSoonPage')) },
+              // Old addresses (edit, guide, uploads, keywords…, reports, review…) → their new place, query kept.
+              { path: '*', lazy: page(() => import('./pages/client/LegacyRedirect')) },
             ],
           },
         ],

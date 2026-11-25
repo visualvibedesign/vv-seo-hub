@@ -169,7 +169,7 @@ export interface SiteIdCheck {
 // ---- CSV imports (phase 1, step 4) ---------------------------------------------------
 
 export type ImportSource = 'kp' | 'semrush' | 'sheet'
-export type ImportReport = 'kp_ideas' | 'kp_volumes' | 'keyword_magic' | 'keyword_overview' | 'keyword_gap' | 'master_db'
+export type ImportReport = 'kp_ideas' | 'kp_volumes' | 'keyword_magic' | 'keyword_overview' | 'keyword_gap' | 'master_db' | 'clusters' | 'sams_guide' | 'competitors' | 'client_sheet'
 
 /** Fields a CSV column can be matched to. */
 export type ImportField = 'keyword' | 'volume' | 'kd' | 'cpc' | 'intent' | 'segment' | 'role' | 'service' | 'kp'
@@ -249,6 +249,9 @@ export interface ImportRecord {
   rowsSkipped: number
   totals: { segment: string; volume: string }[]
   hasFile: boolean
+  note: string | null
+  /** The .xlsx this tab import came from (whole-Sheet import). */
+  parentImportId: string | null
   createdAt: string
 }
 
@@ -265,6 +268,10 @@ export interface DeleteImportCheck {
   /** of the removed: ones used in the matrix or clusters */
   removedInUse: number
   hasFile: boolean
+  /** An .xlsx: how many tab imports go with it. */
+  tabImports: number
+  /** Plain-English extras for the confirm (e.g. pages from a Clusters tab stay). */
+  notes: string[]
 }
 
 // ---- Keyword database (phase 1, step 5) ----------------------------------------------
@@ -551,4 +558,128 @@ export interface SamsGuidePlan {
   competitors: { code: string; name: string | null; written: string; action: string }[]
   skipped: { line: number; section: string; why: string }[]
   notUnderstood: { line: number; section: string; text: string }[]
+}
+
+// ---- Notes & links (redesign step 7, migration 0014) ------------------------------------------------------
+
+export type NoteKind = 'rule' | 'decision' | 'note'
+
+export interface ClientNote {
+  id: string
+  kind: NoteKind
+  body: string
+  author: string | null
+  /** Guide step index (0 = Day 1 … 8 = Days 8–9, 9 = monthly). null = no day. */
+  day: number | null
+  /** No client: an agency rule, shown on every client. */
+  agency: boolean
+  createdAt: string
+}
+
+/** A link that isn't an account (the Google Sheet, ClickUp lists…). Links only, never logins. */
+export interface ClientLink {
+  id: string
+  label: string
+  url: string
+  note: string | null
+  sort: number
+}
+
+export interface NotesState {
+  notes: ClientNote[]
+  links: ClientLink[]
+  /** The old one-box notes (Edit client → Notes), shown as "Earlier notes" until moved. */
+  earlier: string | null
+}
+
+// ---- Whole client Sheet (.xlsx) import (migration 0015, docs/client-sheet-import-plan.md) ----------------------
+
+export type SheetTabKind = 'master_db' | 'sams_guide' | 'clusters' | 'competitors' | 'unused'
+
+/** One name from a Competitors tab. key = what Angel ticks to approve a new one. */
+export interface SheetCompetitor {
+  key: string
+  written: string
+  name: string | null
+  code: string | null
+  action: string
+  /** New name with a free code: saved only if ticked. */
+  approvable: boolean
+}
+
+export interface SheetClusterPage {
+  category: string
+  name: string
+  url: string | null
+  priority: 'high' | 'medium' | 'low' | null
+  status: PageStatus
+  primary: string | null
+  keywords: number
+}
+
+export interface SheetTabPlan {
+  name: string
+  kind: SheetTabKind
+  /** How it was recognised, or why it isn't used. */
+  why: string
+  rows: number
+  /** Set when this tab won't be applied (the reason). */
+  blocked: string | null
+  masterDb?: ImportPreview
+  samsGuide?: SamsGuidePlan
+  clusters?: { pages: SheetClusterPage[]; unmatched: { page: string; role: string; keyword: string }[]; onTwoPages: { keyword: string; kept: string; skipped: string }[] }
+  competitors?: SheetCompetitor[]
+}
+
+/** The whole-Sheet dry run. Nothing is saved until Apply. Tabs apply in this order: Master DB, Sam's Guide, Clusters, Competitors. */
+/** Whose Sheet is it? matches = false → a red warning, and Apply needs “Yes, it’s for this client”. */
+export interface SheetOwner {
+  matches: boolean
+  /** The business the Sheet seems to be about (when it isn’t this client). */
+  otherName: string | null
+  reasons: string[]
+}
+
+export interface SheetPlan {
+  fileName: string
+  owner: SheetOwner
+  tabs: SheetTabPlan[]
+  /** Keywords Sam's Guide Top 10 and the Clusters tab put on different pages (Clusters wins). */
+  crossCheck: { keyword: string; samsGuide: string; clusters: string }[]
+}
+
+export interface SheetApplyResult {
+  importId: string | null
+  tabs: { name: string; kind: SheetTabKind; status: 'applied' | 'skipped' | 'failed' | 'not_run'; message: string }[]
+}
+
+// ---- Settings › Claude usage (from seo_ai_log, migration 0006; estimates at call time) ---------------------------
+
+export interface AiUsageSum {
+  calls: number
+  failed: number
+  costUsd: number
+  inputTokens: number
+  outputTokens: number
+}
+
+export interface AiUsage {
+  /** "2026-11" (UTC) */
+  thisMonth: string
+  total: AiUsageSum
+  /** Newest first, up to 12. */
+  months: (AiUsageSum & { month: string })[]
+  tasks: (AiUsageSum & { task: string })[]
+  /** siteId null = the client was deleted (its calls still count). */
+  clients: { siteId: string | null; name: string; month: AiUsageSum; all: AiUsageSum; lastAt: string }[]
+}
+
+/** What deleting a client would remove (Client setup › Delete client; nothing deleted). */
+export interface ClientDeleteCheck {
+  name: string
+  archived: boolean
+  keywords: number
+  imports: number
+  pages: number
+  notes: number
 }

@@ -64,7 +64,16 @@ function nameFromPath(path: string): string {
   return words ? words[0].toUpperCase() + words.slice(1) : path
 }
 
-export async function importClustersCsv(siteId: string, csvText: string, commit: boolean): Promise<ClusterImportResult> {
+/**
+ * Whole-Sheet import (migration 0015): pretendKeys = keyword keys an earlier tab in the same file will add (dry run only,
+ * so they count as found); record = save an import row linked to the .xlsx, with this tab's CSV as its raw file.
+ */
+export interface ClusterImportOptions {
+  pretendKeys?: Set<string>
+  record?: { parentImportId: string; fileName: string; bytes: Buffer }
+}
+
+export async function importClustersCsv(siteId: string, csvText: string, commit: boolean, opts: ClusterImportOptions = {}): Promise<ClusterImportResult> {
   const c = await clientRow(siteId)
   if (!c) throw new ClusterInputError('That client doesn’t exist.')
 
@@ -128,7 +137,8 @@ export async function importClustersCsv(siteId: string, csvText: string, commit:
       const kw = cleanListItem(raw)
       if (!kw) return
       if (role !== 'primary' && isIdea(kw)) return void p.ideas.push(kw)
-      const id = byKey.get(keywordKey(kw)) ?? null
+      const key = keywordKey(kw)
+      const id = byKey.get(key) ?? (!commit && opts.pretendKeys?.has(key) ? `new:${key}` : null)
       if (!id) {
         unmatched.push({ page: name, role, keyword: kw })
         if (role === 'primary') p.ideas.unshift(`Primary (suggested, no keyword data yet): ${kw}`)
@@ -171,6 +181,20 @@ export async function importClustersCsv(siteId: string, csvText: string, commit:
             await db().from('seo_page_keywords').insert(p.keywords.map((k, i) => ({ keyword_id: k.id, page_id: page.id, role: k.role, sort: i }))),
             `Linking keywords to “${p.name}”`,
           )
+      }
+      if (opts.record) {
+        const r = opts.record
+        const imp = must(
+          await db()
+            .from('seo_imports')
+            .insert({ client_id: c.id, source: 'sheet', report: 'clusters', file_name: r.fileName, rows_total: pages.length, rows_added: pages.length, note: `Clusters tab: ${pages.length} pages added. Deleting this import keeps the pages.`, parent_import_id: r.parentImportId })
+            .select('id')
+            .single(),
+          'Saving the import',
+        ) as { id: string }
+        const path = `${c.site_id}/${imp.id}/${r.fileName.replace(/[^\w.-]+/g, '_').slice(0, 120) || 'clusters.csv'}`
+        const up = await db().storage.from('seo-imports').upload(path, r.bytes, { contentType: 'text/csv', upsert: false })
+        if (!up.error) await db().from('seo_imports').update({ storage_path: path, file_size: r.bytes.length }).eq('id', imp.id)
       }
     } catch (err) {
       // Undo only what this import just added (its own new pages; links go with them), so it can simply run again.

@@ -37,7 +37,7 @@ export default function MatrixPage() {
           <button type="button" className={BTN_GHOST} disabled={!tracked.length} onClick={() => downloadTracked(c, tracked)} title={tracked.length ? undefined : 'No keyword has Track on yet'}>
             Export tracked list
           </button>
-          <Link to={`/clients/${c.siteId}/keywords/import`} className={BTN_LIME}>
+          <Link to={`/clients/${c.siteId}/strategy/keywords/import`} className={BTN_LIME}>
             Upload CSVs
           </Link>
         </HeaderTools>
@@ -348,7 +348,7 @@ function DatabaseSummary({ client: c, keywords, pending }: { client: ClientDetai
         <h2 id="mx-db" className={CARD_TITLE}>
           Database
         </h2>
-        <Link to={`/clients/${c.siteId}/keywords/database`} className="text-[15px] font-semibold text-vv-purple-deep underline">
+        <Link to={`/clients/${c.siteId}/strategy/keywords/database`} className="text-[15px] font-semibold text-vv-purple-deep underline">
           Open the database ›
         </Link>
       </div>

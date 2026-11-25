@@ -8,6 +8,7 @@ import { useClient, useSaveClient } from '../hooks/useClients'
 import { ApiError } from '../lib/api'
 import { domainName } from '../lib/autofillRules'
 import { IndustrySelect } from '../components/client/IndustryPicker'
+import DeleteClient from '../components/client/DeleteClient'
 import { BTN_GHOST, BTN_LIME, CARD, CARD_TITLE, FIELD, LABEL } from '../lib/ui'
 import type { ClientDetail, ClientStatus } from '../types/seo'
 
@@ -46,6 +47,7 @@ function EditForm({ existing }: { existing: ClientDetail }) {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    if (save.isPending) return // one save at a time
     setError('')
     if (!f.name.trim()) return setError('Add the client’s name.')
     const problem = servicesProblem(f)
@@ -60,13 +62,14 @@ function EditForm({ existing }: { existing: ClientDetail }) {
         ...(brandWords.length || existing.brandWords.length ? { brandWords } : {}),
       }
       const res = await save.mutateAsync({ client: { ...toInput(f), ...words }, siteId: existing.siteId })
-      navigate(`/clients/${res.siteId}`, { replace: true })
+      navigate(`/clients/${res.siteId}/strategy`, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError && err.detail ? err.detail : 'Couldn’t save. Check your connection and try again.')
     }
   }
 
   return (
+    <div className="flex flex-col gap-6">
     <form onSubmit={submit} noValidate className="flex flex-col gap-6">
       <span className="text-[15px] text-vv-muted">
         <Link to="/clients" className="text-vv-muted no-underline hover:text-vv-purple-deep">
@@ -76,11 +79,15 @@ function EditForm({ existing }: { existing: ClientDetail }) {
         <Link to={`/clients/${existing.siteId}`} className="text-vv-muted no-underline hover:text-vv-purple-deep">
           {existing.name}
         </Link>{' '}
-        <span aria-hidden="true">›</span> <strong className="text-vv-ink">Edit</strong>
+        <span aria-hidden="true">›</span>{' '}
+        <Link to={`/clients/${existing.siteId}/strategy`} className="text-vv-muted no-underline hover:text-vv-purple-deep">
+          Strategy Builder
+        </Link>{' '}
+        <span aria-hidden="true">›</span> <strong className="text-vv-ink">Day 1 · Setup › Client setup</strong>
       </span>
       <header className="flex flex-wrap items-end justify-between gap-5">
         <h1 className="m-0 font-display text-[50px] font-semibold leading-none tracking-[-0.02em] phone:text-[36px] phone-sm:text-[32px]">
-          Edit <em className="font-medium text-vv-purple">client.</em>
+          Client <em className="font-medium text-vv-purple">setup.</em>
         </h1>
         <HeaderTools />
       </header>
@@ -177,6 +184,13 @@ function EditForm({ existing }: { existing: ClientDetail }) {
           Notes
         </h2>
         <TextArea label="Notes about this client" value={f.notes} onChange={(v) => set('notes', v)} />
+        <p className="m-0 text-[13px] text-vv-muted">
+          New notes go in{' '}
+          <Link to={`/clients/${existing.siteId}/notes`} className="font-semibold text-vv-purple-deep">
+            Notes &amp; links
+          </Link>{' '}
+          (tagged Rule, Decision or Note). Text here shows there as “Earlier notes”, with a Move to notes button.
+        </p>
       </section>
 
       {error && (
@@ -194,11 +208,13 @@ function EditForm({ existing }: { existing: ClientDetail }) {
             'Save changes'
           )}
         </button>
-        <Link to={`/clients/${existing.siteId}`} className={BTN_GHOST}>
+        <Link to={`/clients/${existing.siteId}/strategy`} className={BTN_GHOST}>
           Cancel
         </Link>
       </div>
     </form>
+    <DeleteClient client={existing} />
+    </div>
   )
 }
 

@@ -35,8 +35,8 @@ SEO Hub phases 1–4 are built first. The site-connection parts (Connect site, c
 | --- | --- | --- | --- | --- |
 | 0 | One-login portal | Visual Vibe HQ | — | Done (SEO Hub card closed for now) |
 | A | Ask Alexia | Slack | — | Message ready |
-| 1 | Clients, keywords, templates, guide, uploads + auto-fill | SEO Hub | 1–2 | Steps 1–4 built locally; **redo to match the design** |
-| 2 | Baseline, reports, Day 10 review (**without** the site connection) | SEO Hub | 3, 10 | |
+| 1 | Clients, keywords, templates, guide, uploads + auto-fill | SEO Hub | 1–2 | **Built** (redesign + Overview / Strategy Builder split, Settings); merged to `main` locally Nov 26; checklist `docs/phase-1-checklist.md` |
+| 2 | Baseline, reports, Day 10 review (**without** the site connection) | SEO Hub | 3, 10 | **Plan ready:** `docs/phase-2-plan.md` + SQL 0016 draft (not run) |
 | 3 | Pages: sitemap, hotspots, site plan, page briefs | SEO Hub | 5–6 | |
 | 4 | GBP check, GBP care, links | SEO Hub | 4, 7, 8–9 | |
 | P0 | Set up the Vibe SEO repo from 1.2.0 | Vibe SEO | — | After phase 4 |

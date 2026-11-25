@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Client Overview · Anassa</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f8f5ff}
+a{color:#5b3fd0}a:hover{color:#432bb0}
+</style>
+</helmet>
+<div style="background: linear-gradient(180deg,#f8f5ff 0%,#fdf3f8 100%); min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #1d2327; font-size: 14px">
+<div style="max-width: 1360px; margin: 0 auto; padding: 28px 32px 48px; display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: flex-end">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
+<div style="font-size: 13px; color: #50575e">Clients › Anassa Wax &amp; Beauty › <strong style="color: #1d2327">Overview</strong></div>
+<h1 style="margin: 0; font-family: Fraunces, Georgia, serif; font-size: 44px; font-weight: 600; letter-spacing: -0.5px; line-height: 1.1">Anassa Wax &amp; Beauty, <em style="color: #5b3fd0">at a glance.</em></h1>
+<div style="color: #50575e; font-size: 15px">How her SEO is doing, all in one place ✦</div>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #50575e; font-size: 13px">
+<a href="https://anassabeauty.com">anassabeauty.com ↗</a><span>·</span><span>Staten Island, NY</span><span>·</span>
+<span style="background: #efeaff; color: #5b3fd0; border-radius: 999px; padding: 3px 10px; font-weight: 600; font-size: 12px">Day 2 · Keywords</span>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<div style="display: flex; background: #fff; border: 1px solid #dcdcde; border-radius: 999px; padding: 4px">
+<sc-for list="{{ranges}}" as="r" hint-placeholder-count="3">
+<button onClick="{{r.pick}}" style="{{r.style}}">{{r.label}}</button>
+</sc-for>
+</div>
+<button style="border: 1px solid #dcdcde; background: #fff; color: #1d2327; border-radius: 999px; padding: 10px 16px; font: 600 13px Inter, sans-serif; min-height: 44px">Update numbers</button>
+<a href="#" style="background: #c8e46a; color: #1d2327; box-shadow: 0 6px 18px rgba(140,170,40,0.25); border-radius: 999px; padding: 12px 22px; font-weight: 600; font-size: 14px; text-decoration: none; min-height: 44px; box-sizing: border-box; display: flex; align-items: center">Strategy Builder →</a>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+<span style="font-size: 12px; color: #50575e; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px">Sources</span>
+<sc-for list="{{sources}}" as="s" hint-placeholder-count="5">
+<span style="background: #fff; border: 1px solid #dcdcde; border-radius: 999px; padding: 5px 12px; font-size: 12px; display: flex; gap: 6px; align-items: center"><span style="width: 8px; height: 8px; border-radius: 50%; background: {{s.dot}}"></span><strong>{{s.name}}</strong><span style="color: #50575e">{{s.note}}</span></span>
+</sc-for>
+<span style="margin-left: auto; font-size: 12px; color: #8a5a00; background: #fdf3dc; border-radius: 999px; padding: 5px 12px">Sample numbers for the mockup</span>
+</div>
+
+<sc-if value="{{gsc}}" hint-placeholder-val="{{ true }}">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="4">
+<div style="background: {{k.bg}}; border-radius: 24px; padding: 20px 22px; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 12px; color: {{k.ink}}; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px">{{k.label}}</div>
+<div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap"><span style="font-family: Fraunces, Georgia, serif; font-size: 38px; font-weight: 600; letter-spacing: -0.5px">{{k.value}}</span><span style="font-size: 12px; font-weight: 700; color: #1f6b43; background: #fff; border-radius: 999px; padding: 3px 9px">{{k.change}}</span></div>
+<svg viewBox="0 0 200 40" preserveAspectRatio="none" style="width: 100%; height: 40px" aria-hidden="true"><polyline points="{{k.spark}}" fill="none" stroke="{{k.ink}}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"></polyline></svg>
+<div style="font-size: 12px; color: #50575e">Baseline {{k.base}} · Search Console</div>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+<div style="flex: 999 1 640px; min-width: 0; background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #ece6fb; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px">
+<div><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Search performance</div><div style="font-size: 12px; color: #50575e">Google Search Console · daily · {{rangeLabel}}</div></div>
+<div style="display: flex; gap: 14px; font-size: 12px; align-items: center"><span style="display: flex; gap: 6px; align-items: center"><span style="width: 14px; height: 3px; background: #5b3fd0"></span>Clicks</span><span style="display: flex; gap: 6px; align-items: center"><span style="width: 14px; height: 3px; background: #e98fb8"></span>Impressions</span><span style="display: flex; gap: 6px; align-items: center"><span style="width: 14px; border-top: 2px dashed #d39b16"></span>Baseline Sep 1</span></div>
+</div>
+<svg viewBox="0 0 800 240" preserveAspectRatio="none" style="width: 100%; height: 240px" role="img" aria-label="Clicks and impressions rising since the baseline">
+<line x1="0" y1="60" x2="800" y2="60" stroke="#eeeef0"></line><line x1="0" y1="120" x2="800" y2="120" stroke="#eeeef0"></line><line x1="0" y1="180" x2="800" y2="180" stroke="#eeeef0"></line><line x1="0" y1="239" x2="800" y2="239" stroke="#dcdcde"></line>
+<polygon points="{{imprArea}}" fill="#fdeef5"></polygon>
+<polyline points="{{impr}}" fill="none" stroke="#b7a9ef" stroke-width="2" vector-effect="non-scaling-stroke"></polyline>
+<polyline points="{{clicks}}" fill="none" stroke="#5b3fd0" stroke-width="2.5" vector-effect="non-scaling-stroke"></polyline>
+<line x1="90" y1="0" x2="90" y2="240" stroke="#d39b16" stroke-width="1.5" stroke-dasharray="5 5" vector-effect="non-scaling-stroke"></line>
+</svg>
+<div style="display: flex; justify-content: space-between; font-size: 11px; color: #50575e"><span>Aug 28</span><span>Sep 25</span><span>Oct 23</span><span>Nov 25</span></div>
+</div>
+
+<div style="flex: 1 1 320px; min-width: 0; background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #ece6fb; display: flex; flex-direction: column; gap: 14px">
+<div><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Website traffic</div><div style="font-size: 12px; color: #50575e">GA4 · organic search · {{rangeLabel}}</div></div>
+<div style="display: flex; align-items: baseline; gap: 10px"><span style="font-size: 32px; font-weight: 700">1,284</span><span style="font-size: 13px; font-weight: 600; color: #2e8b57">+38% sessions</span></div>
+<div style="display: flex; align-items: flex-end; gap: 6px; height: 110px">
+<sc-for list="{{weeks}}" as="w" hint-placeholder-count="12">
+<div style="flex: 1; background: {{w.color}}; height: {{w.h}}; border-radius: 10px 10px 4px 4px"></div>
+</sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; border-top: 1px solid #eeeef0; padding-top: 12px">
+<div><div style="font-size: 18px; font-weight: 700">962</div><div style="font-size: 12px; color: #50575e">Users</div></div>
+<div><div style="font-size: 18px; font-weight: 700">47</div><div style="font-size: 12px; color: #50575e">Bookings</div></div>
+<div><div style="font-size: 18px; font-weight: 700">1m 52s</div><div style="font-size: 12px; color: #50575e">Avg time</div></div>
+</div>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+<div style="flex: 1 1 520px; min-width: 0; background: #fff; border-radius: 20px; border: 1px solid #ece6fb; overflow: hidden">
+<div style="padding: 18px 20px 12px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap"><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Top searches</div><div style="font-size: 12px; color: #50575e">Search Console · queries</div></div>
+<div style="overflow-x: auto">
+<table style="width: 100%; border-collapse: collapse; font-size: 13px">
+<thead><tr style="background: #f3efff; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #4a3a8c"><th style="padding: 9px 20px">Query</th><th style="padding: 9px 8px; text-align: right">Clicks</th><th style="padding: 9px 8px; text-align: right">Impr.</th><th style="padding: 9px 8px; text-align: right">CTR</th><th style="padding: 9px 20px 9px 8px; text-align: right">Position</th></tr></thead>
+<tbody>
+<sc-for list="{{queries}}" as="q" hint-placeholder-count="6">
+<tr style="border-top: 1px solid #eeeef0"><td style="padding: 10px 20px">{{q.q}}</td><td style="padding: 10px 8px; text-align: right; font-weight: 600">{{q.c}}</td><td style="padding: 10px 8px; text-align: right">{{q.i}}</td><td style="padding: 10px 8px; text-align: right">{{q.ctr}}</td><td style="padding: 10px 20px 10px 8px; text-align: right; white-space: nowrap">{{q.p}} <span style="color: {{q.col}}; font-weight: 600; font-size: 12px">{{q.d}}</span></td></tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</div>
+<div style="flex: 1 1 420px; min-width: 0; background: #fff; border-radius: 20px; border: 1px solid #ece6fb; overflow: hidden">
+<div style="padding: 18px 20px 12px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap"><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Top pages</div><div style="font-size: 12px; color: #50575e">Search Console · pages</div></div>
+<div style="padding: 0 20px 18px; display: flex; flex-direction: column; gap: 12px">
+<sc-for list="{{pages}}" as="p" hint-placeholder-count="5">
+<div style="display: flex; flex-direction: column; gap: 5px"><div style="display: flex; justify-content: space-between; gap: 8px; font-size: 13px"><span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{p.url}}</span><strong>{{p.c}} clicks</strong></div><div style="height: 8px; background: #efeaff; border-radius: 99px"><div style="height: 8px; width: {{p.w}}; background: #5b3fd0; border-radius: 99px"></div></div></div>
+</sc-for>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{noGsc}}" hint-placeholder-val="{{ false }}">
+<div style="background: #fff; border-radius: 20px; border: 1px dashed #b7a9ef; padding: 40px; display: flex; flex-direction: column; gap: 10px; align-items: flex-start">
+<span style="background: #efeaff; color: #5b3fd0; border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 600">Search Console · not connected</span>
+<div style="font-family: Fraunces, Georgia, serif; font-size: 26px; font-weight: 600">Connect Google to see searches, clicks and CTR here.</div>
+<div style="color: #50575e; max-width: 620px; line-height: 1.5">Add the SEO Hub email as a viewer on this client’s Search Console and GA4 property. Numbers then update every day, and the baseline is kept for comparing.</div>
+<button style="background: #5b3fd0; color: #fff; border: 0; border-radius: 999px; padding: 12px 20px; font: 600 14px Inter, sans-serif; min-height: 44px">Connect Search Console + GA4</button>
+</div>
+</sc-if>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+<div style="flex: 1 1 380px; min-width: 0; background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #ece6fb; display: flex; flex-direction: column; gap: 14px">
+<div><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Keyword rankings</div><div style="font-size: 12px; color: #50575e">Semrush Position Tracking · CSV Nov 18 · 42 keywords</div></div>
+<sc-for list="{{buckets}}" as="b" hint-placeholder-count="5">
+<div style="display: flex; align-items: center; gap: 10px; font-size: 13px"><span style="width: 64px; color: #50575e">{{b.label}}</span><div style="flex: 1; height: 14px; background: #f6f2ff; border-radius: 99px"><div style="height: 14px; width: {{b.w}}; background: {{b.color}}; border-radius: 99px"></div></div><strong style="width: 52px; text-align: right">{{b.n}}</strong><span style="width: 36px; font-size: 12px; color: #2e8b57; font-weight: 600">{{b.d}}</span></div>
+</sc-for>
+<div style="border-top: 1px solid #eeeef0; padding-top: 12px; display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 12px; color: #50575e; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px">Biggest moves</div>
+<sc-for list="{{movers}}" as="m" hint-placeholder-count="4">
+<div style="display: flex; justify-content: space-between; gap: 8px; font-size: 13px"><span>{{m.k}}</span><span style="font-weight: 600; color: {{m.col}}; white-space: nowrap">{{m.d}}</span></div>
+</sc-for>
+</div>
+</div>
+
+<div style="flex: 1 1 300px; min-width: 0; background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #ece6fb; display: flex; flex-direction: column; gap: 14px">
+<div><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Map grid</div><div style="font-size: 12px; color: #50575e">Whitespark · “brazilian wax” · 5×5 · CSV Nov 17</div></div>
+<div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; max-width: 280px">
+<sc-for list="{{grid}}" as="g" hint-placeholder-count="25">
+<div style="aspect-ratio: 1; border-radius: 50%; background: {{g.bg}}; color: #fff; font-weight: 700; font-size: 13px; display: flex; align-items: center; justify-content: center">{{g.r}}</div>
+</sc-for>
+</div>
+<div style="display: flex; gap: 16px; font-size: 13px"><div><strong style="font-size: 20px">4.8</strong><div style="font-size: 12px; color: #50575e">Avg rank (was 8.2)</div></div><div><strong style="font-size: 20px">14/25</strong><div style="font-size: 12px; color: #50575e">In top 3</div></div></div>
+</div>
+
+<div style="flex: 1 1 300px; min-width: 0; background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #ece6fb; display: flex; flex-direction: column; gap: 14px">
+<div><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Google Business Profile</div><div style="font-size: 12px; color: #50575e">Typed in · Nov 20 · last 28 days</div></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<sc-for list="{{gbp}}" as="x" hint-placeholder-count="4">
+<div style="background: #fdeef5; border-radius: 14px; padding: 12px"><div style="font-size: 22px; font-weight: 700">{{x.v}}</div><div style="font-size: 12px; color: #50575e">{{x.l}}</div><div style="font-size: 12px; color: #2e8b57; font-weight: 600">{{x.d}}</div></div>
+</sc-for>
+</div>
+<div style="font-size: 13px; color: #50575e">★ 4.9 · 127 reviews · newest Nov 19</div>
+</div>
+</div>
+
+<div style="background: #fff; border-radius: 20px; border: 1px solid #ece6fb; overflow: hidden">
+<div style="padding: 18px 20px 12px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap"><div><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Baseline vs now</div><div style="font-size: 12px; color: #50575e">Day 3 baseline compared with the latest numbers</div></div><a href="#" style="font-size: 13px; font-weight: 600">Open Results ›</a></div>
+<div style="overflow-x: auto">
+<table style="width: 100%; border-collapse: collapse; font-size: 13px; min-width: 560px">
+<thead><tr style="background: #f3efff; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #4a3a8c"><th style="padding: 9px 20px">Metric</th><th style="padding: 9px 8px">Source</th><th style="padding: 9px 8px; text-align: right">Baseline · Sep 1</th><th style="padding: 9px 8px; text-align: right">Now · Nov 25</th><th style="padding: 9px 20px 9px 8px; text-align: right">Change</th></tr></thead>
+<tbody>
+<sc-for list="{{compare}}" as="c" hint-placeholder-count="6">
+<tr style="border-top: 1px solid #eeeef0"><td style="padding: 10px 20px; font-weight: 600">{{c.m}}</td><td style="padding: 10px 8px; color: #50575e">{{c.s}}</td><td style="padding: 10px 8px; text-align: right">{{c.b}}</td><td style="padding: 10px 8px; text-align: right; font-weight: 600">{{c.n}}</td><td style="padding: 10px 20px 10px 8px; text-align: right"><span style="background: {{c.bg}}; color: {{c.col}}; border-radius: 999px; padding: 3px 10px; font-weight: 600; font-size: 12px">{{c.d}}</span></td></tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px">
+<div style="flex: 1 1 520px; min-width: 0; background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #ece6fb; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between"><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Accounts</div><span style="font-size: 12px; color: #2e8b57; font-weight: 600">6 of 6 ready</span></div>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px">
+<sc-for list="{{accounts}}" as="a" hint-placeholder-count="6">
+<a href="#" style="border: 1px solid #dcdcde; border-radius: 10px; padding: 10px 12px; text-decoration: none; color: #1d2327; display: flex; gap: 10px; align-items: center; min-height: 44px; box-sizing: border-box"><span style="width: 30px; height: 30px; border-radius: 8px; background: #efeaff; color: #5b3fd0; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center">{{a.i}}</span><span style="font-size: 13px; font-weight: 600">{{a.n}}</span></a>
+</sc-for>
+</div>
+</div>
+<div style="flex: 1 1 380px; min-width: 0; background: #fff; border-radius: 20px; padding: 20px; border: 1px solid #ece6fb; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; justify-content: space-between"><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">Notes</div><a href="#" style="font-size: 13px; font-weight: 600">All notes &amp; links ›</a></div>
+<div style="display: flex; gap: 10px; font-size: 13px"><span style="background: #efeaff; color: #5b3fd0; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 700; height: fit-content">Rule</span><div>Never show the studio address on any page or post.<div style="font-size: 12px; color: #50575e">Agency rule · Angel</div></div></div>
+<div style="display: flex; gap: 10px; font-size: 13px"><span style="background: #fdf3dc; color: #8a5a00; border-radius: 999px; padding: 2px 9px; font-size: 11px; font-weight: 700; height: fit-content">Decision</span><div>Men’s waxing is out of scope for now.<div style="font-size: 12px; color: #50575e">Angel · Day 2 · Nov 24</div></div></div>
+</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"gscConnected":{"editor":"boolean","default":true},"$preview":{"width":1440,"height":2350}}'>
+class Component extends DCLogic {
+  constructor(p){ super(p); this.state = { range: '3 months' }; }
+  line(vals, max, area){
+    const n = vals.length, pts = vals.map((v,i)=> (i*800/(n-1)).toFixed(1)+','+(236 - v/max*220).toFixed(1));
+    return area ? '0,240 '+pts.join(' ')+' 800,240' : pts.join(' ');
+  }
+  spark(vals){
+    const mx = Math.max(...vals), mn = Math.min(...vals), n = vals.length;
+    return vals.map((v,i)=> (i*200/(n-1)).toFixed(1)+','+(36-(v-mn)/(mx-mn||1)*32).toFixed(1)).join(' ');
+  }
+  renderVals(){
+    const gsc = this.props.gscConnected ?? true;
+    const clicks = [3,4,3,5,4,4,6,5,6,7,6,8,7,9,8,8,10,9,11,10,12,11,13,12,14,13,15,14,16,15];
+    const impr = [180,190,175,210,205,220,240,235,250,270,260,290,300,310,305,330,340,335,360,370,380,375,400,410,420,415,440,450,460,470];
+    const ranges = ['28 days','3 months','12 months'].map(l=>({ label:l, pick:()=>this.setState({range:l}),
+      style: 'border:0;border-radius:999px;padding:8px 14px;font:600 13px Inter,sans-serif;min-height:36px;cursor:pointer;' + (this.state.range===l ? 'background:#5b3fd0;color:#fff' : 'background:transparent;color:#50575e') }));
+    const tints = [['#efeaff','#5b3fd0'],['#fde7f1','#b2336f'],['#eaf7d6','#3f6b12'],['#fff0e2','#a44e12']];
+    let ti = 0;
+    const k = (label,value,change,good,base,arr)=>{ const [bg,ink] = tints[ti++]; return {label,value,change,base,bg,ink,spark:this.spark(arr)}; };
+    const max = [64,90,112,150,240,320];
+    return {
+      gsc, noGsc: !gsc, ranges, rangeLabel: this.state.range,
+      sources: [
+        {name:'Search Console',note:gsc?'Connected · synced today':'Not connected',dot:gsc?'#2e8b57':'#c9483c'},
+        {name:'GA4',note:gsc?'Connected':'Not connected',dot:gsc?'#2e8b57':'#c9483c'},
+        {name:'Semrush',note:'CSV · Nov 18',dot:'#5b3fd0'},
+        {name:'Whitespark',note:'CSV · Nov 17',dot:'#5b3fd0'},
+        {name:'GBP',note:'Typed in · Nov 20',dot:'#d39b16'}],
+      kpis: [
+        k('Impressions','18.4K','+32%',true,'13.9K',impr),
+        k('Clicks','612','+41%',true,'434',clicks),
+        k('CTR','3.3%','+0.2 pts',true,'3.1%',[3.0,3.1,3.0,3.2,3.1,3.2,3.3,3.3]),
+        k('Avg position','14.2','↑ 6.1',true,'20.3',[20,19,19,18,17,16,15,14].map(v=>-v))],
+      clicks: this.line(clicks,16), impr: this.line(impr,480), imprArea: this.line(impr,480,true),
+      weeks: max.concat([300,350,380,410,460,520]).map((v,i)=>({h: Math.round(v/520*110)+'px', color: i<4?'#f6c9dd':'#5b3fd0'})),
+      queries: [
+        {q:'brazilian wax staten island',c:'142',i:'2,310',ctr:'6.1%',p:'3.2',d:'↑ 5',col:'#2e8b57'},
+        {q:'waxing staten island',c:'98',i:'1,940',ctr:'5.1%',p:'4.0',d:'↑ 3',col:'#2e8b57'},
+        {q:'brow lamination staten island',c:'61',i:'880',ctr:'6.9%',p:'2.8',d:'↑ 7',col:'#2e8b57'},
+        {q:'bikini wax near me',c:'44',i:'3,120',ctr:'1.4%',p:'11.5',d:'↑ 2',col:'#2e8b57'},
+        {q:'body waxing staten island',c:'29',i:'640',ctr:'4.5%',p:'6.1',d:'↓ 1',col:'#c9483c'},
+        {q:'eyebrow tint staten island',c:'21',i:'410',ctr:'5.1%',p:'5.4',d:'new',col:'#5b3fd0'}],
+      pages: [['/',204],['/brazilian-wax/',171],['/brow-lamination/',96],['/body-waxing/',58],['/facial-waxing/',41]]
+        .map(([url,c])=>({url,c,w:Math.round(c/204*100)+'%'})),
+      buckets: [['Top 3',4,'+3','#2e8b57'],['4–10',11,'+5','#5b3fd0'],['11–20',9,'+2','#8f7be0'],['21–50',12,'',' #b7a9ef'],['51+',6,'','#d5d6d8']]
+        .map(([label,n,d,color])=>({label,n,d,color,w:Math.round(n/12*100)+'%'})),
+      movers: [
+        {k:'brow lamination staten island',d:'18 → 3',col:'#2e8b57'},
+        {k:'brazilian wax staten island ny',d:'14 → 4',col:'#2e8b57'},
+        {k:'full body wax staten island',d:'31 → 12',col:'#2e8b57'},
+        {k:'facial waxing staten island',d:'7 → 9',col:'#c9483c'}],
+      grid: [3,2,2,4,6, 2,1,1,2,5, 3,1,1,1,4, 4,2,1,2,7, 8,5,3,6,11].map(r=>({r, bg: r<=3?'#2e8b57': r<=7?'#d39b16':'#c9483c'})),
+      gbp: [{v:'3,410',l:'Profile views',d:'+22%'},{v:'86',l:'Calls',d:'+31%'},{v:'142',l:'Direction requests',d:'+18%'},{v:'208',l:'Website clicks',d:'+27%'}],
+      compare: [
+        ['Search impressions','Search Console','13.9K','18.4K','+32%',1],
+        ['Search clicks','Search Console','434','612','+41%',1],
+        ['Organic sessions','GA4','930','1,284','+38%',1],
+        ['Keywords in top 10','Semrush','7','15','+8',1],
+        ['Map grid avg rank','Whitespark','8.2','4.8','↑ 3.4',1],
+        ['GBP calls','GBP','66','86','+30%',1],
+        ['Reviews','GBP','118','127','+9',0]
+      ].map(([m,s,b,n,d,g])=>({m,s,b,n,d,bg:g?'#e3f3ea':'#f3f3f4',col:g?'#2e8b57':'#50575e'})),
+      accounts: [['SC','Search Console'],['GA','GA4'],['GB','Business Profile'],['SR','Semrush'],['WS','Whitespark'],['MC','Clarity']].map(([i,n])=>({i,n}))
+    };
+  }
+}
+</script>
+</body>
+</html>

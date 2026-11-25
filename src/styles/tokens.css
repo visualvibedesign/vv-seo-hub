@@ -77,6 +77,7 @@
   /* Mica's avatar: pink (Angel's request, 2026-11-11). Angel is green, Alexia purple. */
   --vv-avatar-pink: #f7b3d2;
   --vv-pink-100: #fde8f1; /* Mica's card header (Who's on what) */
+  --vv-pink-ink: #b2336f; /* text on pink-100 (SEO Hub pastel tiles) */
 
   /* Weekly queue board columns (design-ref Queue) + the tidy-up note */
   --vv-col-ready: #e9f7f5;
@@ -155,6 +156,7 @@
   --vv-red-100: #222020;
   --vv-kpi-red: #ffb3c8; /* due-card stripe, overdue line */
   --vv-pink-100: #222020;
+  --vv-pink-ink: #ff9cc4;
   --vv-avatar-pink: #e99bc0; /* Mica's avatar (unchanged) */
 
   /* Labels: solid pastel, black text */

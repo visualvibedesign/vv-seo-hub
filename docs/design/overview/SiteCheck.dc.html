@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Site check · Anassa</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;1,9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f8f5ff}
+a{color:#5b3fd0}a:hover{color:#432bb0}
+</style>
+</helmet>
+<div style="background: linear-gradient(180deg,#f8f5ff 0%,#fdf3f8 100%); min-height: 100vh; font-family: Inter, system-ui, sans-serif; color: #1d2327; font-size: 14px">
+<div style="max-width: 1360px; margin: 0 auto; padding: 28px 32px 48px; display: flex; flex-direction: column; gap: 20px">
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: flex-end">
+<div style="display: flex; flex-direction: column; gap: 6px; min-width: 0">
+<div style="font-size: 13px; color: #50575e">Clients › Anassa Wax &amp; Beauty › <strong style="color: #1d2327">Site check</strong></div>
+<h1 style="margin: 0; font-family: Fraunces, Georgia, serif; font-size: 44px; font-weight: 600; letter-spacing: -0.5px; line-height: 1.1">Site check, <em style="color: #5b3fd0">page by page.</em></h1>
+<div style="color: #50575e; font-size: 15px">18 live pages from anassabeauty.com/sitemap.xml · checked today against the Day 5 plan</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px">
+<button style="border: 1px solid #dcdcde; background: #fff; color: #1d2327; border-radius: 999px; padding: 10px 18px; font: 600 13px Inter, sans-serif; min-height: 44px">Export fix list</button>
+<button style="background: #5b3fd0; color: #fff; border: 0; border-radius: 999px; padding: 10px 20px; font: 600 14px Inter, sans-serif; min-height: 44px; box-shadow: 0 6px 18px rgba(91,63,208,0.28)">Check again</button>
+</div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px">
+<div style="background: #efeaff; border-radius: 24px; padding: 20px 22px; display: flex; gap: 16px; align-items: center">
+<svg viewBox="0 0 64 64" style="width: 64px; height: 64px; flex: none" role="img" aria-label="Site health 78 out of 100"><circle cx="32" cy="32" r="27" fill="none" stroke="#fff" stroke-width="8"></circle><circle cx="32" cy="32" r="27" fill="none" stroke="#5b3fd0" stroke-width="8" stroke-linecap="round" stroke-dasharray="132 170" transform="rotate(-90 32 32)"></circle></svg>
+<div><div style="font-family: Fraunces, Georgia, serif; font-size: 34px; font-weight: 600">78</div><div style="font-size: 12px; font-weight: 700; color: #5b3fd0; text-transform: uppercase; letter-spacing: 0.6px">Site health</div></div>
+</div>
+<sc-for list="{{tiles}}" as="t" hint-placeholder-count="4">
+<div style="background: {{t.bg}}; border-radius: 24px; padding: 20px 22px; display: flex; flex-direction: column; gap: 4px">
+<div style="font-size: 12px; font-weight: 700; color: {{t.ink}}; text-transform: uppercase; letter-spacing: 0.6px">{{t.label}}</div>
+<div style="font-family: Fraunces, Georgia, serif; font-size: 34px; font-weight: 600">{{t.value}}</div>
+<div style="font-size: 12px; color: #50575e">{{t.note}}</div>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{filters}}" as="f" hint-placeholder-count="5">
+<button onClick="{{f.pick}}" style="{{f.style}}">{{f.label}}</button>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+<div style="flex: 999 1 640px; min-width: 0; background: #fff; border-radius: 20px; border: 1px solid #ece6fb; overflow: hidden">
+<div style="overflow-x: auto">
+<table style="width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px">
+<thead><tr style="background: #f3efff; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #4a3a8c"><th style="padding: 11px 18px">Page</th><th style="padding: 11px 8px">Title</th><th style="padding: 11px 8px">Meta</th><th style="padding: 11px 8px">H1</th><th style="padding: 11px 8px">Indexed</th><th style="padding: 11px 8px">Speed</th><th style="padding: 11px 18px 11px 8px">Plan</th></tr></thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+<tr onClick="{{r.pick}}" style="{{r.rowStyle}}">
+<td style="padding: 12px 18px"><button onClick="{{r.pick}}" style="border: 0; background: none; padding: 0; font: 600 13px Inter, sans-serif; color: #1d2327; cursor: pointer; text-align: left">{{r.url}}</button></td>
+<td style="padding: 12px 8px"><span style="{{r.titleChip}}">{{r.titleLen}}</span></td>
+<td style="padding: 12px 8px"><span style="{{r.metaChip}}">{{r.metaLen}}</span></td>
+<td style="padding: 12px 8px"><span style="{{r.h1Chip}}">{{r.h1}}</span></td>
+<td style="padding: 12px 8px"><span style="{{r.idxChip}}">{{r.idx}}</span></td>
+<td style="padding: 12px 8px"><span style="{{r.speedChip}}">{{r.speed}}</span></td>
+<td style="padding: 12px 18px 12px 8px"><span style="{{r.planChip}}">{{r.plan}}</span></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<div style="padding: 12px 18px; font-size: 12px; color: #50575e; border-top: 1px solid #f1edfb">Rules from Sam’s playbook: title 50–60 characters, meta 150–160 ending with a call to action, one H1 per page.</div>
+</div>
+
+<div style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+<div style="background: #fff; border-radius: 20px; border: 1px solid #ece6fb; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<div><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">{{sel.url}}</div><div style="font-size: 12px; color: #50575e">Live page vs the Day 5 plan · keyword owner: <strong>{{sel.owner}}</strong></div></div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 11px; font-weight: 700; color: #4a3a8c; text-transform: uppercase; letter-spacing: 0.5px">Title</div>
+<div style="background: #fdeef5; border-radius: 14px; padding: 10px 12px; font-size: 13px"><span style="font-size: 11px; font-weight: 700; color: #b2336f">LIVE · {{sel.titleLen}}</span><div>{{sel.title}}</div></div>
+<div style="background: #efeaff; border-radius: 14px; padding: 10px 12px; font-size: 13px"><span style="font-size: 11px; font-weight: 700; color: #5b3fd0">PLAN · {{sel.pTitleLen}}</span><div>{{sel.pTitle}}</div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 11px; font-weight: 700; color: #4a3a8c; text-transform: uppercase; letter-spacing: 0.5px">Meta description</div>
+<div style="background: #fdeef5; border-radius: 14px; padding: 10px 12px; font-size: 13px"><span style="font-size: 11px; font-weight: 700; color: #b2336f">LIVE · {{sel.metaLen}}</span><div>{{sel.meta}}</div></div>
+<div style="background: #efeaff; border-radius: 14px; padding: 10px 12px; font-size: 13px"><span style="font-size: 11px; font-weight: 700; color: #5b3fd0">PLAN · {{sel.pMetaLen}}</span><div>{{sel.pMeta}}</div></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 11px; font-weight: 700; color: #4a3a8c; text-transform: uppercase; letter-spacing: 0.5px">Fix list</div>
+<sc-for list="{{sel.fixes}}" as="x" hint-placeholder-count="3">
+<div style="display: flex; gap: 8px; font-size: 13px; align-items: flex-start"><span style="width: 8px; height: 8px; border-radius: 50%; background: #c9483c; margin-top: 5px; flex: none"></span>{{x}}</div>
+</sc-for>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+<button disabled style="background: #e9e6f2; color: #50575e; border: 0; border-radius: 999px; padding: 10px 18px; font: 600 13px Inter, sans-serif; min-height: 44px">Push fix to site</button>
+<span style="font-size: 12px; color: #50575e">Needs the Vibe SEO plugin connected</span>
+</div>
+</div>
+
+<div style="background: #fff; border-radius: 20px; border: 1px dashed #cfc3f3; padding: 20px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; justify-content: space-between; gap: 8px; align-items: center"><div style="font-family: Fraunces, Georgia, serif; font-weight: 600; font-size: 20px">From the plugin</div><span style="background: #eaf7d6; color: #3f6b12; border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 700">LATER</span></div>
+<div style="font-size: 13px; color: #50575e; line-height: 1.6">Yoast / Rank Math keyphrase and score · orphan pages · missing image alt · form entries · QA scan results. They show here once Vibe SEO checks in.</div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  constructor(p){ super(p); this.state = { filter: 'All pages', sel: 1 }; }
+  chip(kind, extra){
+    const c = { good:['#e3f3ea','#1f6b43'], ok:['#fdf3dc','#8a5a00'], bad:['#fbe5e2','#a3322a'], none:['#f3f3f4','#50575e'] }[kind];
+    return 'display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;white-space:nowrap;background:'+c[0]+';color:'+c[1]+(extra||'');
+  }
+  len(s, lo, hi){ if (!s) return ['missing','bad']; const n = s.length; return [n+' chars', n>=lo && n<=hi ? 'good' : 'ok']; }
+  renderVals(){
+    const pages = [
+      { url:'/', owner:'waxing staten island', title:'Anassa Wax & Beauty | Waxing Studio in Staten Island, NY', meta:'Gentle, quick waxing and brow services in Staten Island. Brazilian, body and facial waxing by licensed estheticians. Book your appointment online today!', h1:'1', idx:true, speed:71, plan:true },
+      { url:'/brazilian-wax/', owner:'brazilian wax staten island', title:'Brazilian Wax | Anassa', meta:'', h1:'1', idx:true, speed:58, plan:false,
+        pTitle:'Brazilian Wax in Staten Island, NY | Anassa Wax & Beauty', pMeta:'Smooth, gentle Brazilian waxing in Staten Island with hard wax made for sensitive skin. Quick appointments, licensed estheticians. Book your visit today!' },
+      { url:'/brow-lamination/', owner:'brow lamination staten island', title:'Brow Lamination in Staten Island, NY | Anassa Wax & Beauty', meta:'Fuller, lifted brows that last for weeks. Brow lamination and tint in Staten Island by licensed estheticians. See prices and book your appointment!', h1:'1', idx:true, speed:64, plan:true },
+      { url:'/body-waxing/', owner:'body waxing staten island', title:'Body Waxing Staten Island | Full Body Wax | Anassa Wax & Beauty Studio', meta:'Body waxing for legs, arms, back and more.', h1:'2', idx:true, speed:66, plan:false },
+      { url:'/facial-waxing/', owner:'facial waxing staten island', title:'Facial Waxing in Staten Island | Anassa Wax & Beauty', meta:'Lip, chin and full face waxing in Staten Island. Gentle wax for sensitive skin, done in minutes by licensed estheticians. Book your appointment online.', h1:'1', idx:false, speed:61, plan:true },
+      { url:'/prices/', owner:'—', title:'Prices | Anassa Wax & Beauty', meta:'See our waxing and brow prices.', h1:'0', idx:true, speed:82, plan:true },
+      { url:'/contact/', owner:'—', title:'Contact Anassa Wax & Beauty in Staten Island', meta:'Questions or bookings? Call, text or book online with Anassa Wax & Beauty in Staten Island, NY. We reply fast and can usually fit you in this week. Book now!', h1:'1', idx:true, speed:88, plan:true }
+    ];
+    const rows = pages.map((p,i)=>{
+      const t = this.len(p.title,50,60), m = this.len(p.meta,150,160);
+      const issues = (t[1]!=='good') + (m[1]!=='good') + (p.h1!=='1') + (!p.idx) + (p.speed<60) + (!p.plan);
+      return { ...p, i, issues, titleLen:t[0], metaLen:m[0], titleChip:this.chip(t[1]), metaChip:this.chip(m[1]),
+        h1: p.h1==='1' ? '1 ✓' : p.h1+' H1s', h1Chip:this.chip(p.h1==='1'?'good':'bad'),
+        idx: p.idx?'Indexed':'Not indexed', idxChip:this.chip(p.idx?'good':'bad'),
+        speed: p.speed+' mobile', speedChip:this.chip(p.speed>=70?'good':p.speed>=60?'ok':'bad'),
+        plan: p.plan?'Matches':'Update', planChip:this.chip(p.plan?'good':'ok'),
+        pick:()=>this.setState({sel:i}),
+        rowStyle:'border-top:1px solid #f1edfb;cursor:pointer;'+(this.state.sel===i?'background:#faf7ff;box-shadow:inset 4px 0 0 #5b3fd0':'') };
+    });
+    const f = this.state.filter;
+    const shown = rows.filter(r => f==='All pages' || (f==='Problems' && r.issues>0) || (f==='Doesn’t match plan' && r.plan==='Update') || (f==='Slow' && r.speed.startsWith('5')) || (f==='Not indexed' && r.idx==='Not indexed'));
+    const filters = ['All pages','Problems','Doesn’t match plan','Slow','Not indexed'].map(label=>({label, pick:()=>this.setState({filter:label}),
+      style:'border:1px solid '+(f===label?'#5b3fd0':'#e3dcf7')+';border-radius:999px;padding:9px 16px;font:600 13px Inter,sans-serif;min-height:40px;cursor:pointer;'+(f===label?'background:#5b3fd0;color:#fff':'background:#fff;color:#50575e')}));
+    const s = pages[this.state.sel];
+    const pt = s.pTitle || s.title, pm = s.pMeta || s.meta;
+    const fixes = [];
+    if (!s.meta) fixes.push('Meta description is missing: add the planned one.');
+    else if (s.meta.length<150 || s.meta.length>160) fixes.push('Meta is '+s.meta.length+' characters: aim for 150–160 with a call to action.');
+    if (s.title.length<50 || s.title.length>60) fixes.push('Title is '+s.title.length+' characters: aim for 50–60.');
+    if (s.owner!=='—' && !s.title.toLowerCase().includes(s.owner.split(' ')[0])) fixes.push('Title doesn’t include the keyword owner “'+s.owner+'”.');
+    if (s.h1!=='1') fixes.push('Page has '+s.h1+' H1 headings: keep exactly one.');
+    if (!s.idx) fixes.push('Not indexed in Google: request indexing in Search Console.');
+    if (s.speed<60) fixes.push('Mobile speed '+s.speed+': compress the hero image.');
+    if (!fixes.length) fixes.push('Nothing to fix. This page matches the plan.');
+    return {
+      tiles: [
+        {label:'Problems',value:'5',note:'Missing meta, 2 H1s, not indexed',bg:'#fde7f1',ink:'#b2336f'},
+        {label:'Warnings',value:'9',note:'Length, slow mobile pages',bg:'#fff0e2',ink:'#a44e12'},
+        {label:'Indexed',value:'16 / 18',note:'Search Console',bg:'#eaf7d6',ink:'#3f6b12'},
+        {label:'Mobile speed',value:'68',note:'PageSpeed average · desktop 91',bg:'#efeaff',ink:'#5b3fd0'}],
+      filters, rows: shown,
+      sel: { url:s.url, owner:s.owner, title:s.title, titleLen:s.title.length+' chars', meta:s.meta||'(missing)', metaLen:s.meta?s.meta.length+' chars':'missing',
+        pTitle:pt, pTitleLen:pt.length+' chars', pMeta:pm||'(not planned yet)', pMetaLen:pm?pm.length+' chars':'—', fixes }
+    };
+  }
+}
+</script>
+</body>
+</html>

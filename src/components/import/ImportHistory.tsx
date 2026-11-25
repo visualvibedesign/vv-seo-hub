@@ -51,9 +51,10 @@ export default function ImportHistory({ siteId }: { siteId: string }) {
     }
   }
 
-  const OTHER: Record<string, string> = { sams_guide: 'Sam’s Guide sheet', clusters: 'Clusters (sheet)' }
+  const OTHER: Record<string, string> = { sams_guide: 'Sam’s Guide sheet', clusters: 'Clusters (sheet)', competitors: 'Competitors tab (names only)', client_sheet: 'Whole client Sheet (.xlsx)' }
   const reportLabel = (r: ImportReport) => REPORTS.find((x) => x.report === r)?.label ?? OTHER[r] ?? r
   const c = check?.data
+  const parentName = (id: string | null) => (id ? q.data?.find((x) => x.id === id)?.fileName ?? 'a client Sheet' : '')
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
   return (
@@ -100,6 +101,8 @@ export default function ImportHistory({ siteId }: { siteId: string }) {
                       {r.location ? ` · ${r.location}` : ''}
                       {r.filter ? ` · ${r.filter}` : ''}
                     </span>
+                    {r.parentImportId && <span className="block text-xs text-vv-muted">From {parentName(r.parentImportId)}</span>}
+                    {r.report === 'client_sheet' && r.note && <span className="block text-xs text-vv-muted">{r.note}</span>}
                     {r.totals.length > 0 && <span className="block text-xs text-vv-muted">Totals: {r.totals.map((t) => `${t.segment} ${t.volume}`).join(' · ')}</span>}
                   </td>
                   <td className="px-3 py-2">
@@ -141,6 +144,7 @@ export default function ImportHistory({ siteId }: { siteId: string }) {
                 <Spinner /> Counting what this removes…
               </span>
             )}
+            {c && c.tabImports > 0 && <span className="font-semibold text-vv-ink">This is a whole client Sheet: its {plural(c.tabImports, 'tab import')} go with it (counts below are for all of them).</span>}
             {c && (
               <ul className="m-0 flex flex-col gap-1 pl-5">
                 <li>
@@ -161,6 +165,11 @@ export default function ImportHistory({ siteId }: { siteId: string }) {
               </span>
             )}
             {c && c.removedInUse > 0 && <span className="font-semibold text-vv-orange-ink">{c.removedInUse} of them are in the matrix or clusters and will drop out.</span>}
+            {c?.notes.map((n) => (
+              <span key={n} className="text-[13px] text-vv-body">
+                {n}
+              </span>
+            ))}
             {c && <span className="text-[13px] text-vv-muted">Numbers this import filled into keywords that stay are kept. This can’t be undone.</span>}
             {check?.error && <span className="font-semibold text-vv-red">{check.error}</span>}
           </div>

@@ -1,21 +1,21 @@
 import { Link, Outlet, useLocation, useOutletContext, useParams } from 'react-router'
 import { useClient } from '../../hooks/useClients'
 import { useGuide } from '../../hooks/useGuide'
-import { ALL_SECTIONS } from '../../lib/clientSetup'
+import { ALL_SECTIONS, clientPath, strategyPath } from '../../lib/clientSetup'
 import { BTN_GHOST, BTN_LIME, CARD, PILL_WAITING, siteLabel, splitAccent } from '../../lib/ui'
 import type { ClientDetail } from '../../types/seo'
 import { Bone } from '../ui/Loading'
 import HeaderTools from './HeaderTools'
 
-// Client workspace frame: /clients/{site id}/… (the address the agency hub and Vibe SEO plugin link to).
-// Header + the current section (the sections themselves are in the sidebar); each section is a child route.
+// Client frame: /clients/{site id}/… (the Overview area: the address the agency hub and Vibe SEO plugin link to) and
+// /clients/{site id}/strategy/… (the Strategy Builder). Breadcrumb + header + the current section (child routes).
 export default function ClientLayout() {
   const { siteId } = useParams()
   const q = useClient(siteId)
   const { pathname } = useLocation()
-  // Overview and Guide need guide progress: start loading it now, not after the client has loaded.
+  // Pages that show guide progress: start loading it now, not after the client has loaded.
   const rest = pathname.replace(`/clients/${siteId}`, '').replace(/^\/+|\/+$/g, '')
-  useGuide(siteId ?? '', rest === '' || rest === 'guide')
+  useGuide(siteId ?? '', ['strategy', 'strategy/guide', 'baseline', 'results'].includes(rest))
 
   if (q.isPending)
     return (
@@ -62,22 +62,26 @@ export default function ClientLayout() {
     .filter(Boolean)
     .join('/')
   const section = path ? ALL_SECTIONS.find((s) => s.path === path) : undefined
+  const inStrategy = path === 'strategy' || path.startsWith('strategy/')
   // Redesigned sections draw their own title (docs/design/); the rest still get the client-name header.
   const ownHeader = !path || OWN_HEADER.has(section?.key ?? '')
+  const crumb = (to: string, text: string) => (
+    <>
+      <Link to={to} className="text-vv-muted no-underline hover:text-vv-purple-deep">
+        {text}
+      </Link>{' '}
+      <span aria-hidden="true">›</span>{' '}
+    </>
+  )
   return (
     <>
       <span className="text-[15px] text-vv-muted">
-        <Link to="/clients" className="text-vv-muted no-underline hover:text-vv-purple-deep">
-          Clients
-        </Link>{' '}
-        <span aria-hidden="true">›</span>{' '}
+        {crumb('/clients', 'Clients')}
         {path ? (
           <>
-            <Link to={`/clients/${c.siteId}`} className="text-vv-muted no-underline hover:text-vv-purple-deep">
-              {c.name}
-            </Link>{' '}
-            <span aria-hidden="true">›</span>{' '}
-            <strong className="text-vv-ink">{section ? (section.group ? `${section.group} › ${section.label}` : section.label) : path}</strong>
+            {crumb(clientPath(c.siteId), c.name)}
+            {inStrategy && path !== 'strategy' && crumb(strategyPath(c.siteId), 'Strategy Builder')}
+            <strong className="text-vv-ink">{section ? (section.group ? `${section.group} › ${section.label}` : section.key === 'strategy' ? 'Strategy Builder' : section.label) : path}</strong>
           </>
         ) : (
           <>
@@ -106,8 +110,8 @@ export default function ClientLayout() {
           </p>
         </div>
         <HeaderTools>
-          <Link to={`/clients/${c.siteId}/edit`} className={BTN_GHOST}>
-            Edit client
+          <Link to={strategyPath(c.siteId, 'setup')} className={BTN_GHOST}>
+            Client setup
           </Link>
         </HeaderTools>
       </header>}
@@ -118,7 +122,7 @@ export default function ClientLayout() {
 }
 
 /** Sections that have their own page header (title + tools) from the design. */
-const OWN_HEADER = new Set(['guide', 'uploads', 'database', 'matrix', 'clusters'])
+const OWN_HEADER = new Set(['guide', 'uploads', 'database', 'matrix', 'clusters', 'notes', 'strategy', 'baseline', 'results', 'site-check', 'site'])
 
 /** The client loaded by ClientLayout, for its tab pages. */
 // eslint-disable-next-line react-refresh/only-export-components

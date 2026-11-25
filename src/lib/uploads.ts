@@ -5,14 +5,13 @@ import type { ClientDetail, ImportRecord, ImportReport } from '../types/seo'
 
 export type UploadDay = { key: string; label: string; step: number; live: boolean; phase?: string }
 
+// Strategy Builder days only: Day 3 (baseline) and Day 10 (results) uploads live in the client Overview (Nov 26).
 export const UPLOAD_DAYS: UploadDay[] = [
   { key: 'day1', label: 'Day 1 · Setup', step: 0, live: true },
   { key: 'day2', label: 'Day 2 · Keywords', step: 1, live: true },
-  { key: 'day3', label: 'Day 3 · Baseline', step: 2, live: false, phase: '2' },
   { key: 'day4', label: 'Day 4 · GBP check', step: 3, live: false, phase: '4' },
   { key: 'day56', label: 'Day 5–6 · Pages', step: 4, live: false, phase: '3' },
   { key: 'day79', label: 'Day 7–9 · GBP + links', step: 6, live: false, phase: '4' },
-  { key: 'day10', label: 'Day 10 · Results', step: 8, live: false, phase: '2' },
 ]
 
 export type Need = {

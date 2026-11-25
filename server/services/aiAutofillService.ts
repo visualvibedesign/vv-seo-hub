@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { looksLikeAddress } from '../../src/lib/importRules.js'
 import { AI_MODELS, AI_TASKS, costUsd, type AiTask } from '../../src/lib/aiModels.js'
-import { hasServiceName, isOwnBrand, roleOptions, serviceOptions, type KeywordLite } from '../../src/lib/autofillRules.js'
+import { hasServiceName, isHubPath, isOwnBrand, roleOptions, serviceOptions, type KeywordLite } from '../../src/lib/autofillRules.js'
 import type { AutofillItem, AutofillKind, AutofillRow, CategoryCode } from '../../src/types/seo.js'
 import { areaState } from '../../src/lib/clientSetup.js'
 import { fill, stateName } from '../../src/lib/templates.js'
@@ -438,10 +438,12 @@ async function prepClusters(c: ClientRow): Promise<Prepared<typeof ClustersOut>>
   const pool = kws.filter((k) => usable(k.id) && !cellPrimaries.has(k.id) && !inNew.has(k.id))
   const nearMe = pool.filter(isNearMe) // never sent, never placed: listed as "Near me — not a page target"
   const { list: leftovers, total: leftoverTotal } = cap(pool.filter((k) => !isNearMe(k)).sort((x, y) => (volRows.get(y.id)?.semrush ?? 0) - (volRows.get(x.id)?.semrush ?? 0)))
-  // Hub = the category's main page: named "hub", the home page, or a primary that names no area. Others are city pages.
+  // Hub = the category's main page: named "hub", the home page, a primary that names no area, or a URL that is one
+  // short segment with no place word (/seo, /web-design). Others are city pages. No page renaming needed.
+  const hubPlaceWords = [c.city, c.state, c.state ? stateName(c.state) : null, ...areas.flatMap((a) => [a.name, a.state]), ...(c.neighbourhood_words ?? [])].filter((w): w is string => !!w)
   const isHub = (p: { id: string; name: string; url: string | null }) => {
     const primary = byId.get(pagePrimary.get(p.id) ?? '')
-    return /\bhub\b/i.test(p.name) || /^https?:\/\/[^/]+\/?$/.test(p.url ?? '') || (!!primary && isGeneric(primary))
+    return /\bhub\b/i.test(p.name) || /^https?:\/\/[^/]+\/?$/.test(p.url ?? '') || isHubPath(p.url, hubPlaceWords) || (!!primary && isGeneric(primary))
   }
   // One numbering for every keyword the model may pick.
   const list: KeywordLite[] = []

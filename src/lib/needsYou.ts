@@ -19,10 +19,10 @@ export function needsYouItems(c: ClientSummary): NeedsYouItem[] {
   if (c.status === 'archived') return []
   const n = c.counts
   const out: NeedsYouItem[] = []
-  if (n.keywords === 0) out.push({ rank: 1, tone: 'orange', title: 'Import keywords', where: 'Keywords › Import', path: 'keywords/import' })
+  if (n.keywords === 0) out.push({ rank: 1, tone: 'orange', title: 'Import keywords', where: 'Strategy › Import', path: 'strategy/keywords/import' })
   if (n.needsRole > 0)
-    out.push({ rank: 2, tone: 'orange', title: `${plural(n.needsRole, 'keyword needs', 'keywords need')} a role`, where: 'Keywords › Database', path: 'keywords/database' })
-  if (n.keywords > 0 && n.tracked === 0) out.push({ rank: 3, tone: 'purple', title: 'Pick keywords to track', where: 'Keywords › Database', path: 'keywords/database' })
+    out.push({ rank: 2, tone: 'orange', title: `${plural(n.needsRole, 'keyword needs', 'keywords need')} a role`, where: 'Strategy › Database', path: 'strategy/keywords/database' })
+  if (n.keywords > 0 && n.tracked === 0) out.push({ rank: 3, tone: 'purple', title: 'Pick keywords to track', where: 'Strategy › Database', path: 'strategy/keywords/database' })
   if (n.accountsPending > 0) out.push({ rank: 4, tone: 'purple', title: `${plural(n.accountsPending, 'account', 'accounts')} pending`, where: 'Overview › Accounts', path: '' })
   return out
 }
