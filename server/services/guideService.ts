@@ -34,7 +34,6 @@ function autoDone(c: ClientDetail, reports: { source: string; report: string }[]
   const facts: Record<string, boolean> = {
     '0.services': ['Home', 'S1', 'S2', 'S3'].every(named) && ['S1', 'S2', 'S3'].every((k) => (cat(k)?.services.length ?? 0) > 0),
     '0.areas': a1?.status === 'active' && !!a1.name?.trim(),
-    '0.kickoff': !!(c.success12mo?.trim() && c.usp?.trim() && c.idealClient?.trim()),
     '0.accounts': c.accounts.length > 0 && c.counts.accountsPending === 0,
     '1.kp': reports.some((r) => r.source === 'kp'),
     '1.semrush': reports.some((r) => r.report === 'keyword_magic'),

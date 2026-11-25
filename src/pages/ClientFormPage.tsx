@@ -170,16 +170,13 @@ function EditForm({ existing }: { existing: ClientDetail }) {
         </div>
       </section>
 
-      <section className={CARD} aria-labelledby="f-kickoff">
-        <h2 id="f-kickoff" className={CARD_TITLE}>
-          Kickoff answers
+      {/* Kickoff answers (12-month goal, USP, ideal client) are skipped at our agency: not asked here. Saved values stay
+          in the database untouched (the form sends back what was loaded). */}
+      <section className={CARD} aria-labelledby="f-notes">
+        <h2 id="f-notes" className={CARD_TITLE}>
+          Notes
         </h2>
-        <div className="grid grid-cols-1 gap-4">
-          <TextArea label="After 12 months, how will they know this worked?" value={f.success12mo} onChange={(v) => set('success12mo', v)} />
-          <TextArea label="Why choose them over a competitor? (USP)" value={f.usp} onChange={(v) => set('usp', v)} />
-          <TextArea label="Ideal client and what they need" value={f.idealClient} onChange={(v) => set('idealClient', v)} />
-          <TextArea label="Notes" value={f.notes} onChange={(v) => set('notes', v)} />
-        </div>
+        <TextArea label="Notes about this client" value={f.notes} onChange={(v) => set('notes', v)} />
       </section>
 
       {error && (

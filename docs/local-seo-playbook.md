@@ -31,6 +31,7 @@ Standard local SEO process for every client site. Based on Sam's 10-Day Rank You
 - **3×3 matrix:** a page for each top-3 service in each top-3 area puts you ahead of most competitors.
 
 **Kickoff call questions (ask the client)**
+> **Our agency skips the kickoff answers** (12-month goal, USP, ideal client): SEO Hub doesn't ask for them. Day 1 is services, areas and accounts. Saved values stay in the database, unused. Questions 1–3 below are Sam's; only question 4 is used.
 1. "After 12 months working with us, how will you know this was a success?" (Expect: rank higher, more leads/business. Rankings are what we control and report first.)
 2. Why would someone choose you over a competitor? (unique selling point)
 3. Who is the ideal client and what do they need?
@@ -425,7 +426,7 @@ Effort split: GBP and authority building ~5–10% each; the website is 70–80% 
 - **Future:** what we'll do next (a short list). "We don't know yet, we'll look" is an OK answer.
 
 **1 · Start with the goal**
-- Read the 12-month goal from the Day 1 kickoff **before** opening any dashboard.
+- Read the 12-month goal from the Day 1 kickoff **before** opening any dashboard. *(Skipped at our agency: no kickoff goal; start from the baseline.)*
 - Note the service + area you focused on.
 
 **2 · Do the research, then compare like with like.** Label each source **Comparable / Limited / Unavailable**, with the reason if limited and the next check date.

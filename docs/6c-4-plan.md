@@ -1,4 +1,7 @@
-# 6c-4 plan: Claude page suggestions + Day 1 from pasted text (not built)
+# 6c-4 plan: Claude page suggestions + Day 1 from pasted text (built Nov 25)
+
+> Update: kickoff answers are skipped at our agency. Day 1 auto-fill suggests services, areas and scope / brand words
+> only; the kickoff list was removed from the app (the `setup_kickoff` kind stays allowed, unused).
 
 Same rules as 6c-1 to 6c-3: cost first and Run only on click, results Ready to review in `seo_autofill`, approve item by
 item, nothing overwritten, every call logged. Claude never invents facts or changes exported numbers. Works for any

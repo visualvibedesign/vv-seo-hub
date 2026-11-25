@@ -5,8 +5,8 @@ import { ApiError } from '../../lib/api'
 import { CARD, FIELD } from '../../lib/ui'
 import type { AutofillKind, ClientDetail } from '../../types/seo'
 
-// "2 · What Claude filled" for Day 1 (6c-4b): paste kickoff notes or the client's Services page text → cost first →
-// Run with Claude → three lists to review (services, areas, kickoff). Every suggestion shows the words it came from.
+// "2 · What Claude filled" for Day 1 (6c-4b): paste notes or the client's Services page text → cost first →
+// Run with Claude → two lists to review (services incl. scope / brand words; areas). Kickoff answers are skipped. Every suggestion shows the words it came from.
 // The pasted text is used for that one call and never stored. Approve only fills what's empty.
 
 const MAX = 20_000
@@ -15,9 +15,6 @@ const FIELD_LABEL: Record<string, string> = {
   area: 'Area (A2/A3)',
   neighbourhood: 'Neighbourhood word',
   brandWord: 'Brand word',
-  success12mo: '12-month success',
-  usp: 'USP',
-  idealClient: 'Ideal client',
 }
 
 export default function Day1Autofill({ client: c }: { client: ClientDetail }) {
@@ -52,13 +49,13 @@ export default function Day1Autofill({ client: c }: { client: ClientDetail }) {
         2 · What Claude filled
       </h2>
       <label className="flex flex-col gap-1.5 pb-2 text-[13px] font-semibold text-vv-body">
-        Paste kickoff notes or the client’s Services page text
+        Paste notes or the client’s Services page text
         <textarea
           className={`${FIELD} min-h-[140px] resize-y text-[14px]`}
           value={text}
           maxLength={MAX}
           onChange={(e) => setText(e.target.value)}
-          placeholder="What they offer, what they don’t, the cities they serve, what success looks like…"
+          placeholder="What they offer, what they don’t, the cities they serve…"
         />
         <span className="text-[12px] font-normal text-vv-muted">
           {text.length.toLocaleString('en-US')} / {MAX.toLocaleString('en-US')} characters. Used for this one run and never stored; only the suggestions are kept.
@@ -68,7 +65,7 @@ export default function Day1Autofill({ client: c }: { client: ClientDetail }) {
         <AiRun
           siteId={c.siteId}
           task="day1"
-          hasRow={!!(row('setup_services') || row('setup_areas') || row('setup_kickoff'))}
+          hasRow={!!(row('setup_services') || row('setup_areas'))}
           input={text}
           disabledText="Paste some text first"
           sends="Sends only your pasted text and the client’s current category, service and area names."
@@ -79,9 +76,8 @@ export default function Day1Autofill({ client: c }: { client: ClientDetail }) {
             {error}
           </li>
         )}
-        {kind('setup_services', 'Services · Claude', 'Services by category (you confirm the category), and out-of-scope words')}
+        {kind('setup_services', 'Services · Claude', 'Services by category (you confirm the category), out-of-scope and brand words')}
         {kind('setup_areas', 'Areas · Claude', 'Cities for A2 / A3 (only if N/A), and neighbourhood words')}
-        {kind('setup_kickoff', 'Kickoff answers · Claude', '12-month success, USP, ideal client (only if empty), and brand words')}
       </ul>
       <p className="m-0 border-0 border-t border-solid border-vv-line pt-3.5 text-[14px] text-vv-body">
         Each suggestion quotes your text. Anything Claude can’t quote, and any address, phone number or email, is dropped. Approving only fills what’s empty.

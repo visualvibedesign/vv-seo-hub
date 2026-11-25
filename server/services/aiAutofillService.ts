@@ -530,7 +530,7 @@ async function prepClusters(c: ClientRow): Promise<Prepared<typeof ClustersOut>>
 }
 
 // ---- Day 1 from pasted text (Sonnet, 6c-4b) ----------------------------------------------------------
-// Angel pastes kickoff notes or the client's Services page text. Only that text (plus the client's current category,
+// Angel pastes notes or the client's Services page text. Only that text (plus the client's current category,
 // service and area names, so Claude doesn't repeat them) is sent. The pasted text is NOT stored: only the suggestions
 // (each with the short quote it came from) and the usual log row. Checks in code: the quote must really be in the text
 // (no invented facts); addresses, phone numbers and emails are dropped; things the client already has are skipped.
@@ -546,7 +546,6 @@ Never output street addresses, phone numbers or email addresses.
 - notOffered: services the text says they do NOT offer, as short words (e.g. "men", "tattoo removal").
 - areas: cities or towns they serve (with the state abbreviation if the text gives it).
 - neighbourhoods: neighbourhoods or parts of a city they mention.
-- kickoff: success after 12 months, why customers choose them (USP), their ideal client. Only if the text says it.
 - brandWords: the business's own name as written in the text.
 Leave a list empty when the text says nothing about it.`
 
@@ -556,7 +555,6 @@ const Day1Out = z.object({
   notOffered: z.array(Quoted.extend({ word: z.string() })),
   areas: z.array(Quoted.extend({ name: z.string(), state: z.string() })),
   neighbourhoods: z.array(Quoted.extend({ name: z.string() })),
-  kickoff: z.array(Quoted.extend({ field: z.enum(['success12mo', 'usp', 'idealClient']), text: z.string() })),
   brandWords: z.array(Quoted.extend({ word: z.string() })),
 })
 
@@ -585,7 +583,6 @@ export async function prepDay1(c: ClientRow, input: string | undefined): Promise
   const scopeHas = words(c.out_of_scope_words)
   const hoodHas = words(c.neighbourhood_words)
   const brandHas = words(c.brand_words)
-  const kickoffHas = { success12mo: !!c.success_12mo?.trim(), usp: !!c.usp?.trim(), idealClient: !!c.ideal_client?.trim() }
   const catName = new Map(cats.map((k) => [k.code, k.name]))
 
   return {
@@ -635,15 +632,10 @@ export async function prepDay1(c: ClientRow, input: string | undefined): Promise
         if (!name || hoodHas.has(name) || !once(`hood:${name}`) || !ok(n.quote, name)) continue
         add({ group: 'areas', field: 'neighbourhood', value: name, quote: n.quote }, [{ value: 'neighbourhood', rule: `neighbourhood word · “${n.quote.slice(0, 90)}”` }])
       }
-      for (const k of data.kickoff) {
-        const t = k.text.trim().slice(0, 2000)
-        if (!t || kickoffHas[k.field] || !once(`kick:${k.field}`) || !ok(k.quote, t)) continue
-        add({ group: 'kickoff', field: k.field, value: t, quote: k.quote }, [{ value: k.field, rule: `“${k.quote.slice(0, 120)}”` }])
-      }
       for (const b of data.brandWords) {
         const word = b.word.trim().toLowerCase()
         if (!word || brandHas.has(word) || !once(`brand:${word}`) || !ok(b.quote, word)) continue
-        add({ group: 'kickoff', field: 'brandWord', value: word, quote: b.quote }, [{ value: 'brandWord', rule: `brand word · “${b.quote.slice(0, 90)}”` }])
+        add({ group: 'services', field: 'brandWord', value: word, quote: b.quote }, [{ value: 'brandWord', rule: `brand word · “${b.quote.slice(0, 90)}”` }])
       }
       return { items, unmatched: [], summary: `${plural(items.length, 'suggestion')} from your text${dropped ? ` · ${dropped} dropped (not in the text, or an address / phone / email)` : ''}` }
     },
@@ -733,8 +725,9 @@ export async function run(siteId: string, task: AiTask, input?: string): Promise
   })
   const out = p.toItems(data)
   if (task === 'day1') {
-    // One run → three lists (services, areas, kickoff), each Ready to review on its own.
-    const groups: [AutofillKind, string][] = [['setup_services', 'services'], ['setup_areas', 'areas'], ['setup_kickoff', 'kickoff']]
+    // One run → two lists (services incl. scope / brand words; areas), each Ready to review on its own.
+    // Kickoff answers are skipped at our agency (not asked).
+    const groups: [AutofillKind, string][] = [['setup_services', 'services'], ['setup_areas', 'areas']]
     for (const [k, g] of groups) {
       const items = out.items.filter((i) => i.setup?.group === g)
       await saveSuggestion(c, k, { items, unmatched: [], summary: `${plural(items.length, 'suggestion')} from your text` }, logId)

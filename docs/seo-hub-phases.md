@@ -145,7 +145,7 @@ Approved by Alexia.
   - One drop zone that recognises each file by its columns
   - "What Claude filled" (Review / Approve all)
   - "Needs you"
-- [ ] Auto-fill for Day 1 (services, areas, kickoff answers from notes + Services page) and Day 2 (roles, services, intent, matrix suggestions, clusters)
+- [ ] Auto-fill for Day 1 (services, areas, scope / brand words from notes + Services page; kickoff answers skipped at our agency) and Day 2 (roles, services, intent, matrix suggestions, clusters)
 - [ ] Keyword table with quick KP range editing (bulk set), 3×3 matrix, clusters, export tracked list
 - [ ] Notes & links per client
 - [ ] Anassa matches her Sheet: 216 keywords · 10 Primary / 76 Secondary / 32 FAQ / 98 Near me · 22 services · 18 pages · 10 tracked (plus 31 keywords from later imports kept as "Needs role")
@@ -189,7 +189,7 @@ Then build step by step after I approve, tell me what to test on localhost, and 
 - [ ] Swapped-page flags (ranking URL ≠ owner page)
 - [ ] Monthly report archive (snapshot per month)
 - [ ] Day 10 review:
-  - Goal from kickoff
+  - (No kickoff goal: skipped at our agency. Start from the baseline and the focus service + area.)
   - Compare like with like (Comparable / Limited / Unavailable + reason + next check)
   - Work worth explaining (from the work log)
   - Six buckets (OK / Next / Later)

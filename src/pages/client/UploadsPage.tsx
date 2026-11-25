@@ -97,7 +97,6 @@ function Day1Needs({ client: c }: { client: ClientDetail }) {
   const pending = c.accounts.filter((a) => CORE_ACCOUNT_KINDS.includes(a.kind) && a.status === 'pending').length
   const items = [
     { title: 'Services & areas', how: 'Home + S1–S3 with their services, A1 (and A2 / A3 or N/A)', done: servicesOk && !!a1?.name, link: `/clients/${c.siteId}/edit`, label: 'Edit client' },
-    { title: 'Kickoff answers', how: '12-month goal, why them (USP), ideal client', done: !!(c.success12mo && c.usp && c.idealClient), link: `/clients/${c.siteId}/edit`, label: 'Edit client' },
     { title: 'Account checklist', how: 'Search Console, GA4, GBP, Semrush, Whitespark, Clarity', done: pending === 0, link: `/clients/${c.siteId}`, label: 'Overview › Accounts' },
   ]
   const n = items.filter((i) => i.done).length
@@ -126,7 +125,7 @@ function Day1Needs({ client: c }: { client: ClientDetail }) {
         ))}
       </ul>
       <p className="m-0 border-0 border-t border-solid border-vv-line pt-4 text-[14px] text-vv-body">
-        Day 1 needs no exports. Pasting kickoff notes or the Services page so Claude can fill these in comes with auto-fill (step 6c).
+        Day 1 needs no exports. Paste notes or the client’s Services page on the right and Claude suggests services, areas and scope / brand words.
       </p>
     </section>
   )
@@ -398,8 +397,7 @@ function QueueRow({ q, onImport, onSkip, busy }: { q: Queued; onImport: () => vo
 
 const DAY1_FILLS = [
   { title: 'Services', what: 'Home + S1–S3 and their services, from the Services page' },
-  { title: 'Areas', what: 'A1–A3 from the kickoff notes' },
-  { title: 'Kickoff answers', what: 'Goal, USP and ideal client, from the notes' },
+  { title: 'Areas', what: 'A1–A3 from your notes' },
 ]
 
 function ClaudeFilled({ day }: { day: string }) {

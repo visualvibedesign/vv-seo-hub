@@ -37,7 +37,7 @@ Everything Claude needs to know for the SEO Hub project. Updated Nov 25, 2026. O
 ## Sam's process → SEO Hub steps (one flow per client)
 | Step | Sam day | What |
 | --- | --- | --- |
-| 0 Client setup | 1 | S1–S3 services, A1–A3 areas, ideal client, account checklist (GSC, GA4, GBP, Semrush, Whitespark, Clarity) |
+| 0 Client setup | 1 | S1–S3 services, A1–A3 areas, account checklist (GSC, GA4, GBP, Semrush, Whitespark, Clarity). Kickoff answers (12-month goal, USP, ideal client) are skipped at our agency |
 | 1 Keywords | 2 | KP + Semrush CSV import, master keyword database, 3×3 matrix (+ Home row), clusters |
 | 2 Baseline | 3 | Semrush Position Tracking CSV (US), Whitespark grid, GSC / GA4 / GBP numbers with dates |
 | 3 GBP check | 4 | Competitors (Maps, Pleper categories, reviews), Whitespark factors, business details (private address hidden) |
