@@ -19,6 +19,15 @@
     },
     "api/imports/*.ts": {
       "maxDuration": 120
+    },
+    "api/metrics/*.ts": {
+      "maxDuration": 300
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/metrics/cron",
+      "schedule": "0 9 * * *"
+    }
+  ]
 }

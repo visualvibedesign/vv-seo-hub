@@ -20,6 +20,20 @@ export default function ConnectGoogle({ client: c }: { client: ClientDetail }) {
   const s = q.data
   const linked = !!(s?.link?.gscProperty || s?.link?.ga4Property)
 
+  // Linked: one slim line (the numbers show below it); Change opens the same panel.
+  if (linked && !open && s?.link)
+    return (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[13px] text-vv-body">
+        <span className={`${PILL} bg-vv-green-100 text-vv-green-ink`}>Google linked</span>
+        <span>
+          Search Console <strong className="text-vv-ink">{s.link.gscProperty ?? '—'}</strong> · GA4 <strong className="text-vv-ink">{s.link.ga4Property ?? '—'}</strong>
+        </span>
+        <button type="button" className={`${BTN_LINK} min-h-8 text-[13px]`} onClick={() => setOpen(true)}>
+          Change
+        </button>
+      </div>
+    )
+
   return (
     <section className={`${CARD} !rounded-[20px] !border-dashed !border-vv-lavender !gap-2.5 !p-8 phone:!p-5 items-start`} aria-labelledby="ov-google">
       <span className={`${PILL} ${linked ? 'bg-vv-green-100 text-vv-green-ink' : 'bg-vv-lavender-100 text-vv-purple-ink'}`}>Search Console + GA4 · {linked ? 'linked' : 'not connected'}</span>

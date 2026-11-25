@@ -717,3 +717,66 @@ export interface GoogleTestResult {
   gsc: { ok: true; clicks: number; impressions: number; ctr: number; position: number } | { ok: false; error: string } | null
   ga4: { ok: true; sessions: number; engagedSessions: number; users: number } | { ok: false; error: string } | null
 }
+
+// ---- Phase 2b · Google numbers on the Overview (seo_metric_daily + seo_metric_top) ----------------------------
+
+export type MetricRange = '28d' | '3m' | '12m'
+
+/** Totals for one period. null = no data for that period (never 0). */
+export interface GscTotals {
+  clicks: number | null
+  impressions: number | null
+  /** clicks / impressions */
+  ctr: number | null
+  /** impression-weighted average position */
+  position: number | null
+  days: number
+}
+
+export interface Ga4Totals {
+  sessions: number | null
+  engagedSessions: number | null
+  users: number | null
+  keyEvents: number | null
+  /** average session duration, seconds */
+  avgSeconds: number | null
+  days: number
+}
+
+export interface MetricsOverview {
+  range: MetricRange
+  linked: { gsc: boolean; ga4: boolean }
+  lastSyncAt: string | null
+  lastSyncOk: boolean | null
+  lastError: string | null
+  gsc: null | {
+    from: string
+    to: string
+    prevFrom: string
+    prevTo: string
+    /** false = the history doesn't cover the whole previous period: no change shown */
+    comparable: boolean
+    now: GscTotals
+    prev: GscTotals
+    /** one point per day (28d, 3m) or week (12m); null = no data that day */
+    series: { day: string; clicks: number | null; impressions: number | null; ctr: number | null; position: number | null }[]
+    queries: { label: string; clicks: number; impressions: number; ctr: number; position: number; prevPosition: number | null }[]
+    pages: { label: string; clicks: number; impressions: number }[]
+  }
+  ga4: null | {
+    from: string
+    to: string
+    comparable: boolean
+    now: Ga4Totals
+    prev: Ga4Totals
+    /** sessions per day (28d), week (3m) or month (12m) */
+    bars: { label: string; from: string; to: string; sessions: number | null }[]
+  }
+}
+
+export interface MetricsSyncResult {
+  gscDays: number
+  ga4Days: number
+  topRows: number
+  errors: string[]
+}

@@ -8,6 +8,7 @@ import { useKeywords } from '../../hooks/useKeywords'
 import { useNotes } from '../../hooks/useNotes'
 import { useGoogleSetup } from '../../hooks/useGoogle'
 import ConnectGoogle from '../../components/overview/ConnectGoogle'
+import GoogleNumbers from '../../components/overview/GoogleNumbers'
 import { LinkEditor, OpenButton } from '../../components/client/AccountParts'
 import { ApiError } from '../../lib/api'
 import { ACCOUNT_ICON, ACCOUNTS, ACCOUNT_STATUS_LABEL, accountOpenUrl, clientPath, strategyPath } from '../../lib/clientSetup'
@@ -68,6 +69,7 @@ export default function OverviewPage() {
       <Sources client={c} />
 
       <ConnectGoogle client={c} />
+      <LinkedNumbers siteId={c.siteId} />
 
       <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)] items-start gap-4 [@media(max-width:1200px)]:grid-cols-2 [@media(max-width:760px)]:grid-cols-1">
         <Rankings client={c} />
@@ -123,15 +125,22 @@ export default function OverviewPage() {
   )
 }
 
+/** Search Console + GA4 numbers, once Google is linked for this client. */
+function LinkedNumbers({ siteId }: { siteId: string }) {
+  const link = useGoogleSetup(siteId).data?.link
+  return link && (link.gscProperty || link.ga4Property) ? <GoogleNumbers siteId={siteId} /> : null
+}
+
 const DOT: Record<'live' | 'soon' | 'part', string> = { live: 'bg-vv-green', soon: 'bg-vv-muted', part: 'bg-vv-purple' }
 
 /** Where each number comes from, and whether we have it yet (real state only). */
 function Sources({ client: c }: { client: ClientDetail }) {
   const tracked = c.counts.tracked
   const link = useGoogleSetup(c.siteId).data?.link ?? null
+  const pulled = link?.lastSyncAt ? `Connected · pulled ${new Date(link.lastSyncAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}${link.lastSyncOk === false ? ' (with errors)' : ''}` : 'Linked · not pulled yet'
   const list: { name: string; note: string; dot: keyof typeof DOT }[] = [
-    { name: 'Search Console', note: link?.gscProperty ? 'Linked · daily numbers in step 2b' : 'Not connected', dot: link?.gscProperty ? 'part' : 'soon' },
-    { name: 'GA4', note: link?.ga4Property ? 'Linked · daily numbers in step 2b' : 'Not connected', dot: link?.ga4Property ? 'part' : 'soon' },
+    { name: 'Search Console', note: link?.gscProperty ? pulled : 'Not connected', dot: link?.gscProperty ? (link.lastSyncOk === false ? 'soon' : 'live') : 'soon' },
+    { name: 'GA4', note: link?.ga4Property ? pulled : 'Not connected', dot: link?.ga4Property ? (link.lastSyncOk === false ? 'soon' : 'live') : 'soon' },
     { name: 'Semrush', note: tracked ? `${tracked} keywords tracked · positions CSV in phase 2` : 'No keywords tracked yet', dot: tracked ? 'part' : 'soon' },
     { name: 'Whitespark', note: 'No map grid yet', dot: 'soon' },
     { name: 'GBP', note: 'Not typed in yet', dot: 'soon' },

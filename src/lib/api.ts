@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -350,4 +350,14 @@ export function testGoogle(gscProperty: string, ga4Property: string): Promise<Go
 
 export function saveGoogleLink(siteId: string, link: { gscProperty: string; ga4Property: string; queryWords: string[] }): Promise<{ link: GoogleLink }> {
   return call('/api/metrics/google-save', json({ siteId, ...link }))
+}
+
+/** Search Console + GA4 numbers for one range (from the last pull). */
+export function getMetricsOverview(siteId: string, range: MetricRange): Promise<MetricsOverview> {
+  return call(`/api/metrics/overview?site=${encodeURIComponent(siteId)}&range=${range}`)
+}
+
+/** "Update numbers": pull this client's Search Console + GA4 now. */
+export function syncMetrics(siteId: string): Promise<MetricsSyncResult> {
+  return call('/api/metrics/sync', json({ siteId }))
 }
