@@ -134,7 +134,7 @@ export default function Day2Autofill({ client: c }: { client: ClientDetail }) {
   )
 }
 
-function KindRow({ title, what, row, open, onToggle, loading }: { title: string; what: string; row?: AutofillRow; open: boolean; onToggle: () => void; loading: boolean }) {
+export function KindRow({ title, what, row, open, onToggle, loading }: { title: string; what: string; row?: AutofillRow; open: boolean; onToggle: () => void; loading: boolean }) {
   const openCount = row?.items.filter((i) => !i.decision).length ?? 0
   const status = !row
     ? { cls: 'bg-vv-st-todo text-vv-st-todo-ink', text: loading ? '…' : 'Not run yet' }
@@ -169,7 +169,7 @@ type ReviewProps = {
   busy: boolean
 }
 
-function Review({ row, label, pill, flagged, onDecide, busy }: ReviewProps) {
+export function Review({ row, label, pill, flagged, onDecide, busy }: ReviewProps) {
   const [only, setOnly] = useState<'open' | 'all'>('open')
   const items = row.items.filter((i) => only === 'all' || !i.decision)
   const looks = row.items.filter((i) => !i.decision && i.options.length > 1).length
@@ -282,7 +282,7 @@ function ItemRow({
 }
 
 /** Claude run: Estimate (free) → shows keywords, model, tokens, cost → Run with Claude (only on click). */
-function AiRun({ siteId, task, hasRow, sends, emptyText }: { siteId: string; task: AiTask; hasRow: boolean; sends: string; emptyText: string }) {
+export function AiRun({ siteId, task, hasRow, sends, emptyText, input, disabledText }: { siteId: string; task: AiTask; hasRow: boolean; sends: string; emptyText: string; input?: string; disabledText?: string }) {
   const est = useEstimateAi(siteId)
   const run = useRunAi(siteId)
   const [shown, setShown] = useState<AiEstimate | null>(null)
@@ -294,8 +294,9 @@ function AiRun({ siteId, task, hasRow, sends, emptyText }: { siteId: string; tas
         <button
           type="button"
           className="self-start border-0 bg-transparent p-0 text-[14px] font-semibold text-vv-purple-deep underline"
-          disabled={est.isPending}
-          onClick={() => est.mutate(task, { onSuccess: setShown })}
+          disabled={est.isPending || (input !== undefined && !input.trim())}
+          title={input !== undefined && !input.trim() ? disabledText : undefined}
+          onClick={() => est.mutate({ task, input }, { onSuccess: setShown })}
         >
           {est.isPending ? 'Counting…' : hasRow ? 'Run with Claude again: see the cost first' : 'Run with Claude: see the cost first'}
         </button>
@@ -313,7 +314,7 @@ function AiRun({ siteId, task, hasRow, sends, emptyText }: { siteId: string; tas
           </span>
           <span className="text-[13px] text-vv-body">{sends} Results wait here as Ready to review; nothing changes until you approve.</span>
           <span className="flex flex-wrap gap-2">
-            <button type="button" className={`${BTN_LIME} min-h-10`} disabled={run.isPending} onClick={() => run.mutate(task, { onSuccess: () => setShown(null) })}>
+            <button type="button" className={`${BTN_LIME} min-h-10`} disabled={run.isPending} onClick={() => run.mutate({ task, input }, { onSuccess: () => setShown(null) })}>
               {run.isPending && <Spinner />}
               Run with Claude
             </button>

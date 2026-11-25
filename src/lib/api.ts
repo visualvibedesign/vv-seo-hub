@@ -207,13 +207,13 @@ export interface AiEstimate {
 }
 
 /** What a Claude run would send and cost (free token count; nothing runs, nothing saved). */
-export function estimateAi(siteId: string, task: AiTask): Promise<{ estimate: AiEstimate }> {
-  return call('/api/autofill/estimate', json({ siteId, task }))
+export function estimateAi(siteId: string, task: AiTask, input?: string): Promise<{ estimate: AiEstimate }> {
+  return call('/api/autofill/estimate', json({ siteId, task, input }))
 }
 
 /** One Claude call (logged); results saved as Ready to review. Only on Angel's click. */
-export function runAi(siteId: string, task: AiTask): Promise<{ rows: AutofillRow[] }> {
-  return call('/api/autofill/run-ai', json({ siteId, task }))
+export function runAi(siteId: string, task: AiTask, input?: string): Promise<{ rows: AutofillRow[] }> {
+  return call('/api/autofill/run-ai', json({ siteId, task, input }))
 }
 
 /** Open suggestion lists that point to removed keywords (count only). */

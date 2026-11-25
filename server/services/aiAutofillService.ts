@@ -4,7 +4,9 @@
 // address, account details or notes. Claude never changes exported numbers: intent is only suggested where
 // Semrush left it empty. Keywords that hit a scope word (out of scope / neighbourhood) are never sent: they
 // are on the plain-code scope list instead.
+import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
+import { looksLikeAddress } from '../../src/lib/importRules.js'
 import { AI_MODELS, AI_TASKS, costUsd, type AiTask } from '../../src/lib/aiModels.js'
 import { hasServiceName, isOwnBrand, roleOptions, serviceOptions, type KeywordLite } from '../../src/lib/autofillRules.js'
 import type { AutofillItem, AutofillKind, AutofillRow, CategoryCode } from '../../src/types/seo.js'
@@ -527,6 +529,127 @@ async function prepClusters(c: ClientRow): Promise<Prepared<typeof ClustersOut>>
   }
 }
 
+// ---- Day 1 from pasted text (Sonnet, 6c-4b) ----------------------------------------------------------
+// Angel pastes kickoff notes or the client's Services page text. Only that text (plus the client's current category,
+// service and area names, so Claude doesn't repeat them) is sent. The pasted text is NOT stored: only the suggestions
+// (each with the short quote it came from) and the usual log row. Checks in code: the quote must really be in the text
+// (no invented facts); addresses, phone numbers and emails are dropped; things the client already has are skipped.
+
+export const DAY1_MAX_CHARS = 20_000
+
+const DAY1_SYSTEM = `You read notes or a website's services page about a local business and pull out facts for its SEO setup.
+Use ONLY what the text says. Never guess, never add anything that isn't in the text.
+For every fact, copy the exact words from the text it came from into "quote" (a short part of one sentence).
+Never output street addresses, phone numbers or email addresses.
+- services: what the business offers. Put each in a category: Home = the one general service people search for;
+  S1, S2, S3 = the main service groups, most important first. Give each group a short name (categoryName).
+- notOffered: services the text says they do NOT offer, as short words (e.g. "men", "tattoo removal").
+- areas: cities or towns they serve (with the state abbreviation if the text gives it).
+- neighbourhoods: neighbourhoods or parts of a city they mention.
+- kickoff: success after 12 months, why customers choose them (USP), their ideal client. Only if the text says it.
+- brandWords: the business's own name as written in the text.
+Leave a list empty when the text says nothing about it.`
+
+const Quoted = z.object({ quote: z.string() })
+const Day1Out = z.object({
+  services: z.array(Quoted.extend({ name: z.string(), category: z.enum(['Home', 'S1', 'S2', 'S3']), categoryName: z.string() })),
+  notOffered: z.array(Quoted.extend({ word: z.string() })),
+  areas: z.array(Quoted.extend({ name: z.string(), state: z.string() })),
+  neighbourhoods: z.array(Quoted.extend({ name: z.string() })),
+  kickoff: z.array(Quoted.extend({ field: z.enum(['success12mo', 'usp', 'idealClient']), text: z.string() })),
+  brandWords: z.array(Quoted.extend({ word: z.string() })),
+})
+
+const squash = (s: string) => s.toLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/\s+/g, ' ').trim()
+const PHONE = /(\+?\d[\d\s().-]{7,}\d)/
+const EMAIL = /[^\s@]+@[^\s@]+\.[a-z]{2,}/i
+
+export async function prepDay1(c: ClientRow, input: string | undefined): Promise<Prepared<typeof Day1Out>> {
+  const text = (input ?? '').trim()
+  if (text.length > DAY1_MAX_CHARS) throw new AutofillInputError(`That text is too long (${DAY1_MAX_CHARS.toLocaleString('en-US')} characters max). Paste the part about services and areas.`)
+  const [svc, catsR, areasR] = await Promise.all([
+    servicesOf(c),
+    db().from('seo_client_categories').select('code, name').eq('client_id', c.id),
+    db().from('seo_client_areas').select('code, name, status').eq('client_id', c.id),
+  ])
+  const cats = must(catsR, 'Loading categories') as { code: string; name: string }[]
+  const areas = must(areasR, 'Loading areas') as { code: string; name: string | null; status: string }[]
+  const user = [
+    `Already set (don't repeat): categories ${cats.filter((k) => k.code !== 'FAQ').map((k) => `${k.code} ${k.name || '-'}`).join('; ')} · services ${svc.map((s) => s.name).join(', ') || '-'} · areas ${areas.filter((a) => a.status === 'active' && a.name).map((a) => a.name).join(', ') || '-'}`,
+    `Text:\n<<<\n${text}\n>>>`,
+  ].join('\n\n')
+  const haystack = squash(text)
+  const hasSvc = new Set(svc.map((s) => s.name.toLowerCase()))
+  const hasArea = new Set(areas.filter((a) => a.name).map((a) => a.name!.toLowerCase()))
+  const words = (xs: string[] | undefined) => new Set((xs ?? []).map((x) => x.toLowerCase()))
+  const scopeHas = words(c.out_of_scope_words)
+  const hoodHas = words(c.neighbourhood_words)
+  const brandHas = words(c.brand_words)
+  const kickoffHas = { success12mo: !!c.success_12mo?.trim(), usp: !!c.usp?.trim(), idealClient: !!c.ideal_client?.trim() }
+  const catName = new Map(cats.map((k) => [k.code, k.name]))
+
+  return {
+    list: [],
+    total: text ? 1 : 0,
+    count: { items: text ? 1 : 0, total: text ? 1 : 0, noun: 'pasted text' },
+    effort: 'medium',
+    system: DAY1_SYSTEM,
+    user,
+    schema: Day1Out,
+    toItems: (data) => {
+      const items: AutofillItem[] = []
+      let dropped = 0
+      // A fact counts only if its quote is really in the text, and it holds no address / phone / email.
+      const ok = (quote: string, ...values: string[]) => {
+        const q = squash(quote)
+        const good = q.length >= 3 && haystack.includes(q) && !values.some((v) => looksLikeAddress(v) || PHONE.test(v) || EMAIL.test(v))
+        if (!good) dropped++
+        return good
+      }
+      const add = (setup: NonNullable<AutofillItem['setup']>, options: AutofillItem['options']) =>
+        items.push({ keywordId: randomUUID(), keyword: setup.value, setup: { ...setup, quote: setup.quote.slice(0, 200) }, options, decision: null })
+      const seen = new Set<string>()
+      const once = (k: string) => (seen.has(k) ? false : (seen.add(k), true))
+      for (const s of data.services) {
+        const name = s.name.trim()
+        if (!name || hasSvc.has(name.toLowerCase()) || !once(`svc:${name.toLowerCase()}`) || !ok(s.quote, name)) continue
+        // Claude's category first; the other three so Angel can pick a different one.
+        const order = [s.category, ...(['Home', 'S1', 'S2', 'S3'] as const).filter((x) => x !== s.category)]
+        add(
+          { group: 'services', field: 'service', value: name, category: s.category, categoryName: s.categoryName.trim().slice(0, 80), quote: s.quote },
+          order.map((code, i) => ({ value: code, rule: i === 0 ? `Claude’s pick${catName.get(code)?.trim() && catName.get(code) !== code ? '' : ` (name: “${s.categoryName.trim()}”)`} · “${s.quote.slice(0, 90)}”` : 'or this category' })),
+        )
+      }
+      for (const w of data.notOffered) {
+        const word = w.word.trim().toLowerCase()
+        if (!word || scopeHas.has(word) || !once(`no:${word}`) || !ok(w.quote, word)) continue
+        add({ group: 'services', field: 'notOffered', value: word, quote: w.quote }, [{ value: 'notOffered', rule: `out of scope word · “${w.quote.slice(0, 90)}”` }])
+      }
+      for (const a of data.areas) {
+        const name = a.name.trim()
+        if (!name || hasArea.has(name.toLowerCase()) || !once(`area:${name.toLowerCase()}`) || !ok(a.quote, name)) continue
+        add({ group: 'areas', field: 'area', value: name, state: a.state.trim().toUpperCase().slice(0, 4), quote: a.quote }, [{ value: 'area', rule: `area (fills A2/A3 if N/A) · “${a.quote.slice(0, 90)}”` }])
+      }
+      for (const n of data.neighbourhoods) {
+        const name = n.name.trim().toLowerCase()
+        if (!name || hoodHas.has(name) || !once(`hood:${name}`) || !ok(n.quote, name)) continue
+        add({ group: 'areas', field: 'neighbourhood', value: name, quote: n.quote }, [{ value: 'neighbourhood', rule: `neighbourhood word · “${n.quote.slice(0, 90)}”` }])
+      }
+      for (const k of data.kickoff) {
+        const t = k.text.trim().slice(0, 2000)
+        if (!t || kickoffHas[k.field] || !once(`kick:${k.field}`) || !ok(k.quote, t)) continue
+        add({ group: 'kickoff', field: k.field, value: t, quote: k.quote }, [{ value: k.field, rule: `“${k.quote.slice(0, 120)}”` }])
+      }
+      for (const b of data.brandWords) {
+        const word = b.word.trim().toLowerCase()
+        if (!word || brandHas.has(word) || !once(`brand:${word}`) || !ok(b.quote, word)) continue
+        add({ group: 'kickoff', field: 'brandWord', value: word, quote: b.quote }, [{ value: 'brandWord', rule: `brand word · “${b.quote.slice(0, 90)}”` }])
+      }
+      return { items, unmatched: [], summary: `${plural(items.length, 'suggestion')} from your text${dropped ? ` · ${dropped} dropped (not in the text, or an address / phone / email)` : ''}` }
+    },
+  }
+}
+
 /** Semrush volume (number) and KP range (text) as stored, for the keywords about to be sent. */
 async function kpRanges(ids: string[]): Promise<{ id: string; semrush: number | null; kp: string | null }[]> {
   const out: { id: string; semrush: number | null; kp: string | null }[] = []
@@ -539,12 +662,13 @@ async function kpRanges(ids: string[]): Promise<{ id: string; semrush: number | 
 // ---- Shared -----------------------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function prepare(c: ClientRow, task: AiTask): Promise<Prepared<any>> {
+function prepare(c: ClientRow, task: AiTask, input?: string): Promise<Prepared<any>> {
   if (task === 'intent') return prepIntent(c)
   if (task === 'services') return prepServices(c)
   if (task === 'triage') return prepTriage(c)
   if (task === 'matrix') return prepMatrix(c)
   if (task === 'clusters') return prepClusters(c)
+  if (task === 'day1') return prepDay1(c, input)
   throw new AutofillInputError('That auto-fill task isn’t built yet.')
 }
 
@@ -571,9 +695,9 @@ async function saveSuggestion(c: ClientRow, kind: AutofillKind, out: { items: Au
 
 // ---- Public: estimate + run -------------------------------------------------------------------------
 
-export async function estimate(siteId: string, task: AiTask): Promise<AiEstimate> {
+export async function estimate(siteId: string, task: AiTask, input?: string): Promise<AiEstimate> {
   const c = await client(siteId)
-  const p = await prepare(c, task)
+  const p = await prepare(c, task, input)
   const t = AI_TASKS[task]
   const items = p.count?.items ?? p.list.length
   const noun = p.count?.noun ?? 'keyword'
@@ -584,21 +708,21 @@ export async function estimate(siteId: string, task: AiTask): Promise<AiEstimate
 }
 
 /** Read-only: exactly what a run would send (system + user text). For checks; never calls Claude. */
-export async function promptFor(siteId: string, task: AiTask): Promise<{ system: string; user: string }> {
-  const p = await prepare(await client(siteId), task)
+export async function promptFor(siteId: string, task: AiTask, input?: string): Promise<{ system: string; user: string }> {
+  const p = await prepare(await client(siteId), task, input)
   return { system: p.system, user: p.user }
 }
 
-export async function run(siteId: string, task: AiTask): Promise<AutofillRow[]> {
+export async function run(siteId: string, task: AiTask, input?: string): Promise<AutofillRow[]> {
   const c = await client(siteId)
   const kind = KIND[task]
-  if (!kind) throw new AutofillInputError('That auto-fill task isn’t built yet.')
-  const p = await prepare(c, task)
+  if (!kind && task !== 'day1') throw new AutofillInputError('That auto-fill task isn’t built yet.')
+  const p = await prepare(c, task, input)
   const items = p.count?.items ?? p.list.length
   if (!items) throw new AutofillInputError('Nothing to send for this one.')
   const t = AI_TASKS[task]
   const { data, logId } = await callStructured({
-    task: `day2.${task}`,
+    task: task === 'day1' ? 'day1.notes' : `day2.${task}`,
     clientId: c.id,
     model: t.model,
     system: p.system,
@@ -607,6 +731,14 @@ export async function run(siteId: string, task: AiTask): Promise<AutofillRow[]> 
     effort: p.effort,
     maxTokens: Math.max(2000, t.outBase + t.outPerItem * items * 2),
   })
-  await saveSuggestion(c, kind, p.toItems(data), logId)
+  const out = p.toItems(data)
+  if (task === 'day1') {
+    // One run → three lists (services, areas, kickoff), each Ready to review on its own.
+    const groups: [AutofillKind, string][] = [['setup_services', 'services'], ['setup_areas', 'areas'], ['setup_kickoff', 'kickoff']]
+    for (const [k, g] of groups) {
+      const items = out.items.filter((i) => i.setup?.group === g)
+      await saveSuggestion(c, k, { items, unmatched: [], summary: `${plural(items.length, 'suggestion')} from your text` }, logId)
+    }
+  } else await saveSuggestion(c, kind!, out, logId)
   return listAutofill(siteId)
 }

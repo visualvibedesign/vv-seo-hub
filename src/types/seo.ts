@@ -482,6 +482,16 @@ export interface AutofillItem {
   }
   /** Page suggestions (6c-4a): put a leftover keyword on a page (existing, or a new one from this list). */
   assign?: { pageId: string | null; cell: string | null; pageName: string; role: 'secondary' | 'faq' }
+  /** Day 1 from pasted text (6c-4b): one fact, with the words it came from. keywordId is just an item id here. */
+  setup?: {
+    group: 'services' | 'areas' | 'kickoff'
+    field: 'service' | 'notOffered' | 'area' | 'neighbourhood' | 'success12mo' | 'usp' | 'idealClient' | 'brandWord'
+    value: string
+    category?: 'Home' | 'S1' | 'S2' | 'S3'
+    categoryName?: string
+    state?: string
+    quote: string
+  }
 }
 
 export interface AutofillRow {

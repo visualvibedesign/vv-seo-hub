@@ -15,12 +15,18 @@ export function useRunRules(siteId: string) {
 
 /** Estimate first (free), then run on click. */
 export function useEstimateAi(siteId: string) {
-  return useMutation({ mutationFn: (task: AiTask) => estimateAi(siteId, task).then((r) => r.estimate) })
+  return useMutation({ mutationFn: ({ task, input }: { task: AiTask; input?: string }) => estimateAi(siteId, task, input).then((r) => r.estimate) })
 }
 
 export function useRunAi(siteId: string) {
   const qc = useQueryClient()
-  return useMutation({ mutationFn: (task: AiTask) => runAi(siteId, task), onSuccess: (data) => qc.setQueryData(['autofill', siteId], data) })
+  return useMutation({
+    mutationFn: ({ task, input }: { task: AiTask; input?: string }) => runAi(siteId, task, input),
+    onSuccess: (data) => {
+      qc.setQueryData(['autofill', siteId], data)
+      // Day 1 approvals change the client (services, areas, words): refreshed on decide; nothing changes on a run.
+    },
+  })
 }
 
 export function useDecide(siteId: string) {
@@ -30,7 +36,7 @@ export function useDecide(siteId: string) {
     onSuccess: (data) => {
       qc.setQueryData(['autofill', siteId], data)
       // Approved rows changed keywords: refresh what shows them.
-      for (const key of [['keywords', siteId], ['matrix', siteId], ['guide', siteId], ['client', siteId], ['clients']]) void qc.invalidateQueries({ queryKey: key })
+      for (const key of [['keywords', siteId], ['matrix', siteId], ['clusters', siteId], ['guide', siteId], ['client', siteId], ['clients']]) void qc.invalidateQueries({ queryKey: key })
     },
   })
 }

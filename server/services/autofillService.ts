@@ -52,7 +52,7 @@ async function liveKeywordIds(clientId: string): Promise<Set<string>> {
 
 /** Open (ready) suggestions of a client and how many of their keywords no longer exist (e.g. removed with a deleted import). */
 async function openWithGone(clientId: string): Promise<{ row: Row; gone: number }[]> {
-  const rows = must(await db().from('seo_autofill').select(COLS).eq('client_id', clientId).eq('status', 'ready'), 'Loading auto-fill') as Row[]
+  const rows = (must(await db().from('seo_autofill').select(COLS).eq('client_id', clientId).eq('status', 'ready'), 'Loading auto-fill') as Row[]).filter((r) => !r.kind.startsWith('setup_'))
   if (!rows.length) return []
   const live = await liveKeywordIds(clientId)
   return rows.map((row) => {
@@ -77,7 +77,8 @@ export async function listAutofill(siteId: string): Promise<AutofillRow[]> {
   if (!out.some((r) => r.status === 'ready')) return out
   const live = await liveKeywordIds(c.id)
   return out.map((r) => {
-    if (r.status !== 'ready') return r
+    // Day 1 lists hold facts, not keywords (their item ids aren't keyword ids): never stale.
+    if (r.status !== 'ready' || r.kind.startsWith('setup_')) return r
     const items = r.items.filter((i) => live.has(i.keywordId))
     const unmatched = r.unmatched.filter((u) => live.has(u.keywordId))
     const gone = new Set([...r.items, ...r.unmatched].filter((i) => !live.has(i.keywordId)).map((i) => i.keywordId)).size
@@ -230,6 +231,7 @@ export async function decide(raw: unknown): Promise<AutofillRow[]> {
   if (row.status !== 'ready') throw new AutofillInputError('This suggestion was already closed or replaced by a newer run.')
   if (row.kind === 'matrix') return decideMatrix(c, row, p.data.decisions as AutofillDecision[], p.data.siteId)
   if (row.kind === 'clusters') return decideClusters(c, row, p.data.decisions as AutofillDecision[], p.data.siteId)
+  if (row.kind === 'setup_services' || row.kind === 'setup_areas' || row.kind === 'setup_kickoff') return decideSetup(c, row, p.data.decisions as AutofillDecision[], p.data.siteId)
   const target = TARGET[row.kind]
   if (!target) throw new AutofillInputError('This kind can’t be approved here yet.')
 
@@ -445,6 +447,73 @@ async function decideClusters(c: ClientRow, row: Row, decisions: AutofillDecisio
       item.decision = 'approved'
       item.applied = pageId
     }
+  }
+  const open = items.some((i) => !i.decision)
+  must(
+    await db()
+      .from('seo_autofill')
+      .update({ payload: row.payload, applied_count: items.filter((i) => i.decision === 'approved').length, ...(open ? {} : { status: 'approved', decided_at: new Date().toISOString() }) })
+      .eq('id', row.id)
+      .eq('status', 'ready'),
+    'Saving the decisions',
+  )
+  return listAutofill(siteId)
+}
+
+/**
+ * Day 1 from pasted text (Claude, 6c-4b). Approve fills ONLY what's empty; anything set in the meantime → "skipped":
+ *   service → added to the category Angel confirmed (if no service with that name yet); an empty / placeholder
+ *             category name takes Claude's suggested name
+ *   area → the first of A2 / A3 that is N/A (none free → skipped); neighbourhood / out-of-scope / brand word → added
+ *   kickoff answer → only if that field is empty
+ */
+async function decideSetup(c: ClientRow, row: Row, decisions: AutofillDecision[], siteId: string): Promise<AutofillRow[]> {
+  const items = row.payload.items
+  const byId = new Map(items.map((i) => [i.keywordId, i]))
+  for (const d of decisions) {
+    const item = byId.get(d.keywordId)
+    if (!item?.setup) throw new AutofillInputError('That suggestion isn’t part of this list.')
+    if (item.decision) continue
+    if (d.action === 'reject') {
+      item.decision = 'rejected'
+      continue
+    }
+    const s = item.setup
+    const fresh = (await clientRow(c.site_id))!
+    let applied = false
+    if (s.field === 'service') {
+      const code = d.value ?? s.category
+      if (!code || !['Home', 'S1', 'S2', 'S3'].includes(code)) throw new AutofillInputError(`Pick a category for “${s.value}”.`)
+      const cat = must(await db().from('seo_client_categories').select('id, code, name').eq('client_id', c.id).eq('code', code).maybeSingle(), 'Loading the category') as { id: string; code: string; name: string } | null
+      const exists = must(await db().from('seo_client_services').select('id').eq('client_id', c.id).ilike('name', s.value).limit(1), 'Checking services') as { id: string }[]
+      if (cat && !exists.length) {
+        const last = must(await db().from('seo_client_services').select('sort').eq('category_id', cat.id).order('sort', { ascending: false }).limit(1), 'Loading services') as { sort: number }[]
+        must(await db().from('seo_client_services').insert({ client_id: c.id, category_id: cat.id, name: s.value.slice(0, 80), sort: (last[0]?.sort ?? 0) + 1 }), 'Adding the service')
+        if ((!cat.name.trim() || cat.name === cat.code) && s.categoryName && code === s.category)
+          must(await db().from('seo_client_categories').update({ name: s.categoryName }).eq('id', cat.id), 'Naming the category')
+        applied = true
+        item.applied = code
+      }
+    } else if (s.field === 'area') {
+      const free = must(await db().from('seo_client_areas').select('id, code').eq('client_id', c.id).in('code', ['A2', 'A3']).eq('status', 'n_a').order('code').limit(1), 'Loading areas') as { id: string; code: string }[]
+      if (free[0]) {
+        must(await db().from('seo_client_areas').update({ name: s.value.slice(0, 80), state: s.state || fresh.state || null, status: 'active' }).eq('id', free[0].id).eq('status', 'n_a'), 'Saving the area')
+        applied = true
+        item.applied = free[0].code
+      }
+    } else if (s.field === 'notOffered' || s.field === 'neighbourhood' || s.field === 'brandWord') {
+      const col = s.field === 'notOffered' ? 'out_of_scope_words' : s.field === 'neighbourhood' ? 'neighbourhood_words' : 'brand_words'
+      const list = ((fresh as unknown as Record<string, string[] | undefined>)[col] ?? []).map((w) => w.toLowerCase())
+      if (!list.includes(s.value.toLowerCase())) {
+        must(await db().from('seo_clients').update({ [col]: [...list, s.value.toLowerCase()] }).eq('id', c.id), 'Saving the words')
+        applied = true
+      }
+    } else {
+      const col = s.field === 'success12mo' ? 'success_12mo' : s.field === 'usp' ? 'usp' : 'ideal_client'
+      const done = must(await db().from('seo_clients').update({ [col]: s.value }).eq('id', c.id).or(`${col}.is.null,${col}.eq.`).select('id'), 'Saving the kickoff answer') as { id: string }[]
+      applied = done.length > 0
+    }
+    item.decision = applied ? 'approved' : 'skipped'
   }
   const open = items.some((i) => !i.decision)
   must(
