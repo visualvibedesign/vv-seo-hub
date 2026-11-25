@@ -137,4 +137,4 @@ the imports, the two client areas and Settings). Tick each line on localhost. An
 
 | # | Where | What happened | Fixed in |
 | --- | --- | --- | --- |
-| | | | |
+| 1 | §1 Add client | City "Staten Island, NY" + State "NY" showed "Staten Island, NY, NY" | `d3c98a2`: a trailing ", <same state>" is dropped from the city and area names on save (Add client, Client setup, CSV) |
