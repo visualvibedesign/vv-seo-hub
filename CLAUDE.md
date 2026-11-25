@@ -28,6 +28,11 @@ Website first (SEO Hub phases 1–4), then the Vibe SEO plugin + site connection
 - Site connection: per-site SEO Hub key, generated in SEO Hub, stored hashed/encrypted server-side, shown once. `/api/vibe/checkin` checks the HMAC over the raw body (10-minute window, constant-time compare).
 - Auto-fill: plain code rules for exact work (CSV parsing, duplicates, near me / FAQ patterns, citation waves); the Claude API (ANTHROPIC_API_KEY, server-side only, same account as HQ) for judgment and writing. Claude output is saved as "Ready to review" until Angel approves. Claude never changes exported numbers or invents facts. Log every Claude call (task, client, tokens).
 - Screens follow the design canvas exported in docs/design/. Sidebar: hub mode never lists clients; client mode has grouped, foldable sections (see docs/seo-hub-phases.md).
+- Supabase connector (claude.ai Supabase MCP): use only our SEO Hub project (the same one as `.env.local`). Never touch other projects; never pause or create projects.
+- Only `seo_` tables. Never read or change HQ's tables.
+- Reads are fine: counts, RLS checks, duplicate checks, test SELECTs.
+- Writes (migrations, insert, update, delete): show Angel the exact SQL + how many rows it affects, then wait for his "yes". Deletes always start with a count.
+- Never print or store keys or tokens.
 
 ## Look
 Same as Visual Vibe HQ: reuse its styles and components. Fraunces headings with a purple italic word (#7C5CE6), Inter body, bg #F7F5FF, text #131314, sidebar #EEEAFF, active pill #BFAFFF, white 22px cards with #ECE8FB border, lime #BAD657 pill buttons, light + dark mode, phone layout. Role tags: Primary teal, Secondary light blue, FAQ orange, Near me gray.
