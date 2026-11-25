@@ -201,6 +201,8 @@ export interface AiEstimate {
   empty: boolean
   /** Keywords that qualify; one run sends at most `items` of them. */
   total: number
+  /** What `items` counts ("keyword", or "open cell" for the matrix). */
+  noun: string
 }
 
 /** What a Claude run would send and cost (free token count; nothing runs, nothing saved). */

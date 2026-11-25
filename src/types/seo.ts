@@ -461,6 +461,9 @@ export interface AutofillItem {
   applied?: string
   /** Triage / scope only: why (out of scope, neighbourhood, competitor brand, off-topic). */
   category?: string
+  /** Matrix only: the cell ("S1 Web Design × A2 Bentonville") and the suggested backups. */
+  cell?: string
+  backups?: { keywordId: string; keyword: string }[]
 }
 
 export interface AutofillRow {

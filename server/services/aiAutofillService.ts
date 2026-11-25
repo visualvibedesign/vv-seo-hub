@@ -24,6 +24,8 @@ export interface AiEstimate {
   empty: boolean
   /** Keywords that qualify; a run sends at most AI_MAX_ITEMS of them (run again for the next ones). */
   total: number
+  /** What `items` counts ("keyword", or "open cell" for the matrix). */
+  noun: string
 }
 
 /** One Claude call per run, at most this many keywords (keeps the answer inside one call's output limit). */
@@ -31,7 +33,7 @@ export const AI_MAX_ITEMS = 300
 const cap = (all: KeywordLite[]) => ({ list: all.slice(0, AI_MAX_ITEMS), total: all.length })
 
 /** Which seo_autofill kind each Claude task saves as. */
-const KIND: Partial<Record<AiTask, AutofillKind>> = { intent: 'intent', services: 'services_ai', triage: 'triage' }
+const KIND: Partial<Record<AiTask, AutofillKind>> = { intent: 'intent', services: 'services_ai', triage: 'triage', matrix: 'matrix' }
 const MODEL_LABEL = (task: AiTask) => AI_MODELS[AI_TASKS[task].model].label
 
 async function client(siteId: string): Promise<ClientRow> {
@@ -52,6 +54,9 @@ interface Prepared<T extends z.ZodType> {
   schema: T
   /** Claude's answer → suggestions + keywords left as they are (with the summary line). */
   toItems: (data: z.infer<T>) => { items: AutofillItem[]; unmatched: Unmatched; summary: string }
+  /** What the run is counted in when it isn't keywords (matrix: open cells). */
+  count?: { items: number; total: number; noun: string }
+  effort?: 'low' | 'medium' | 'high'
 }
 
 /** Keywords still "keep" or "later", minus scope-word keywords (those are on the scope list). */
@@ -225,6 +230,130 @@ async function prepTriage(c: ClientRow): Promise<Prepared<typeof TriageOut>> {
   }
 }
 
+// ---- 3×3 matrix suggestions (Sonnet) ----------------------------------------------------------------
+// Only OPEN cells are sent: an active area, not N/A, and no primary yet. A cell Angel set is never touched.
+// Candidates per cell: the client's own keywords (Keep, no scope word, not already a primary elsewhere) that name
+// one of that row's services (or are linked to one) AND the cell's city. Claude picks one primary + up to 3
+// backups from those ids only, or none. Suggestions only: Angel approves cell by cell.
+
+const MATRIX_SYSTEM = `You pick target keywords for a local business's SEO matrix: one page per service category × city.
+For each cell you get candidate keywords as: id | keyword | Semrush volume (US estimate for the exact phrase) | Google Keyword Planner range (local).
+Pick ONE primary per cell: the phrase a person ready to hire this service in this city most likely searches.
+Prefer the service + city wording, then higher volume; a keyword with no volume can still win if it is the clearest local phrase.
+Then up to 3 backups: close variants with the same intent, from the same cell's candidates.
+Never use one keyword in two cells. If no candidate fits the service and the city, give primary 0.
+Only use ids listed under that cell. Reason: at most 12 words.`
+
+const MatrixOut = z.object({
+  cells: z.array(z.object({ cell: z.string(), primary: z.number().int(), backups: z.array(z.number().int()), reason: z.string() })),
+})
+
+const MAX_CANDIDATES = 30
+
+async function prepMatrix(c: ClientRow): Promise<Prepared<typeof MatrixOut>> {
+  const [kws, svc, scope, catsR, areasR, cellsR] = await Promise.all([
+    keywordsOf(c.id),
+    servicesOf(c),
+    scopeWordsOf(c),
+    db().from('seo_client_categories').select('id, code, name').eq('client_id', c.id).in('code', ['Home', 'S1', 'S2', 'S3']),
+    db().from('seo_client_areas').select('id, code, name, state, status').eq('client_id', c.id),
+    db().from('seo_matrix_cells').select('category_id, area_id, state, seo_matrix_keywords(kind, keyword_id)').eq('client_id', c.id),
+  ])
+  const cats = (must(catsR, 'Loading categories') as { id: string; code: string; name: string }[]).sort((a, b) => ['Home', 'S1', 'S2', 'S3'].indexOf(a.code) - ['Home', 'S1', 'S2', 'S3'].indexOf(b.code))
+  const areas = (must(areasR, 'Loading areas') as { id: string; code: string; name: string | null; state: string | null; status: string }[]).sort((a, b) => a.code.localeCompare(b.code))
+  const cells = must(cellsR, 'Loading the matrix') as unknown as { category_id: string; area_id: string; state: string; seo_matrix_keywords: { kind: string; keyword_id: string }[] }[]
+  // Any keyword already in the matrix (primary or backup) stays where it is: never suggested for a second cell.
+  const taken = new Set(cells.flatMap((x) => x.seo_matrix_keywords.map((m) => m.keyword_id)))
+  const skip = scopedIds(kws, scope)
+  const pool = kws.filter((k) => k.status === 'keep' && !skip.has(k.id) && !taken.has(k.id))
+  const volRows = new Map((await kpRanges(pool.map((k) => k.id))).map((r) => [r.id, r]))
+  const volNum = (id: string) => volRows.get(id)?.semrush ?? 0
+
+  type Open = { key: string; label: string; services: string[]; city: string; candidates: KeywordLite[] }
+  const open: Open[] = []
+  const noCandidates: string[] = []
+  for (const k of cats) {
+    const rowSvc = svc.filter((s) => s.code === k.code)
+    const rowIds = new Set(rowSvc.map((s) => s.id))
+    for (const a of areas) {
+      if (a.status !== 'active' || !a.name) continue
+      const cell = cells.find((x) => x.category_id === k.id && x.area_id === a.id)
+      if (cell && (cell.state === 'n_a' || cell.seo_matrix_keywords.some((m) => m.kind === 'primary'))) continue
+      const key = `${k.code}-${a.code}`
+      const fits = pool.filter((kw) => (kw.serviceId ? rowIds.has(kw.serviceId) : hasServiceName(kw.keyword, rowSvc)) && hasServiceName(kw.keyword, [{ name: a.name! }]))
+      if (!fits.length) {
+        noCandidates.push(key)
+        continue
+      }
+      const candidates = [...fits].sort((x, y) => volNum(y.id) - volNum(x.id)).slice(0, MAX_CANDIDATES)
+      open.push({ key, label: `${k.code} ${k.name} × ${a.code} ${a.name}`, services: rowSvc.map((s) => s.name), city: [a.name, a.state || c.state].filter(Boolean).join(', '), candidates })
+    }
+  }
+  // One global numbering so a pick can be checked against its own cell.
+  const list: KeywordLite[] = []
+  const idOf = new Map<string, number>()
+  const blocks = open.map((o) => {
+    const lines = o.candidates.map((k) => {
+      if (!idOf.has(k.id)) {
+        list.push(k)
+        idOf.set(k.id, list.length)
+      }
+      const v = volRows.get(k.id)
+      return `${idOf.get(k.id)} | ${k.keyword} | ${v?.semrush ?? '-'} | ${v?.kp ?? '-'}`
+    })
+    return `Cell ${o.key}: ${o.services.join(', ') || o.label} in ${o.city}\n${lines.join('\n')}`
+  })
+
+  return {
+    list,
+    total: list.length,
+    count: { items: open.length, total: open.length, noun: 'open cell' },
+    effort: 'medium',
+    system: MATRIX_SYSTEM,
+    user: blocks.join('\n\n'),
+    schema: MatrixOut,
+    toItems: (data) => {
+      const items: AutofillItem[] = []
+      const used = new Set<string>()
+      const skipped: string[] = []
+      for (const o of open) {
+        const a = data.cells.find((x) => x.cell.trim().toUpperCase() === o.key.toUpperCase())
+        const inCell = new Map(o.candidates.map((k) => [idOf.get(k.id)!, k]))
+        const p = a ? inCell.get(a.primary) : undefined
+        if (!a || !p || used.has(p.id)) {
+          skipped.push(o.key)
+          continue
+        }
+        used.add(p.id)
+        const backups = [...new Set(a.backups)].map((n) => inCell.get(n)).filter((k): k is KeywordLite => !!k && k.id !== p.id).slice(0, 3)
+        items.push({
+          keywordId: p.id,
+          keyword: p.keyword,
+          cell: o.label,
+          backups: backups.map((b) => ({ keywordId: b.id, keyword: b.keyword })),
+          options: [{ value: o.key, rule: `${why('matrix', a.reason)}${backups.length ? ` · backups: ${backups.map((b) => b.keyword).join(', ')}` : ''}` }],
+          decision: null,
+        })
+      }
+      const none = [...skipped, ...noCandidates]
+      return {
+        items,
+        unmatched: [],
+        summary: `${plural(items.length, 'cell')} suggested by Claude${none.length ? ` · ${none.length} with no fitting keyword (${none.join(', ')})` : ''}`,
+      }
+    },
+  }
+}
+
+/** Semrush volume (number) and KP range (text) as stored, for the keywords about to be sent. */
+async function kpRanges(ids: string[]): Promise<{ id: string; semrush: number | null; kp: string | null }[]> {
+  const out: { id: string; semrush: number | null; kp: string | null }[] = []
+  for (let i = 0; i < ids.length; i += 200) {
+    out.push(...(must(await db().from('seo_keywords').select('id, semrush:semrush_volume, kp:kp_volume').in('id', ids.slice(i, i + 200)), 'Loading volumes') as typeof out))
+  }
+  return out
+}
+
 // ---- Shared -----------------------------------------------------------------------------------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -232,6 +361,7 @@ function prepare(c: ClientRow, task: AiTask): Promise<Prepared<any>> {
   if (task === 'intent') return prepIntent(c)
   if (task === 'services') return prepServices(c)
   if (task === 'triage') return prepTriage(c)
+  if (task === 'matrix') return prepMatrix(c)
   throw new AutofillInputError('That auto-fill task isn’t built yet.')
 }
 
@@ -262,11 +392,18 @@ export async function estimate(siteId: string, task: AiTask): Promise<AiEstimate
   const c = await client(siteId)
   const p = await prepare(c, task)
   const t = AI_TASKS[task]
-  const items = p.list.length
-  if (!items) return { task, model: MODEL_LABEL(task), items: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, empty: true, total: 0 }
+  const items = p.count?.items ?? p.list.length
+  const noun = p.count?.noun ?? 'keyword'
+  if (!items) return { task, model: MODEL_LABEL(task), items: 0, inputTokens: 0, outputTokens: 0, costUsd: 0, empty: true, total: 0, noun }
   const inputTokens = (await countInputTokens(t.model, p.system, p.user)) + 400 // + the output schema
   const outputTokens = t.outBase + t.outPerItem * items // thinking + answer, a generous guess
-  return { task, model: MODEL_LABEL(task), items, inputTokens, outputTokens, costUsd: costUsd(t.model, inputTokens, outputTokens), empty: false, total: p.total }
+  return { task, model: MODEL_LABEL(task), items, inputTokens, outputTokens, costUsd: costUsd(t.model, inputTokens, outputTokens), empty: false, total: p.count?.total ?? p.total, noun }
+}
+
+/** Read-only: exactly what a run would send (system + user text). For checks; never calls Claude. */
+export async function promptFor(siteId: string, task: AiTask): Promise<{ system: string; user: string }> {
+  const p = await prepare(await client(siteId), task)
+  return { system: p.system, user: p.user }
 }
 
 export async function run(siteId: string, task: AiTask): Promise<AutofillRow[]> {
@@ -274,7 +411,8 @@ export async function run(siteId: string, task: AiTask): Promise<AutofillRow[]> 
   const kind = KIND[task]
   if (!kind) throw new AutofillInputError('That auto-fill task isn’t built yet.')
   const p = await prepare(c, task)
-  if (!p.list.length) throw new AutofillInputError('Nothing to send for this one.')
+  const items = p.count?.items ?? p.list.length
+  if (!items) throw new AutofillInputError('Nothing to send for this one.')
   const t = AI_TASKS[task]
   const { data, logId } = await callStructured({
     task: `day2.${task}`,
@@ -283,7 +421,8 @@ export async function run(siteId: string, task: AiTask): Promise<AutofillRow[]> 
     system: p.system,
     user: p.user,
     schema: p.schema,
-    maxTokens: Math.max(2000, t.outBase + t.outPerItem * p.list.length * 2),
+    effort: p.effort,
+    maxTokens: Math.max(2000, t.outBase + t.outPerItem * items * 2),
   })
   await saveSuggestion(c, kind, p.toItems(data), logId)
   return listAutofill(siteId)

@@ -14,7 +14,6 @@ import type { AutofillDecision, AutofillItem, AutofillKind, AutofillRow, ClientD
 // overwrites what's already set. Approve all never touches the scope list, the triage list, or a keyword on them.
 
 const CLAUDE_LATER = [
-  { title: '3×3 matrix', what: 'Suggested primary + backups per cell, from volume and fit' },
   { title: 'Clusters', what: 'Pages drafted, no keyword on two pages' },
 ]
 
@@ -106,6 +105,9 @@ export default function Day2Autofill({ client: c }: { client: ClientDetail }) {
         })}
         {kind('intent', 'Intent · Claude', 'Informational · Navigational · Commercial · Transactional, only where Semrush left it empty', (v) => v, {
           ai: { task: 'intent', sends: 'Sends only the keyword text.', empty: 'Nothing to send: every keyword already has an intent.' },
+        })}
+        {kind('matrix', '3×3 matrix · Claude', 'A primary + backups for each open cell (never a cell you already set). Approve cell by cell', (v) => row('matrix')?.items.find((i) => i.options[0]?.value === v)?.cell ?? v, {
+          ai: { task: 'matrix', sends: 'Sends only the service names, area names and each open cell’s candidate keywords with their volumes.', empty: 'Nothing to send: every cell already has a primary, is N/A, or has no keyword with that service and city.' },
         })}
         {CLAUDE_LATER.map((f) => (
           <li key={f.title} className="flex items-center justify-between gap-3 border-0 border-t border-solid border-vv-line py-3.5">
@@ -295,7 +297,7 @@ function AiRun({ siteId, task, hasRow, sends, emptyText }: { siteId: string; tas
       ) : (
         <div className="flex flex-col gap-2 rounded-xl border border-solid border-vv-line bg-vv-lavender-50 p-3 text-[14px] text-vv-ink">
           <span>
-            <strong>{shown.items}</strong> keyword{shown.items === 1 ? '' : 's'}{shown.total > shown.items ? ` (first ${shown.items} of ${shown.total.toLocaleString('en-US')}: run again for the next)` : ''} · {shown.model} · ~{(shown.inputTokens + shown.outputTokens).toLocaleString('en-US')} tokens · about <strong>{formatUsd(shown.costUsd)}</strong>
+            <strong>{shown.items}</strong> {shown.noun}{shown.items === 1 ? '' : 's'}{shown.total > shown.items ? ` (first ${shown.items} of ${shown.total.toLocaleString('en-US')}: run again for the next)` : ''} · {shown.model} · ~{(shown.inputTokens + shown.outputTokens).toLocaleString('en-US')} tokens · about <strong>{formatUsd(shown.costUsd)}</strong>
           </span>
           <span className="text-[13px] text-vv-body">{sends} Results wait here as Ready to review; nothing changes until you approve.</span>
           <span className="flex flex-wrap gap-2">

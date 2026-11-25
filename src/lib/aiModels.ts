@@ -15,7 +15,8 @@ export const AI_TASKS = {
   intent: { model: 'haiku', label: 'Intent', outPerItem: 25, outBase: 600 },
   services: { model: 'haiku', label: 'Leftover services', outPerItem: 30, outBase: 600 },
   triage: { model: 'haiku', label: 'No-rule keywords', outPerItem: 35, outBase: 600 },
-  matrix: { model: 'sonnet', label: '3×3 matrix', outPerItem: 8, outBase: 2500 },
+  // Per open cell (a cell with no primary): one pick + up to 3 backups and a short reason. Effort medium (a judgment call).
+  matrix: { model: 'sonnet', label: '3×3 matrix', outPerItem: 150, outBase: 1500 },
   day1: { model: 'sonnet', label: 'Day 1 from notes', outPerItem: 0, outBase: 3000 },
 } as const satisfies Record<string, { model: AiModelKey; label: string; outPerItem: number; outBase: number }>
 export type AiTask = keyof typeof AI_TASKS

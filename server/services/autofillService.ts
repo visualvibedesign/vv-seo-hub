@@ -74,13 +74,13 @@ export async function triagedIds(clientId: string): Promise<Set<string>> {
 }
 
 /** The client's services; `home` = a Home-row service (the general term, a fallback). */
-export async function servicesOf(c: ClientRow): Promise<(ServiceRef & { category: string })[]> {
+export async function servicesOf(c: ClientRow): Promise<(ServiceRef & { category: string; code: string })[]> {
   const rows = must(await db().from('seo_client_services').select('id, name, seo_client_categories(code, name)').eq('client_id', c.id).order('sort'), 'Loading services') as unknown as {
     id: string
     name: string
     seo_client_categories: { code: string; name: string } | null
   }[]
-  return rows.map((s) => ({ id: s.id, name: s.name, home: s.seo_client_categories?.code === 'Home', category: s.seo_client_categories?.name ?? '' }))
+  return rows.map((s) => ({ id: s.id, name: s.name, home: s.seo_client_categories?.code === 'Home', category: s.seo_client_categories?.name ?? '', code: s.seo_client_categories?.code ?? '' }))
 }
 
 /** Words from the client's industry version of "Keyword research" (or the generic one). */
@@ -183,6 +183,7 @@ export async function decide(raw: unknown): Promise<AutofillRow[]> {
   const row = must(await db().from('seo_autofill').select(COLS).eq('id', p.data.autofillId).eq('client_id', c.id).maybeSingle(), 'Loading the suggestion') as Row | null
   if (!row) throw new AutofillInputError('That suggestion doesn’t exist.')
   if (row.status !== 'ready') throw new AutofillInputError('This suggestion was already closed or replaced by a newer run.')
+  if (row.kind === 'matrix') return decideMatrix(c, row, p.data.decisions as AutofillDecision[], p.data.siteId)
   const target = TARGET[row.kind]
   if (!target) throw new AutofillInputError('This kind can’t be approved here yet.')
 
@@ -239,4 +240,70 @@ export async function decide(raw: unknown): Promise<AutofillRow[]> {
     'Saving the decisions',
   )
   return listAutofill(p.data.siteId)
+}
+
+/**
+ * Matrix suggestions (Claude, 6c-3), one cell per item. Approve fills the cell ONLY if it still has no primary
+ * (a cell Angel set in the meantime is "skipped"): primary + the suggested backups (add only), cell → target, and
+ * the primary keyword gets the Primary role if it has none. Reject changes nothing.
+ */
+async function decideMatrix(c: ClientRow, row: Row, decisions: AutofillDecision[], siteId: string): Promise<AutofillRow[]> {
+  const items = row.payload.items
+  const byId = new Map(items.map((i) => [i.keywordId, i]))
+  const [catsR, areasR] = await Promise.all([
+    db().from('seo_client_categories').select('id, code').eq('client_id', c.id),
+    db().from('seo_client_areas').select('id, code, status').eq('client_id', c.id),
+  ])
+  const cats = must(catsR, 'Loading categories') as { id: string; code: string }[]
+  const areas = must(areasR, 'Loading areas') as { id: string; code: string; status: string }[]
+  for (const d of decisions) {
+    const item = byId.get(d.keywordId)
+    if (!item) throw new AutofillInputError('A cell isn’t part of this suggestion.')
+    if (item.decision) continue
+    if (d.action === 'reject') {
+      item.decision = 'rejected'
+      continue
+    }
+    const [code, areaCode] = item.options[0].value.split('-')
+    const cat = cats.find((k) => k.code === code)
+    const area = areas.find((a) => a.code === areaCode)
+    if (!cat || !area || area.status !== 'active') {
+      item.decision = 'skipped'
+      continue
+    }
+    // The keyword must still be this client's and not Rejected.
+    const kw = must(await db().from('seo_keywords').select('id, status').eq('id', item.keywordId).eq('client_id', c.id).maybeSingle(), 'Checking the keyword') as { id: string; status: string } | null
+    let cell = must(
+      await db().from('seo_matrix_cells').select('id, state, seo_matrix_keywords(kind, keyword_id)').eq('category_id', cat.id).eq('area_id', area.id).maybeSingle(),
+      'Loading the cell',
+    ) as { id: string; state: string; seo_matrix_keywords: { kind: string; keyword_id: string }[] } | null
+    if (!kw || kw.status === 'rejected' || (cell && (cell.state === 'n_a' || cell.seo_matrix_keywords.some((m) => m.kind === 'primary')))) {
+      item.decision = 'skipped' // set (or N/A) in the meantime: never overwritten
+      continue
+    }
+    if (!cell) {
+      cell = { ...(must(await db().from('seo_matrix_cells').insert({ client_id: c.id, category_id: cat.id, area_id: area.id, state: 'target' }).select('id, state').single(), 'Saving the matrix') as { id: string; state: string }), seo_matrix_keywords: [] }
+    } else must(await db().from('seo_matrix_cells').update({ state: 'target' }).eq('id', cell.id), 'Saving the matrix')
+    const have = new Set(cell.seo_matrix_keywords.map((m) => m.keyword_id))
+    if (have.has(item.keywordId)) must(await db().from('seo_matrix_keywords').delete().eq('cell_id', cell.id).eq('keyword_id', item.keywordId), 'Saving the matrix')
+    must(await db().from('seo_matrix_keywords').insert({ cell_id: cell.id, keyword_id: item.keywordId, kind: 'primary', sort: 0 }), 'Saving the matrix')
+    const backups = (item.backups ?? []).map((b) => b.keywordId).filter((id) => id !== item.keywordId && !have.has(id))
+    if (backups.length) {
+      const own = must(await db().from('seo_keywords').select('id').eq('client_id', c.id).in('id', backups), 'Checking backups') as { id: string }[]
+      if (own.length) must(await db().from('seo_matrix_keywords').insert(own.map((b, i) => ({ cell_id: cell!.id, keyword_id: b.id, kind: 'backup', sort: i + 1 }))), 'Saving the matrix')
+    }
+    must(await db().from('seo_keywords').update({ role: 'primary' }).eq('id', item.keywordId).is('role', null), 'Setting the Primary role')
+    item.decision = 'approved'
+    item.applied = item.options[0].value
+  }
+  const open = items.some((i) => !i.decision)
+  must(
+    await db()
+      .from('seo_autofill')
+      .update({ payload: row.payload, applied_count: items.filter((i) => i.decision === 'approved').length, ...(open ? {} : { status: 'approved', decided_at: new Date().toISOString() }) })
+      .eq('id', row.id)
+      .eq('status', 'ready'),
+    'Saving the decisions',
+  )
+  return listAutofill(siteId)
 }
