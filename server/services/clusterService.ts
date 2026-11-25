@@ -21,7 +21,7 @@ export interface ClusterPlanPage {
   category: CategoryCode
   name: string
   url: string | null
-  priority: 'high' | 'medium' | 'low'
+  priority: 'high' | 'medium' | 'low' | null
   status: PageStatus
   why: string
   ideas: string[]
@@ -118,7 +118,7 @@ export async function importClustersCsv(siteId: string, csvText: string, commit:
       category,
       name,
       url,
-      priority: (['high', 'medium', 'low'].includes(r[ix.priority].trim().toLowerCase()) ? r[ix.priority].trim().toLowerCase() : 'medium') as ClusterPlanPage['priority'],
+      priority: (['high', 'medium', 'low'].includes(r[ix.priority].trim().toLowerCase()) ? r[ix.priority].trim().toLowerCase() : null) as ClusterPlanPage['priority'], // blank = not set yet ("Medium (default)", migration 0012)
       status: statusOf(why, pageCell, category),
       why,
       ideas: [],
