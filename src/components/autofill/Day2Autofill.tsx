@@ -4,42 +4,73 @@ import { useAutofill, useDecide, useEstimateAi, useRunAi, useRunRules } from '..
 import { formatUsd, type AiTask } from '../../lib/aiModels'
 import type { AiEstimate } from '../../lib/api'
 import { ApiError } from '../../lib/api'
-import { ROLE_LABEL, ROLE_PILL } from '../../lib/keywordUi'
+import { ROLE_LABEL, ROLE_PILL, STATUS_LABEL } from '../../lib/keywordUi'
 import { BTN_GHOST, BTN_LIME, CARD, PILL } from '../../lib/ui'
-import type { AutofillDecision, AutofillItem, AutofillRow, ClientDetail, KeywordRole } from '../../types/seo'
+import type { AutofillDecision, AutofillItem, AutofillKind, AutofillRow, ClientDetail, KeywordRole, KeywordStatus } from '../../types/seo'
 
-// "2 · What Claude filled" for Day 2 (design docs/design/Autofill.png). Step 6b: plain-code rules for roles and
-// services. Each suggestion names its rule; "needs a look" = two rules disagree (pick one or reject). Approving
-// applies only to keywords that still have no role / service. Intent, 3×3 matrix and clusters come with Claude (6c).
+// "2 · What Claude filled" for Day 2 (design docs/design/Autofill.png). Plain-code rules (6b) for roles,
+// services and the scope list; Claude (6c-2) for leftover services, intent and the no-rule keywords. Each
+// suggestion names its rule; "needs a look" = two rules disagree (pick one or reject). Approving never
+// overwrites what's already set. Approve all never touches the scope list, the triage list, or a keyword on them.
 
 const CLAUDE_LATER = [
   { title: '3×3 matrix', what: 'Suggested primary + backups per cell, from volume and fit' },
   { title: 'Clusters', what: 'Pages drafted, no keyword on two pages' },
 ]
 
+/** Kinds Approve all may touch (never scope / triage). */
+const BULK: AutofillKind[] = ['roles', 'services', 'services_ai', 'intent']
+
 export default function Day2Autofill({ client: c }: { client: ClientDetail }) {
   const q = useAutofill(c.siteId)
   const run = useRunRules(c.siteId)
   const decide = useDecide(c.siteId)
-  const [open, setOpen] = useState<'roles' | 'services' | 'intent' | null>(null)
+  const [open, setOpen] = useState<AutofillKind | null>(null)
   const rows = q.data ?? []
-  const roles = rows.find((r) => r.kind === 'roles')
-  const services = rows.find((r) => r.kind === 'services')
-  const intent = rows.find((r) => r.kind === 'intent')
+  const row = (k: AutofillKind) => rows.find((r) => r.kind === k)
   const svcName = new Map(c.categories.flatMap((k) => k.services.map((s) => [s.id, s.name] as const)))
-  const label = (kind: 'roles' | 'services', v: string) => (kind === 'roles' ? ROLE_LABEL[v as KeywordRole] : (svcName.get(v) ?? 'Removed service'))
+  const roleLabel = (v: string) => ROLE_LABEL[v as KeywordRole]
+  const svcLabel = (v: string) => svcName.get(v) ?? 'Removed service'
+  const statusLabel = (v: string) => STATUS_LABEL[v as KeywordStatus] ?? v
 
-  // Approve all = every single-option row still open, in both suggestions ("needs a look" rows stay open).
-  const openSingles = (r?: AutofillRow) => (r?.status === 'ready' ? r.items.filter((i) => !i.decision && i.options.length === 1) : [])
-  const allCount = openSingles(roles).length + openSingles(services).length + openSingles(intent).length
+  // Keywords on the scope or triage list (open or approved there): no role / service / intent approvals for them.
+  const flagged = new Map<string, string>()
+  for (const k of ['triage', 'scope'] as const)
+    for (const i of row(k)?.items ?? []) if (i.decision !== 'rejected' && i.category) flagged.set(i.keywordId, i.category)
+
+  // Approve all = every single-option row still open in roles / services / intent, minus flagged keywords.
+  const openSingles = (r?: AutofillRow) => (r?.status === 'ready' ? r.items.filter((i) => !i.decision && i.options.length === 1 && !flagged.has(i.keywordId)) : [])
+  const bulkRows = BULK.map(row)
+  const allCount = bulkRows.reduce((n, r) => n + openSingles(r).length, 0)
   const approveAll = async () => {
-    for (const r of [roles, services, intent]) {
+    for (const r of bulkRows) {
       const list = openSingles(r)
       if (r && list.length) await decide.mutateAsync({ autofillId: r.id, decisions: list.map((i) => ({ keywordId: i.keywordId, action: 'approve' })) })
     }
   }
   const err = (e: unknown) => (e ? (e instanceof ApiError && e.detail ? e.detail : 'Couldn’t save. Try again.') : '')
   const error = err(run.error) || err(decide.error)
+
+  /** One kind: its row, its Review panel when open, and (for Claude kinds) the estimate → run box. */
+  const kind = (k: AutofillKind, title: string, what: string, label: (v: string) => string, extra?: { pill?: (v: string) => string; ai?: { task: AiTask; sends: string; empty: string } }) => {
+    const r = row(k)
+    return (
+      <>
+        <KindRow title={title} what={what} row={r} open={open === k} onToggle={() => setOpen(open === k ? null : k)} loading={q.isPending} />
+        {extra?.ai && <AiRun siteId={c.siteId} task={extra.ai.task} hasRow={!!r} sends={extra.ai.sends} emptyText={extra.ai.empty} />}
+        {open === k && r && (
+          <Review
+            row={r}
+            label={label}
+            pill={extra?.pill}
+            flagged={BULK.includes(k) ? flagged : undefined}
+            onDecide={(d) => decide.mutate({ autofillId: r.id, decisions: d })}
+            busy={decide.isPending}
+          />
+        )}
+      </>
+    )
+  }
 
   return (
     <section className={`${CARD} !gap-0 !p-7 phone:!p-5`} aria-labelledby="filled-h">
@@ -50,7 +81,7 @@ export default function Day2Autofill({ client: c }: { client: ClientDetail }) {
         <div className="flex flex-wrap gap-2">
           <button type="button" className={`${BTN_GHOST} min-h-10`} onClick={() => run.mutate()} disabled={run.isPending || decide.isPending}>
             {run.isPending && <Spinner />}
-            {roles || services ? 'Run rules again' : 'Run rules'}
+            {row('roles') || row('services') ? 'Run rules again' : 'Run rules'}
           </button>
           <button type="button" className={`${BTN_LIME} min-h-10`} onClick={() => void approveAll()} disabled={!allCount || decide.isPending || run.isPending}>
             {decide.isPending && <Spinner />}
@@ -64,13 +95,18 @@ export default function Day2Autofill({ client: c }: { client: ClientDetail }) {
         </p>
       )}
       <ul className="m-0 flex list-none flex-col p-0">
-        <KindRow title="Roles" what="Secondary · FAQ · Near me, by plain rules (never Primary)" row={roles} open={open === 'roles'} onToggle={() => setOpen(open === 'roles' ? null : 'roles')} loading={q.isPending} />
-        {open === 'roles' && roles && <Review row={roles} label={(v) => label('roles', v)} pill={(v) => ROLE_PILL[v as KeywordRole]} onDecide={(d) => decide.mutate({ autofillId: roles.id, decisions: d })} busy={decide.isPending} />}
-        <KindRow title="Services" what="Each keyword matched to one of the client’s services" row={services} open={open === 'services'} onToggle={() => setOpen(open === 'services' ? null : 'services')} loading={q.isPending} />
-        {open === 'services' && services && <Review row={services} label={(v) => label('services', v)} onDecide={(d) => decide.mutate({ autofillId: services.id, decisions: d })} busy={decide.isPending} />}
-        <KindRow title="Intent" what="Informational · Navigational · Commercial · Transactional, only where Semrush left it empty" row={intent} open={open === 'intent'} onToggle={() => setOpen(open === 'intent' ? null : 'intent')} loading={q.isPending} />
-        <AiRun siteId={c.siteId} task="intent" hasRow={!!intent} />
-        {open === 'intent' && intent && <Review row={intent} label={(v) => v} onDecide={(d) => decide.mutate({ autofillId: intent.id, decisions: d })} busy={decide.isPending} />}
+        {kind('scope', 'Out of scope & neighbourhoods', 'Keywords with a scope word from Edit client: out of scope → Rejected, neighbourhood → Later', statusLabel)}
+        {kind('roles', 'Roles', 'Secondary · FAQ · Near me, by plain rules (never Primary)', roleLabel, { pill: (v) => ROLE_PILL[v as KeywordRole] })}
+        {kind('services', 'Services', 'Each keyword matched to one of the client’s services', svcLabel)}
+        {kind('triage', 'No-rule keywords · Claude', 'Competitor brand or off-topic → Rejected, neighbourhood → Later. Keywords that fit are left as they are', statusLabel, {
+          ai: { task: 'triage', sends: 'Sends only the keyword text, volumes, service names and area names.', empty: 'Nothing to send: every keyword has a role or a rule.' },
+        })}
+        {kind('services_ai', 'Leftover services · Claude', 'Keywords the rules couldn’t match to a service (run No-rule keywords first)', svcLabel, {
+          ai: { task: 'services', sends: 'Sends only the keyword text, volumes and the client’s service names.', empty: 'Nothing to send: no keyword is left without a service.' },
+        })}
+        {kind('intent', 'Intent · Claude', 'Informational · Navigational · Commercial · Transactional, only where Semrush left it empty', (v) => v, {
+          ai: { task: 'intent', sends: 'Sends only the keyword text.', empty: 'Nothing to send: every keyword already has an intent.' },
+        })}
         {CLAUDE_LATER.map((f) => (
           <li key={f.title} className="flex items-center justify-between gap-3 border-0 border-t border-solid border-vv-line py-3.5">
             <span className="flex min-w-0 flex-col">
@@ -82,7 +118,7 @@ export default function Day2Autofill({ client: c }: { client: ClientDetail }) {
         ))}
       </ul>
       <p className="m-0 border-0 border-t border-solid border-vv-line pt-3.5 text-[14px] text-vv-body">
-        Rules only suggest. Nothing changes until you approve, and approving never overwrites a role or service you already set.
+        Rules and Claude only suggest. Nothing changes until you approve, and approving never overwrites a role, service, intent or status you already set. Approve all skips the scope and no-rule lists.
       </p>
     </section>
   )
@@ -113,7 +149,17 @@ function KindRow({ title, what, row, open, onToggle, loading }: { title: string;
   )
 }
 
-function Review({ row, label, pill, onDecide, busy }: { row: AutofillRow; label: (v: string) => string; pill?: (v: string) => string; onDecide: (d: AutofillDecision[]) => void; busy: boolean }) {
+type ReviewProps = {
+  row: AutofillRow
+  label: (v: string) => string
+  pill?: (v: string) => string
+  /** Keywords on the scope / triage list → no Approve here, just a tag. */
+  flagged?: Map<string, string>
+  onDecide: (d: AutofillDecision[]) => void
+  busy: boolean
+}
+
+function Review({ row, label, pill, flagged, onDecide, busy }: ReviewProps) {
   const [only, setOnly] = useState<'open' | 'all'>('open')
   const items = row.items.filter((i) => only === 'all' || !i.decision)
   const looks = row.items.filter((i) => !i.decision && i.options.length > 1).length
@@ -132,21 +178,40 @@ function Review({ row, label, pill, onDecide, busy }: { row: AutofillRow; label:
       {items.length === 0 && <p className="m-0 px-1 py-2 text-[14px] text-vv-body">Nothing open here.</p>}
       <ul className="m-0 flex max-h-[420px] list-none flex-col gap-1.5 overflow-y-auto p-0">
         {items.map((i) => (
-          <ItemRow key={i.keywordId} item={i} label={label} pill={pill} busy={busy || closed} onDecide={onDecide} />
+          <ItemRow key={i.keywordId} item={i} label={label} pill={pill} flag={flagged?.get(i.keywordId)} busy={busy || closed} onDecide={onDecide} />
         ))}
       </ul>
     </li>
   )
 }
 
-function ItemRow({ item: i, label, pill, busy, onDecide }: { item: AutofillItem; label: (v: string) => string; pill?: (v: string) => string; busy: boolean; onDecide: (d: AutofillDecision[]) => void }) {
+function ItemRow({
+  item: i,
+  label,
+  pill,
+  flag,
+  busy,
+  onDecide,
+}: {
+  item: AutofillItem
+  label: (v: string) => string
+  pill?: (v: string) => string
+  flag?: string
+  busy: boolean
+  onDecide: (d: AutofillDecision[]) => void
+}) {
   const look = i.options.length > 1
   const tag = (v: string) => <span className={pill ? pill(v) : `${PILL} bg-vv-surface text-vv-ink`}>{label(v)}</span>
   return (
     <li className="flex flex-col gap-1.5 rounded-xl border border-solid border-vv-line bg-vv-surface px-3 py-2.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="min-w-0 text-[15px] font-semibold text-vv-ink">{i.keyword}</span>
-        {i.decision ? (
+        <span className="flex min-w-0 flex-wrap items-center gap-2 text-[15px] font-semibold text-vv-ink">
+          {i.keyword}
+          {i.category && <span className={`${PILL} bg-vv-orange-100 text-vv-orange-ink`}>{i.category}</span>}
+        </span>
+        {!i.decision && flag ? (
+          <span className={`${PILL} bg-vv-orange-100 text-vv-orange-ink`}>On the {flag} list · approve there</span>
+        ) : i.decision ? (
           <span className={`${PILL} ${i.decision === 'approved' ? 'bg-vv-green-100 text-vv-green-ink' : 'bg-vv-st-todo text-vv-st-todo-ink'}`}>
             {i.decision === 'approved' ? `Approved · ${label(i.applied ?? '')}` : i.decision === 'skipped' ? 'Skipped · already set' : 'Rejected'}
           </span>
@@ -154,7 +219,18 @@ function ItemRow({ item: i, label, pill, busy, onDecide }: { item: AutofillItem;
           <span className={`${PILL} bg-vv-st-waiting text-vv-st-waiting-ink`}>Needs a look</span>
         ) : null}
       </div>
+      {flag && !i.decision ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="flex flex-wrap items-center gap-2 text-[13px] text-vv-body">
+            {tag(i.options[0].value)} {i.options[0].rule}
+          </span>
+          <button type="button" disabled={busy} onClick={() => onDecide([{ keywordId: i.keywordId, action: 'reject' }])} className={`${BTN_GHOST} min-h-9 px-4 text-[13px]`}>
+            Reject
+          </button>
+        </div>
+      ) : null}
       {!i.decision &&
+        !flag &&
         (look ? (
           <div className="flex flex-wrap items-center gap-1.5">
             {i.options.map((o) => (
@@ -192,7 +268,7 @@ function ItemRow({ item: i, label, pill, busy, onDecide }: { item: AutofillItem;
 }
 
 /** Claude run: Estimate (free) → shows keywords, model, tokens, cost → Run with Claude (only on click). */
-function AiRun({ siteId, task, hasRow }: { siteId: string; task: AiTask; hasRow: boolean }) {
+function AiRun({ siteId, task, hasRow, sends, emptyText }: { siteId: string; task: AiTask; hasRow: boolean; sends: string; emptyText: string }) {
   const est = useEstimateAi(siteId)
   const run = useRunAi(siteId)
   const [shown, setShown] = useState<AiEstimate | null>(null)
@@ -210,13 +286,18 @@ function AiRun({ siteId, task, hasRow }: { siteId: string; task: AiTask; hasRow:
           {est.isPending ? 'Counting…' : hasRow ? 'Run with Claude again: see the cost first' : 'Run with Claude: see the cost first'}
         </button>
       ) : shown.empty ? (
-        <span className="text-[14px] text-vv-body">Nothing to send: every keyword already has one.</span>
+        <span className="flex flex-wrap items-center gap-2 text-[14px] text-vv-body">
+          {emptyText}
+          <button type="button" className="border-0 bg-transparent p-0 text-[14px] font-semibold text-vv-purple-deep underline" onClick={() => setShown(null)}>
+            OK
+          </button>
+        </span>
       ) : (
         <div className="flex flex-col gap-2 rounded-xl border border-solid border-vv-line bg-vv-lavender-50 p-3 text-[14px] text-vv-ink">
           <span>
             <strong>{shown.items}</strong> keyword{shown.items === 1 ? '' : 's'} · {shown.model} · ~{(shown.inputTokens + shown.outputTokens).toLocaleString('en-US')} tokens · about <strong>{formatUsd(shown.costUsd)}</strong>
           </span>
-          <span className="text-[13px] text-vv-body">Sends only the keyword text. Results wait here as Ready to review; nothing changes until you approve.</span>
+          <span className="text-[13px] text-vv-body">{sends} Results wait here as Ready to review; nothing changes until you approve.</span>
           <span className="flex flex-wrap gap-2">
             <button type="button" className={`${BTN_LIME} min-h-10`} disabled={run.isPending} onClick={() => run.mutate(task, { onSuccess: () => setShown(null) })}>
               {run.isPending && <Spinner />}

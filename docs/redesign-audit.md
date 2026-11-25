@@ -227,6 +227,9 @@ Numbers = the redesign steps as built (START-HERE order). Migrations are split p
 - ✅ **Step 4 · Keywords**: Database restyle (pills with counts, Needs role, Track pill) + Matrix + Clusters + Export tracked list.
 - ✅ **Step 5 · Templates** library + editor + apply (snapshot). Migration: `seo_templates`, `seo_template_items`, `seo_client_templates` + 7 seeded templates.
 - **Step 6 · Uploads + auto-fill** (Day 1 + Day 2): what I need + how-to steps, one drop zone, code rules first, then the Claude API + AI log + Review / Approve. Migration: `seo_autofill`, `seo_ai_log`.
+  - ✅ 6a Uploads page · ✅ 6b plain-code rules (roles, services) · ✅ 6c-1 Claude setup + intent (Haiku)
+  - ✅ 6c-2 (migration 0008): per-client scope words (Edit client): out of scope → suggest Rejected, neighbourhood (not an active area) → suggest Later; those keywords get no role / service / intent suggestions and Approve all skips them. Claude (Haiku): no-rule keywords triage (competitor brand / off-topic → Rejected, neighbourhood → Later, fits → left alone) and leftover services (skips triaged keywords).
+  - 6c-3 matrix suggestions (Sonnet) · 6c-4 Day 1 from notes (Sonnet)
 - **Step 7 · Notes & links.** Migration: `seo_notes`, `seo_client_links`.
 - **Last:** Anassa check vs §4, phone + dark mode on every screen.
 

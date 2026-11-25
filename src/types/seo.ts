@@ -92,6 +92,10 @@ export interface ClientDetail extends ClientSummary {
   categories: ClientCategory[]
   areas: ClientArea[]
   accounts: ClientAccount[]
+  /** Words for services the client doesn't offer (migration 0008; [] before it runs). */
+  outOfScopeWords: string[]
+  /** Neighbourhoods inside the client's area that aren't an area of their own (migration 0008). */
+  neighbourhoodWords: string[]
 }
 
 /** What the Add / Edit client form sends. Services keep their id when renamed or moved. */
@@ -110,6 +114,9 @@ export interface ClientInput {
   areas: { code: AreaCode; name: string; state: string; status: AreaStatus }[]
   /** Add client only (wizard step 4): starting status per account. Edits happen on the Overview checklist. */
   accounts?: { kind: AccountKind; status: AccountStatus }[]
+  /** Edit client only (migration 0008). Left out = unchanged. */
+  outOfScopeWords?: string[]
+  neighbourhoodWords?: string[]
 }
 
 export interface SiteIdCheck {
@@ -396,7 +403,7 @@ export interface TemplateInput {
 
 // ---- Auto-fill (redesign step 6; migration 0006) ---------------------------------------------------------
 
-export type AutofillKind = 'setup_services' | 'setup_areas' | 'setup_kickoff' | 'roles' | 'services' | 'intent' | 'matrix' | 'clusters'
+export type AutofillKind = 'setup_services' | 'setup_areas' | 'setup_kickoff' | 'roles' | 'services' | 'services_ai' | 'intent' | 'triage' | 'scope' | 'matrix' | 'clusters'
 export type AutofillStatus = 'ready' | 'approved' | 'rejected' | 'superseded'
 
 export interface AutofillOption {
@@ -411,6 +418,8 @@ export interface AutofillItem {
   options: AutofillOption[]
   decision: 'approved' | 'rejected' | 'skipped' | null
   applied?: string
+  /** Triage / scope only: why (out of scope, neighbourhood, competitor brand, off-topic). */
+  category?: string
 }
 
 export interface AutofillRow {

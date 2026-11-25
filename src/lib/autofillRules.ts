@@ -96,6 +96,38 @@ function serviceMatches(keyword: string, services: ServiceRef[], w: Words): Opti
 
 export type KeywordLite = { id: string; keyword: string; role: KeywordRole | null; serviceId: string | null; status: string }
 
+// ---- Scope (step 6c-2, Angel Nov 25) ------------------------------------------------------------------
+// Per client (Edit client): out-of-scope words (services they don't offer, e.g. "male", "chest") and
+// neighbourhood words (places inside their area, e.g. "great kills"). A keyword with one of them gets NO
+// role / service / intent suggestion. Instead: out of scope → suggest Rejected; neighbourhood → suggest Later
+// (unless that neighbourhood is one of the client's active areas). Angel confirms each one.
+
+export type ScopeWords = { outOfScope: string[]; neighbourhoods: string[]; activeAreas: string[] }
+export type ScopeStatus = 'rejected' | 'later'
+export type ScopeHit = { category: 'out of scope' | 'neighbourhood'; word: string; status: ScopeStatus }
+
+/** Out of scope wins over neighbourhood. Whole words only ("men" matches "men's wax", not "mentor"). */
+export function scopeHit(keyword: string, s: ScopeWords): ScopeHit | null {
+  const out = [...s.outOfScope].sort((a, b) => b.length - a.length).find((w) => has(keyword, w))
+  if (out) return { category: 'out of scope', word: out, status: 'rejected' }
+  const hood = [...s.neighbourhoods]
+    .sort((a, b) => b.length - a.length)
+    .find((w) => has(keyword, w) && !s.activeAreas.some((a) => has(a, w) || has(w, a)))
+  if (hood) return { category: 'neighbourhood', word: hood, status: 'later' }
+  return null
+}
+
+/** Keywords still "keep" that hit a scope word: one suggestion each (Rejected or Later), with the word. */
+export function suggestScope(keywords: KeywordLite[], s: ScopeWords): { items: (SuggestItem<ScopeStatus> & { category: string })[]; unmatched: RulesPayload<ScopeStatus>['unmatched'] } {
+  const items: (SuggestItem<ScopeStatus> & { category: string })[] = []
+  for (const k of keywords) {
+    if (k.status !== 'keep') continue
+    const hit = scopeHit(k.keyword, s)
+    if (hit) items.push({ keywordId: k.id, keyword: k.keyword, category: hit.category, options: [{ value: hit.status, rule: `${hit.category} word “${hit.word}”` }], decision: null })
+  }
+  return { items, unmatched: [] }
+}
+
 export function suggestRoles(keywords: KeywordLite[], w: Words): RulesPayload<RuleRole> {
   const items: SuggestItem<RuleRole>[] = []
   const unmatched: RulesPayload<RuleRole>['unmatched'] = []

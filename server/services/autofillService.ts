@@ -2,7 +2,7 @@
 // Rules only SUGGEST ("Ready to review"). Approving applies a suggestion to the keyword, but only if the keyword
 // still has no role / no service at that moment (never overwrites what Angel set). Rejecting changes nothing.
 import { z } from 'zod'
-import { suggestRoles, suggestServices, type KeywordLite, type Words } from '../../src/lib/autofillRules.js'
+import { scopeHit, suggestRoles, suggestScope, suggestServices, type KeywordLite, type ScopeWords, type ServiceRef, type Words } from '../../src/lib/autofillRules.js'
 import type { AutofillDecision, AutofillItem, AutofillKind, AutofillRow, AutofillStatus, KeywordRole } from '../../src/types/seo.js'
 import { db, must } from '../clients/supabase.js'
 import { clientRow, type ClientRow } from './clientService.js'
@@ -55,8 +55,36 @@ export async function listAutofill(siteId: string): Promise<AutofillRow[]> {
   return [...latest.values()].map(toRow)
 }
 
+/** The client's scope words + active area names (scope words are [] until migration 0008 runs). */
+export async function scopeWordsOf(c: ClientRow): Promise<ScopeWords> {
+  const areas = must(await db().from('seo_client_areas').select('name').eq('client_id', c.id).eq('status', 'active'), 'Loading areas') as { name: string | null }[]
+  return { outOfScope: c.out_of_scope_words ?? [], neighbourhoods: c.neighbourhood_words ?? [], activeAreas: areas.map((a) => a.name ?? '').filter(Boolean) }
+}
+
+/** Keywords that hit a scope word: no role / service / intent suggestions for them (they go to the scope list). */
+export const scopedIds = (keywords: KeywordLite[], s: ScopeWords) => new Set(keywords.filter((k) => scopeHit(k.keyword, s)).map((k) => k.id))
+
+/** Keyword ids on the latest triage list (open or approved there; a rejected suggestion doesn't count). */
+export async function triagedIds(clientId: string): Promise<Set<string>> {
+  const rows = must(
+    await db().from('seo_autofill').select('payload').eq('client_id', clientId).eq('kind', 'triage').in('status', ['ready', 'approved']).order('created_at', { ascending: false }).limit(1),
+    'Loading the triage list',
+  ) as { payload: { items?: AutofillItem[] } }[]
+  return new Set((rows[0]?.payload.items ?? []).filter((i) => i.decision !== 'rejected').map((i) => i.keywordId))
+}
+
+/** The client's services; `home` = a Home-row service (the general term, a fallback). */
+export async function servicesOf(c: ClientRow): Promise<(ServiceRef & { category: string })[]> {
+  const rows = must(await db().from('seo_client_services').select('id, name, seo_client_categories(code, name)').eq('client_id', c.id).order('sort'), 'Loading services') as unknown as {
+    id: string
+    name: string
+    seo_client_categories: { code: string; name: string } | null
+  }[]
+  return rows.map((s) => ({ id: s.id, name: s.name, home: s.seo_client_categories?.code === 'Home', category: s.seo_client_categories?.name ?? '' }))
+}
+
 /** Words from the client's industry version of "Keyword research" (or the generic one). */
-async function templateWords(c: ClientRow): Promise<Words> {
+export async function templateWords(c: ClientRow): Promise<Words> {
   const rows = must(
     await db().from('seo_templates').select('industry, seo_template_items(kind, word_group, body)').eq('kind', 'keyword_research'),
     'Loading the keyword research template',
@@ -84,25 +112,28 @@ const summaryOf = (items: AutofillItem[], unmatched: unknown[], noun: string) =>
   return `${items.length - look} suggestion${items.length - look === 1 ? '' : 's'} · ${look} need${look === 1 ? 's' : ''} a look · ${unmatched.length} with no ${noun}`
 }
 
-/** Day 2 plain-code rules: roles + services. Replaces any open (ready) rules suggestion of the same kind. */
+/**
+ * Day 2 plain-code rules: roles + services, and (after migration 0008) the scope list: out-of-scope keywords →
+ * suggest Rejected, neighbourhood keywords → suggest Later. Scope keywords get no role / service suggestion.
+ * Replaces any open (ready) rules suggestion of the same kind.
+ */
 export async function runDay2Rules(siteId: string): Promise<AutofillRow[]> {
   const c = await client(siteId)
-  const [keywords, services, words] = await Promise.all([
-    keywordsOf(c.id),
-    db().from('seo_client_services').select('id, name, seo_client_categories(code)').eq('client_id', c.id),
-    templateWords(c),
-  ])
-  const svc = (must(services, 'Loading services') as unknown as { id: string; name: string; seo_client_categories: { code: string } | null }[]).map((s) => ({
-    id: s.id,
-    name: s.name,
-    home: s.seo_client_categories?.code === 'Home',
-  }))
-  const roles = suggestRoles(keywords, words)
-  const services2 = suggestServices(keywords, svc, words)
-  const runs: { kind: AutofillKind; items: AutofillItem[]; unmatched: { keywordId: string; keyword: string }[]; noun: string }[] = [
+  const [keywords, svc, words, scope] = await Promise.all([keywordsOf(c.id), servicesOf(c), templateWords(c), scopeWordsOf(c)])
+  const skip = scopedIds(keywords, scope)
+  const inScope = keywords.filter((k) => !skip.has(k.id))
+  const roles = suggestRoles(inScope, words)
+  const services2 = suggestServices(inScope, svc, words)
+  const runs: { kind: AutofillKind; items: AutofillItem[]; unmatched: { keywordId: string; keyword: string }[]; noun: string; summary?: string }[] = [
     { kind: 'roles', items: roles.items as AutofillItem[], unmatched: roles.unmatched, noun: 'rule' },
     { kind: 'services', items: services2.items as AutofillItem[], unmatched: services2.unmatched, noun: 'service match' },
   ]
+  // The scope list needs migration 0008 (columns + the 'scope' kind); before it, the row has no such column.
+  if (c.out_of_scope_words !== undefined) {
+    const sc = suggestScope(keywords, scope)
+    const out = sc.items.filter((i) => i.category === 'out of scope').length
+    runs.push({ kind: 'scope', items: sc.items, unmatched: [], noun: '', summary: `${out} out of scope → Rejected · ${sc.items.length - out} neighbourhood → Later` })
+  }
   for (const r of runs) {
     // Only one open suggestion per client + kind: the previous open one is marked superseded (kept, not deleted).
     must(await db().from('seo_autofill').update({ status: 'superseded' }).eq('client_id', c.id).eq('kind', r.kind).eq('status', 'ready'), 'Saving auto-fill')
@@ -115,7 +146,7 @@ export async function runDay2Rules(siteId: string): Promise<AutofillRow[]> {
           kind: r.kind,
           source: 'rules',
           status: 'ready',
-          summary: summaryOf(r.items, r.unmatched, r.noun),
+          summary: r.summary ?? summaryOf(r.items, r.unmatched, r.noun),
           payload: { items: r.items, unmatched: r.unmatched },
           item_count: r.items.length,
         }),
@@ -123,6 +154,16 @@ export async function runDay2Rules(siteId: string): Promise<AutofillRow[]> {
     )
   }
   return listAutofill(siteId)
+}
+
+/** Which keyword column each kind fills on Approve. */
+const TARGET: Partial<Record<AutofillKind, 'role' | 'service_id' | 'intent' | 'status'>> = {
+  roles: 'role',
+  services: 'service_id',
+  services_ai: 'service_id',
+  intent: 'intent',
+  triage: 'status',
+  scope: 'status',
 }
 
 const DecideSchema = z.object({
@@ -142,7 +183,8 @@ export async function decide(raw: unknown): Promise<AutofillRow[]> {
   const row = must(await db().from('seo_autofill').select(COLS).eq('id', p.data.autofillId).eq('client_id', c.id).maybeSingle(), 'Loading the suggestion') as Row | null
   if (!row) throw new AutofillInputError('That suggestion doesn’t exist.')
   if (row.status !== 'ready') throw new AutofillInputError('This suggestion was already closed or replaced by a newer run.')
-  if (row.kind !== 'roles' && row.kind !== 'services' && row.kind !== 'intent') throw new AutofillInputError('This kind can’t be approved here yet.')
+  const target = TARGET[row.kind]
+  if (!target) throw new AutofillInputError('This kind can’t be approved here yet.')
 
   const items = row.payload.items
   const byId = new Map(items.map((i) => [i.keywordId, i]))
@@ -162,9 +204,12 @@ export async function decide(raw: unknown): Promise<AutofillRow[]> {
     item.applied = value
   }
 
-  // Apply in batches per value; "is null" guard = never overwrite what was set in the meantime.
-  const column = row.kind === 'roles' ? 'role' : row.kind === 'intent' ? 'intent' : 'service_id'
-  if (row.kind === 'services') {
+  // Apply in batches per value. Guards = never overwrite what was set in the meantime:
+  //   role / service / intent only while still empty (and never on a Rejected keyword);
+  //   status (Later / Rejected) only while the keyword is still "keep".
+  const column = target
+  if (column === 'status' && [...toApply.keys()].some((v) => v !== 'later' && v !== 'rejected')) throw new AutofillInputError('Only Later or Rejected can be set here.')
+  if (column === 'service_id') {
     const ids = [...toApply.keys()]
     if (ids.length) {
       const own = must(await db().from('seo_client_services').select('id').eq('client_id', c.id).in('id', ids), 'Checking services') as { id: string }[]
@@ -172,10 +217,9 @@ export async function decide(raw: unknown): Promise<AutofillRow[]> {
     }
   }
   for (const [value, ids] of toApply) {
-    const done = must(
-      await db().from('seo_keywords').update({ [column]: value }).eq('client_id', c.id).in('id', ids).is(column, null).select('id'),
-      'Applying the suggestions',
-    ) as { id: string }[]
+    const base = db().from('seo_keywords').update({ [column]: value }).eq('client_id', c.id).in('id', ids)
+    const guarded = column === 'status' ? base.eq('status', 'keep') : base.is(column, null).neq('status', 'rejected')
+    const done = must(await guarded.select('id'), 'Applying the suggestions') as { id: string }[]
     const applied = new Set(done.map((d) => d.id))
     for (const id of ids) byId.get(id)!.decision = applied.has(id) ? 'approved' : 'skipped'
   }

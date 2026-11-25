@@ -42,6 +42,9 @@ export type ClientRow = {
   status: ClientStatus
   /** null until migration 0002 runs, or when no template was picked. */
   industry?: ClientIndustry | null
+  /** Both undefined until migration 0008 runs. */
+  out_of_scope_words?: string[]
+  neighbourhood_words?: string[]
   notes: string | null
   created_at: string
   updated_at: string
@@ -177,6 +180,8 @@ export async function clientDetail(c: ClientRow): Promise<ClientDetail> {
     categories,
     areas: areaList,
     accounts: accountList,
+    outOfScopeWords: c.out_of_scope_words ?? [],
+    neighbourhoodWords: c.neighbourhood_words ?? [],
     counts: counts.get(c.id)!,
     guide: guides.get(c.id)!,
   }
@@ -218,6 +223,8 @@ const InputSchema = z.object({
     .array(z.object({ kind: z.enum(ACCOUNT_KINDS as [AccountKind, ...AccountKind[]]), status: z.enum(['ready', 'pending', 'n_a']) }))
     .max(ACCOUNT_KINDS.length)
     .optional(),
+  outOfScopeWords: z.array(text(60)).max(100).optional(),
+  neighbourhoodWords: z.array(text(60)).max(200).optional(),
 })
 
 const FIELD_LABEL: Record<string, string> = {
@@ -304,6 +311,9 @@ export async function saveClient(raw: unknown, existingSiteId?: string): Promise
     notes: orNull(input.notes),
     status: input.status,
     industry: input.industry,
+    // Migration 0008 columns: only sent when the form sends them (Edit client), as clean lowercase lists.
+    ...(input.outOfScopeWords ? { out_of_scope_words: cleanWords(input.outOfScopeWords) } : {}),
+    ...(input.neighbourhoodWords ? { neighbourhood_words: cleanWords(input.neighbourhoodWords) } : {}),
   }
 
   try {
@@ -313,8 +323,16 @@ export async function saveClient(raw: unknown, existingSiteId?: string): Promise
     if (err instanceof DatabaseError && /industry/i.test(err.message) && /column/i.test(err.message)) {
       throw new ClientInputError('The industry column is missing: run supabase/migrations/0002_seo_client_industry.sql in Supabase first.')
     }
+    if (err instanceof DatabaseError && /(out_of_scope|neighbourhood)_words/i.test(err.message)) {
+      throw new ClientInputError('The scope word columns are missing: run supabase/migrations/0008_seo_scope_words.sql in Supabase first.')
+    }
     throw err
   }
+}
+
+/** " Men's, MALE ,men's" → ["men's", "male"]: trimmed, lowercase, no repeats, no blanks. */
+function cleanWords(words: string[]): string[] {
+  return [...new Set(words.map((w) => w.trim().toLowerCase().replace(/\s+/g, ' ')).filter(Boolean))]
 }
 
 async function writeClient(input: ClientInput, fields: Record<string, unknown>, existingSiteId: string | undefined, siteId: string) {

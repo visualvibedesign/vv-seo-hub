@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { AreasEditor, NoAddressNote, ServicesEditor, SiteIdNote } from '../components/client/ClientFormParts'
-import { fromClient, servicesProblem, toInput, useSiteCheck, type FormState } from '../lib/clientForm'
+import { fromClient, servicesProblem, splitNames, toInput, useSiteCheck, type FormState } from '../lib/clientForm'
 import HeaderTools from '../components/layout/HeaderTools'
 import { Bone, Spinner } from '../components/ui/Loading'
 import { useClient, useSaveClient } from '../hooks/useClients'
@@ -35,6 +35,9 @@ function EditForm({ existing }: { existing: ClientDetail }) {
   const save = useSaveClient()
   const [f, setF] = useState<FormState>(() => fromClient(existing))
   const [error, setError] = useState('')
+  // Scope words (migration 0008), typed as comma / line separated text.
+  const [outOfScope, setOutOfScope] = useState(existing.outOfScopeWords.join(', '))
+  const [hoods, setHoods] = useState(existing.neighbourhoodWords.join(', '))
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setF((s) => ({ ...s, [k]: v }))
   const site = useSiteCheck(f.siteUrl, existing.siteId)
   const idChanges = !!site.check && site.check.siteId !== existing.siteId
@@ -46,7 +49,11 @@ function EditForm({ existing }: { existing: ClientDetail }) {
     const problem = servicesProblem(f)
     if (problem) return setError(problem)
     try {
-      const res = await save.mutateAsync({ client: toInput(f), siteId: existing.siteId })
+      // Only sent when there's something to save (so Edit client still works before migration 0008 runs).
+      const scope = splitNames(outOfScope)
+      const hood = splitNames(hoods)
+      const words = scope.length || hood.length || existing.outOfScopeWords.length || existing.neighbourhoodWords.length ? { outOfScopeWords: scope, neighbourhoodWords: hood } : {}
+      const res = await save.mutateAsync({ client: { ...toInput(f), ...words }, siteId: existing.siteId })
       navigate(`/clients/${res.siteId}`, { replace: true })
     } catch (err) {
       setError(err instanceof ApiError && err.detail ? err.detail : 'Couldn’t save. Check your connection and try again.')
@@ -137,6 +144,27 @@ function EditForm({ existing }: { existing: ClientDetail }) {
           <p className="m-0 text-sm text-vv-muted">Top 3 areas (population + where the client wants work). One area only? Mark A2 and A3 N/A.</p>
         </div>
         <AreasEditor f={f} set={set} />
+      </section>
+
+      <section className={CARD} aria-labelledby="f-scope">
+        <div className="flex flex-col gap-1">
+          <h2 id="f-scope" className={CARD_TITLE}>
+            Scope words
+          </h2>
+          <p className="m-0 text-sm text-vv-muted">
+            Keywords with one of these words get no role, service or intent suggestions. They go to the “Out of scope &amp; neighbourhoods” list on Uploads → Day 2 for you to confirm. Separate with commas.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-4 phone:grid-cols-1">
+          <label className={LABEL}>
+            Out of scope (suggest Rejected)
+            <textarea className={`${FIELD} min-h-[76px] resize-y`} value={outOfScope} onChange={(e) => setOutOfScope(e.target.value)} placeholder="e.g. male, men, men's, mens, chest" />
+          </label>
+          <label className={LABEL}>
+            Neighbourhoods, not an area yet (suggest Later)
+            <textarea className={`${FIELD} min-h-[76px] resize-y`} value={hoods} onChange={(e) => setHoods(e.target.value)} placeholder="e.g. great kills, new dorp, eltingville" />
+          </label>
+        </div>
       </section>
 
       <section className={CARD} aria-labelledby="f-kickoff">
