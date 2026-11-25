@@ -26,6 +26,7 @@ file was run wasn't recorded before this log existed.
 | 0012 | `0012_seo_page_priority_unset.sql` | `seo_pages.priority` can be empty ("not set yet", shown as "Medium (default)") | Nov 25 | Yes (checked) |
 | 0013 | `0013_seo_page_url_suggested.sql` | `seo_pages.url_suggested`: a URL that is only a suggestion (from the template pattern), shown as "suggested" | Nov 25 | Yes (checked) |
 | 0014 | `0014_seo_notes_links.sql` | Notes & links: `seo_notes` (Rule / Decision / Note, author name, guide day; no client = agency rule) and `seo_client_links` (links that aren't accounts; https only) | Nov 25 | Yes (checked) |
+| 0015 | `0015_seo_client_sheet.sql` | Whole client Sheet (.xlsx): `seo_imports.report` + `client_sheet` (the .xlsx upload) and `competitors` (Competitors tab, names only); `seo_imports.parent_import_id` (each tab import → its .xlsx) | Nov 25 | **No** |
 
 ## One-time data fixes (not migrations)
 
