@@ -12,16 +12,21 @@
 --     on top of the generic price / cost / deals / best (all found too).
 --   * Service words: service terms that appear in Anassa's real keywords (count in brackets). Nothing invented.
 
+-- Safe to re-run (guard added Nov 25 after it ran twice): the copies are only added when no waxing_beauty
+-- version of that kind exists yet. The duplicate set from the double run is removed by
+-- supabase/fixes/0005-remove-second-copy.sql.
+
 begin;
 
-alter table public.seo_template_items drop constraint seo_template_items_word_group_check;
+alter table public.seo_template_items drop constraint if exists seo_template_items_word_group_check;
 alter table public.seo_template_items add constraint seo_template_items_word_group_check check (word_group in ('money', 'faq', 'service'));
 
 with copies as (
   insert into public.seo_templates (kind, name, sam_step, industry, description, built_in)
-  select kind, name || ' · Waxing & beauty salon', sam_step, 'waxing_beauty', description, false
-  from public.seo_templates
-  where built_in
+  select g.kind, g.name || ' · Waxing & beauty salon', g.sam_step, 'waxing_beauty', g.description, false
+  from public.seo_templates g
+  where g.built_in
+    and not exists (select 1 from public.seo_templates w where w.industry = 'waxing_beauty' and w.kind = g.kind)
   returning id, kind
 ),
 -- 1. every generic line, copied
