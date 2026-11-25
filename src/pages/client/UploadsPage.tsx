@@ -329,8 +329,12 @@ function DropZone({ client: c, imports }: { client: ClientDetail; imports: Impor
   )
 }
 
+/** A KP "Discover new keywords" file this big is usually unfiltered (thousands of off-topic ideas). Warn, never block. */
+const BIG_IDEAS_ROWS = 500
+
 function QueueRow({ q, onImport, onSkip, busy }: { q: Queued; onImport: () => void; onSkip: () => void; busy: boolean }) {
   const p = q.preview
+  const bigIdeas = q.payload?.report === 'kp_ideas' && q.payload.rows.length > BIG_IDEAS_ROWS
   return (
     <li className={`flex flex-col gap-2 rounded-2xl border border-solid p-3.5 ${q.state === 'error' ? 'border-vv-red-100 bg-vv-red-100' : 'border-vv-line bg-vv-surface'} ${q.state === 'skipped' ? 'opacity-60' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -358,6 +362,11 @@ function QueueRow({ q, onImport, onSkip, busy }: { q: Queued; onImport: () => vo
           Looks like an address, held back (never stored): {p.addresses.join(', ')}
         </span>
       )}
+      {bigIdeas && q.state === 'ready' && (
+        <span className="text-[13px] font-semibold text-vv-orange-ink">
+          Big unfiltered ideas file ({q.payload!.rows.length.toLocaleString('en-US')} rows): filter it first (e.g. Keywords › Import with “Only keywords containing” your city or services) or import anyway.
+        </span>
+      )}
       {q.already && q.state === 'ready' && (
         <span className="text-[13px] font-semibold text-vv-orange-ink">
           A file with this name was already imported on {new Date(q.already.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}. Importing again only adds what’s new.
@@ -366,7 +375,7 @@ function QueueRow({ q, onImport, onSkip, busy }: { q: Queued; onImport: () => vo
       {q.state === 'ready' && (
         <div className="flex flex-wrap gap-2">
           <button type="button" className={`${BTN_LIME} min-h-10`} onClick={onImport} disabled={busy}>
-            Import
+            {bigIdeas ? 'Import anyway' : 'Import'}
           </button>
           <button type="button" className={`${BTN_GHOST} min-h-10`} onClick={onSkip}>
             Skip

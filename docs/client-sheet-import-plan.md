@@ -46,5 +46,12 @@ do today (e.g. one Sam's Guide import per client). Works for any client: tab det
 ## Later (separate)
 Paste a Google Sheet link instead of a file (Google Sheets API, read-only). Same detection and dry run.
 
-## Needs from Angel
-See the questions in the chat (sample .xlsx, which tab wins for pages, Competitors tab, Master DB "testing only", library).
+## Angel's answers (Nov 25) — not built yet
+- **Pages conflict:** the **Clusters** tab wins; what Sam's Guide Top 10 says differently is shown as a conflict.
+- **Competitors tab:** imported, **names only** (brackets / address-like parts stripped, never stored).
+- **Master DB tab:** OK to use. Sheet values **never overwrite real export volumes** (Semrush / KP from the raw
+  exports); they only fill empty fields and are marked **"from Sheet"**. Check the current master_db rules against
+  this before building.
+- **Library:** OK if pinned, well-known, reads values only and passes `npm audit`. **Not** the old npm `xlsx`
+  (SheetJS) package. Pick and audit it at build time, and show Angel the choice first.
+- **Sample .xlsx:** Angel adds it to `test-data/` later. Build only after it's there.
