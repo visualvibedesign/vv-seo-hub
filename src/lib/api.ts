@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, Industry } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, Industry } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -214,6 +214,18 @@ export function runAi(siteId: string, task: AiTask): Promise<{ rows: AutofillRow
 /** Approve / reject rows of one suggestion. */
 export function decideAutofill(siteId: string, autofillId: string, decisions: AutofillDecision[]): Promise<{ rows: AutofillRow[] }> {
   return call('/api/autofill/decide', json({ siteId, autofillId, decisions }))
+}
+
+// ---- Bulk add clients from CSV ---------------------------------------------------------------
+
+/** Checks the rows (nothing saved). */
+export function previewBulkClients(rows: BulkClientRow[]): Promise<{ rows: BulkClientCheck[] }> {
+  return call('/api/clients/bulk-preview', json({ rows }))
+}
+
+/** Adds the New rows (the server checks everything again). */
+export function addBulkClients(rows: BulkClientRow[]): Promise<{ added: number; skipped: number; industriesAdded: string[]; rows: BulkClientCheck[]; failed: { line: number; note: string }[] }> {
+  return call('/api/clients/bulk-add', json({ rows }))
 }
 
 // ---- Industries (migration 0009) ------------------------------------------------------------

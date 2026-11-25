@@ -22,6 +22,7 @@ const router = createBrowserRouter([
           { path: '/', lazy: page(() => import('./pages/HomePage')) },
           { path: '/clients', lazy: page(() => import('./pages/ClientsPage')) },
           { path: '/clients/new', lazy: page(() => import('./pages/AddClientPage')) },
+          { path: '/clients/import', lazy: page(() => import('./pages/AddClientsCsvPage')) },
           { path: '/clients/:siteId/edit', lazy: page(() => import('./pages/ClientFormPage')) },
           // Hub pages not built yet (Templates: phase 1, Automation: phase 5)
           { path: '/templates', lazy: page(() => import('./pages/TemplatesPage')) },

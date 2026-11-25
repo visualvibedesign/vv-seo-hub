@@ -69,7 +69,8 @@ async function countsFor(clients: Pick<ClientRow, 'id' | 'updated_at'>[]): Promi
   await Promise.all(
     clients.map(async ({ id, updated_at }) => {
       const kws = () => db().from('seo_keywords').select('id', head).eq('client_id', id)
-      const [kw, tracked, noRole, pg, imp, pending, lastKw] = await Promise.all([
+      const [svc, kw, tracked, noRole, pg, imp, pending, lastKw] = await Promise.all([
+        db().from('seo_client_services').select('id', head).eq('client_id', id),
         kws(),
         kws().eq('track', true),
         kws().is('role', null),
@@ -79,10 +80,11 @@ async function countsFor(clients: Pick<ClientRow, 'id' | 'updated_at'>[]): Promi
         db().from('seo_client_accounts').select('id', head).eq('client_id', id).eq('status', 'pending').in('kind', CORE_ACCOUNT_KINDS),
         db().from('seo_keywords').select('updated_at').eq('client_id', id).order('updated_at', { ascending: false }).limit(1),
       ])
-      for (const r of [kw, tracked, noRole, pg, imp, pending, lastKw]) if (r.error) throw new DatabaseError(`Counting this client’s data: ${r.error.message}`)
+      for (const r of [svc, kw, tracked, noRole, pg, imp, pending, lastKw]) if (r.error) throw new DatabaseError(`Counting this client’s data: ${r.error.message}`)
       const lastImportAt = (imp.data as { created_at: string }[] | null)?.[0]?.created_at ?? null
       const lastKwAt = (lastKw.data as { updated_at: string }[] | null)?.[0]?.updated_at ?? null
       out.set(id, {
+        services: svc.count ?? 0,
         keywords: kw.count ?? 0,
         imports: imp.count ?? 0,
         pages: pg.count ?? 0,
@@ -365,6 +367,30 @@ async function writeClient(input: ClientInput, fields: Record<string, unknown>, 
   must(await db().from('seo_clients').update(fields).eq('id', current.id), 'Saving the client')
   await saveStructure(current.id, input)
   return { siteId }
+}
+
+/**
+ * Bulk "Add clients from CSV": a client with only name, site, city (A1), state and industry. Categories get their
+ * code as a placeholder name, no services (filled in later on Edit client), A2/A3 N/A, every account Ready.
+ * The caller has already checked the row (site id free, industry in the list, no address).
+ */
+export async function addClientBasic(row: { name: string; siteUrl: string; siteId: string; city: string; state: string; industry: string | null }): Promise<{ siteId: string }> {
+  const input: ClientInput = {
+    siteUrl: row.siteUrl,
+    name: row.name,
+    city: row.city,
+    state: row.state,
+    idealClient: '',
+    usp: '',
+    success12mo: '',
+    notes: '',
+    status: 'active',
+    industry: row.industry,
+    categories: CATEGORY_CODES.map((code) => ({ code, name: '', services: [] })),
+    areas: AREA_CODES.map((code) => ({ code, name: code === 'A1' ? row.city : '', state: code === 'A1' ? row.state : '', status: code === 'A1' ? 'active' : 'n_a' })),
+  }
+  const fields = { site_id: row.siteId, site_url: row.siteUrl, name: row.name, city: orNull(row.city), state: orNull(row.state), status: 'active', industry: row.industry }
+  return createClient(input, fields)
 }
 
 async function createClient(input: ClientInput, fields: Record<string, unknown>): Promise<{ siteId: string }> {

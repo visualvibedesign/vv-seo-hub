@@ -231,7 +231,8 @@ Numbers = the redesign steps as built (START-HERE order). Migrations are split p
   - ✅ 6c-2 (migration 0008): per-client scope words (Edit client): out of scope → suggest Rejected, neighbourhood (not an active area) → suggest Later; those keywords get no role / service / intent suggestions and Approve all skips them. Claude (Haiku): no-rule keywords triage (competitor brand / off-topic → Rejected, neighbourhood → Later, fits → left alone) and leftover services (skips triaged keywords).
   - 6c-3 matrix suggestions (Sonnet) · 6c-4 Day 1 from notes (Sonnet)
 - ✅ **Any client** (Nov 25, migration 0009): brand words per client, neutral prompts / screen text, area state falls back to the client's state ("[state]" if none), industries are a database list (`seo_industries`) with "+ New industry" in the Add client wizard and "Add industry" on Templates. No industry needs its own template versions: generic templates + the client's own services, areas, scope and brand words.
-- **Next: bulk "Add clients from CSV"** (name, URL, city, state, optional industry): site ids worked out, duplicates skipped, preview before saving, services filled in later per client. No new tables.
+- ✅ **Accounts as quick access** (migration 0010): every account starts Ready, Open button (client link, else the tool's main page), per-client links (https only, never logins), "More accounts" always shown.
+- ✅ **Bulk "Add clients from CSV"** (/clients/import): name, URL, city, state, optional industry; site ids worked out, existing clients + repeats skipped, address-like rows refused, new industries added on save, preview before saving; services filled in later per client ("Needs services" on All clients). No new tables.
 - **Step 7 · Notes & links.** Migration: `seo_notes`, `seo_client_links`.
 - **Last:** Anassa check vs §4, phone + dark mode on every screen.
 

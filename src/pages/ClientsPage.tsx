@@ -6,7 +6,7 @@ import { useClients } from '../hooks/useClients'
 import { useIndustryLabel } from '../hooks/useIndustries'
 import { GUIDE, GUIDE_STEPS, stepDay } from '../lib/guide'
 import { needsYouItems } from '../lib/needsYou'
-import { BTN_LIME, CARD, FIELD, PILL, PILL_DONE, PILL_TODO, PILL_WAITING, siteLabel } from '../lib/ui'
+import { BTN_GHOST, BTN_LIME, CARD, FIELD, PILL, PILL_DONE, PILL_TODO, PILL_WAITING, siteLabel } from '../lib/ui'
 import type { ClientStatus, ClientSummary } from '../types/seo'
 
 // All clients (/clients), design docs/design/Clients.png: search, status pills, step filter, sort,
@@ -80,6 +80,9 @@ export default function ClientsPage() {
           <p className="m-0 max-w-[680px] text-[17px] leading-normal text-vv-body">Search, filter and sort. Clients live here, not in the sidebar, so it stays tidy with 50+.</p>
         </div>
         <HeaderTools>
+          <Link to="/clients/import" className={BTN_GHOST}>
+            Add from CSV
+          </Link>
           <Link to="/clients/new" className={BTN_LIME}>
             + Add client
           </Link>
@@ -215,6 +218,7 @@ export default function ClientsPage() {
                             {c.name}
                           </Link>
                           <span className="block text-sm text-vv-muted">{siteLabel(c.siteUrl)}</span>
+                          {c.counts.services === 0 && <span className={`${PILL_WAITING} mt-1`}>Needs services</span>}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">{c.city ? `${c.city}${c.state ? `, ${c.state}` : ''}` : <Dash />}</td>
                         <td className="px-4 py-3 text-vv-body">{industryLabel(c.industry) ?? <Dash />}</td>
@@ -256,6 +260,7 @@ export default function ClientsPage() {
                         {industryLabel(c.industry) && <span className={`${PILL} bg-vv-lavender-100 text-vv-purple-ink`}>{industryLabel(c.industry)}</span>}
                         <span className={STEP_PILL}>{stepDay(c.guide.current)}</span>
                         <span className={PILL_TODO}>{c.counts.keywords.toLocaleString('en-US')} keywords</span>
+                        {c.counts.services === 0 && <span className={PILL_WAITING}>Needs services</span>}
                       </span>
                       {needsYou(c) && <span className="text-sm text-vv-body">Needs you: {needsYou(c)}</span>}
                     </Link>

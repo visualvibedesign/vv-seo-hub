@@ -4,8 +4,11 @@
 //   GET  /api/clients/site-id?url=…&current=<id>    -> SiteIdCheck (live check on the form)
 //   POST /api/clients/save    { siteId?, client }   -> { siteId }   (add when siteId is missing)
 //   POST /api/clients/account { siteId, account }   -> { account }  (one checklist row)
+//   POST /api/clients/bulk-preview { rows }         -> { rows: BulkClientCheck[] }  (nothing saved)
+//   POST /api/clients/bulk-add     { rows }         -> { added, skipped, industriesAdded, rows, failed }
 import { DatabaseError } from '../../server/clients/supabase.js'
 import { checkSiteId, ClientInputError, getClient, listClients, saveAccount, saveClient } from '../../server/services/clientService.js'
+import { addBulk, previewBulk } from '../../server/services/bulkClientService.js'
 import { requireSession } from '../../server/utils/auth.js'
 import { SiteUrlError } from '../../server/utils/siteId.js'
 
@@ -41,6 +44,12 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       const body = (await request.json().catch(() => ({}))) as { siteId?: unknown; client?: unknown }
       const siteId = typeof body.siteId === 'string' && body.siteId ? body.siteId : undefined
       return Response.json(await saveClient(body.client, siteId))
+    }
+    if (method === 'POST' && action === 'bulk-preview') {
+      return Response.json({ rows: await previewBulk(await request.json().catch(() => null)) })
+    }
+    if (method === 'POST' && action === 'bulk-add') {
+      return Response.json(await addBulk(await request.json().catch(() => null)))
     }
     if (method === 'POST' && action === 'account') {
       const body = (await request.json().catch(() => ({}))) as { siteId?: unknown; account?: unknown }

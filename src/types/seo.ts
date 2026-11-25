@@ -65,7 +65,32 @@ export interface Industry {
   builtIn: boolean
 }
 
+/** One line of a bulk "Add clients" CSV, as mapped (text as typed). */
+export interface BulkClientRow {
+  line: number
+  name: string
+  url: string
+  city: string
+  state: string
+  industry: string
+}
+
+/** What the server says about a line: new (added on save), already a client, twice in the file, or a problem. */
+export interface BulkClientCheck extends BulkClientRow {
+  status: 'new' | 'exists' | 'repeat' | 'problem'
+  note: string
+  siteUrl: string | null
+  siteId: string | null
+  /** Matched industry key; null = none (Blank-style: generic templates). */
+  industryKey: string | null
+  industryLabel: string | null
+  /** The industry isn't in the list yet: it's added on save. */
+  industryNew: boolean
+}
+
 export interface ClientCounts {
+  /** Services across Home + S1–S3 (0 = "Needs services"). */
+  services: number
   keywords: number
   imports: number
   pages: number

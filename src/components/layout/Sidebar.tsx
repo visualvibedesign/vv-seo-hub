@@ -94,9 +94,9 @@ export default function Sidebar() {
     return () => window.removeEventListener('keydown', onKey)
   }, [menuOpen])
 
-  // Which client is open? (/clients/new is the Add client page, not a client.)
+  // Which client is open? Only a real site id (32 hex): /clients/new and /clients/import are hub pages, not clients.
   const match = useMatch('/clients/:siteId/*')
-  const openId = match?.params.siteId && match.params.siteId !== 'new' ? match.params.siteId : null
+  const openId = match?.params.siteId && /^[0-9a-f]{32}$/.test(match.params.siteId) ? match.params.siteId : null
   const close = () => setMenuOpen(false)
 
   return (
