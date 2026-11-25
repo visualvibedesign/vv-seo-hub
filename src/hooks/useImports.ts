@@ -20,6 +20,10 @@ export function useCommitImport(siteId: string) {
         qc.invalidateQueries({ queryKey: ['imports', siteId] }),
         qc.invalidateQueries({ queryKey: ['client', siteId] }),
         qc.invalidateQueries({ queryKey: ['clients'] }),
+        // Keywords changed: refresh the database, matrix volumes and the guide's auto-ticks too.
+        qc.invalidateQueries({ queryKey: ['keywords', siteId] }),
+        qc.invalidateQueries({ queryKey: ['matrix', siteId] }),
+        qc.invalidateQueries({ queryKey: ['guide', siteId] }),
       ])
     },
   })
@@ -34,6 +38,10 @@ export function useDeleteImport(siteId: string) {
         qc.invalidateQueries({ queryKey: ['imports', siteId] }),
         qc.invalidateQueries({ queryKey: ['client', siteId] }),
         qc.invalidateQueries({ queryKey: ['clients'] }),
+        // Keywords changed: refresh the database, matrix volumes and the guide's auto-ticks too.
+        qc.invalidateQueries({ queryKey: ['keywords', siteId] }),
+        qc.invalidateQueries({ queryKey: ['matrix', siteId] }),
+        qc.invalidateQueries({ queryKey: ['guide', siteId] }),
       ])
     },
   })

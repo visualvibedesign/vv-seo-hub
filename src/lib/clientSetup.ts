@@ -61,7 +61,7 @@ export type ClientGroup = { key: string; label: string; items: ClientSection[] }
 export const CLIENT_TOP: ClientSection[] = [
   { key: 'overview', label: 'Overview', path: '', live: true, tag: '' },
   { key: 'guide', label: 'Step-by-step guide', path: 'guide', live: true, tag: '' },
-  { key: 'uploads', label: 'Uploads + auto-fill', path: 'uploads', live: false, tag: 'P1' },
+  { key: 'uploads', label: 'Uploads + auto-fill', path: 'uploads', live: true, tag: '' },
 ]
 
 export const CLIENT_GROUPS: ClientGroup[] = [

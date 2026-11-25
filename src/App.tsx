@@ -36,6 +36,7 @@ const router = createBrowserRouter([
             children: [
               { index: true, lazy: page(() => import('./pages/client/OverviewPage')) },
               { path: 'guide', lazy: page(() => import('./pages/client/GuidePage')) },
+              { path: 'uploads', lazy: page(() => import('./pages/client/UploadsPage')) },
               { path: 'keywords/import', lazy: page(() => import('./pages/client/ImportPage')) },
               { path: 'keywords/database', lazy: page(() => import('./pages/client/DatabasePage')) },
               { path: 'keywords/clusters', lazy: page(() => import('./pages/client/ClustersPage')) },

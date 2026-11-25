@@ -14,7 +14,7 @@ import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { applyMap, initialMap, readCsvFile } from '../src/lib/readCsv.ts'
-import { sourceOf } from '../src/lib/importRules.ts'
+import { guessFilter, sourceOf } from '../src/lib/importRules.ts'
 import { getClient, listClients } from '../server/services/clientService.ts'
 import { commitImport, listImports, previewImport } from '../server/services/importService.ts'
 
@@ -31,11 +31,6 @@ const COMMIT = process.argv.includes('--commit')
 const ALL = process.argv.includes('--all')
 const MAX_ROWS = Number(arg('max-rows') ?? 2000)
 const ORDER = ['kp_ideas', 'kp_volumes', 'keyword_magic', 'keyword_overview', 'keyword_gap']
-
-function guessFilter(rows: { keyword: string }[], words: string[]) {
-  const w = words.find((x) => rows.length > 0 && rows.every((r) => r.keyword.toLowerCase().includes(x)))
-  return w ? `Include keywords: ${w}` : ''
-}
 
 ;(async () => {
   const who = arg('client')

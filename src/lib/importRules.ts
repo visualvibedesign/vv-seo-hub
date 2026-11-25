@@ -74,6 +74,12 @@ export const REPORTS: { report: ImportReport; source: ImportSource; label: strin
 
 export const sourceOf = (report: ImportReport): ImportSource => REPORTS.find((r) => r.report === report)!.source
 
+/** Semrush "Include keywords" filter, guessed: the first word (an area name or "near me") that every row contains. */
+export function guessFilter(rows: { keyword: string }[], words: string[]): string {
+  const w = words.find((x) => rows.length > 0 && rows.every((r) => r.keyword.toLowerCase().includes(x)))
+  return w ? `Include keywords: ${w}` : ''
+}
+
 /** Which fields each source uses (keyword is always required). */
 export const SOURCE_FIELDS: Record<ImportSource, ImportField[]> = {
   kp: ['keyword', 'volume', 'segment'],
