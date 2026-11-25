@@ -58,18 +58,24 @@ export async function countInputTokens(model: AiModelKey, system: string, user: 
   return r.input_tokens
 }
 
-/** Runs one structured call and logs it (also when it fails). Returns the parsed output and the log row id. */
+/**
+ * Runs one structured call and logs it (also when it fails). Returns the parsed output and the log row id.
+ * Always streamed: a non-streaming request with a large max_tokens is refused by the SDK ("Streaming is required
+ * for operations that may take longer than 10 minutes"). finalMessage() gathers the whole answer, parsed the same way.
+ */
 export async function callStructured<T extends z.ZodType>(a: CallArgs<T>): Promise<{ data: z.infer<T>; logId: string | null }> {
   const model = AI_MODELS[a.model].id
   const started = performance.now()
   try {
-    const res = await anthropic().messages.parse({
-      model,
-      max_tokens: a.maxTokens,
-      system: a.system,
-      messages: [{ role: 'user', content: a.user }],
-      output_config: { effort: a.effort ?? 'low', format: zodOutputFormat(a.schema) },
-    })
+    const res = await anthropic()
+      .messages.stream({
+        model,
+        max_tokens: a.maxTokens,
+        system: a.system,
+        messages: [{ role: 'user', content: a.user }],
+        output_config: { effort: a.effort ?? 'low', format: zodOutputFormat(a.schema) },
+      })
+      .finalMessage()
     const ms = performance.now() - started
     if (res.stop_reason === 'refusal') {
       const logId = await log({ task: a.task, clientId: a.clientId, model, ok: false, error: 'Declined by Claude (refusal)', usage: res.usage, modelKey: a.model, ms })

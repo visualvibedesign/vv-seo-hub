@@ -19,7 +19,7 @@ export const AI_TASKS = {
   matrix: { model: 'sonnet', label: '3×3 matrix', outPerItem: 150, outBase: 1500 },
   // Per new page (name + secondaries + FAQs) or leftover keyword (which page). Effort medium.
   clusters: { model: 'sonnet', label: 'Page suggestions', outPerItem: 120, outBase: 1500 },
-  day1: { model: 'sonnet', label: 'Day 1 from notes', outPerItem: 0, outBase: 3000 },
+  day1: { model: 'sonnet', label: 'Day 1 from notes', outPerItem: 0, outBase: 6000 },
 } as const satisfies Record<string, { model: AiModelKey; label: string; outPerItem: number; outBase: number }>
 export type AiTask = keyof typeof AI_TASKS
 

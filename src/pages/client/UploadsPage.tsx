@@ -8,6 +8,7 @@ import { useKeywords } from '../../hooks/useKeywords'
 import { useMatrix } from '../../hooks/useMatrix'
 import { useAutofill } from '../../hooks/useAutofill'
 import Day1Autofill from '../../components/autofill/Day1Autofill'
+import ErrorBoundary from '../../components/ui/ErrorBoundary'
 import Day2Autofill from '../../components/autofill/Day2Autofill'
 import { ApiError } from '../../lib/api'
 import { areaState, CORE_ACCOUNT_KINDS } from '../../lib/clientSetup'
@@ -67,10 +68,16 @@ export default function UploadsPage() {
         </section>
       ) : (
         <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-start gap-6 [@media(max-width:1100px)]:grid-cols-1">
-          {day.key === 'day1' ? <Day1Needs client={c} /> : <Day2Needs client={c} />}
+          <ErrorBoundary name="What I need from you" resetKey={day.key}>
+            {day.key === 'day1' ? <Day1Needs client={c} /> : <Day2Needs client={c} />}
+          </ErrorBoundary>
           <div className="flex min-w-0 flex-col gap-6">
-            {day.key === 'day2' ? <Day2Autofill client={c} /> : day.key === 'day1' ? <Day1Autofill client={c} /> : <ClaudeFilled day={day.key} />}
-            <NeedsYou client={c} day={day.key} />
+            <ErrorBoundary name="What Claude filled" resetKey={day.key}>
+              {day.key === 'day2' ? <Day2Autofill client={c} /> : day.key === 'day1' ? <Day1Autofill client={c} /> : <ClaudeFilled day={day.key} />}
+            </ErrorBoundary>
+            <ErrorBoundary name="Needs you" resetKey={day.key}>
+              <NeedsYou client={c} day={day.key} />
+            </ErrorBoundary>
             <p className="m-0 text-[14px] leading-normal text-vv-body">
               Claude never changes exported numbers, never invents volumes, reviews or facts, and nothing goes to the live site without your OK.
             </p>
