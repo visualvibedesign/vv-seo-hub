@@ -12,6 +12,7 @@
     "check:site-id": "node scripts/check-site-id.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.14.0",
     "@supabase/supabase-js": "^2.119.0",
     "@tanstack/react-query": "^5.107.1",
     "papaparse": "^5.7.1",

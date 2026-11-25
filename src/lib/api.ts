@@ -1,6 +1,7 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
 import type { AutofillDecision, AutofillRow } from '../types/seo'
+import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
 export class ApiError extends Error {
@@ -188,6 +189,26 @@ export function getAutofill(siteId: string): Promise<{ rows: AutofillRow[] }> {
 /** Day 2 plain-code rules (roles + services): saved as Ready to review, nothing applied. */
 export function runAutofillRules(siteId: string): Promise<{ rows: AutofillRow[] }> {
   return call('/api/autofill/run-rules', json({ siteId }))
+}
+
+export interface AiEstimate {
+  task: AiTask
+  model: string
+  items: number
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
+  empty: boolean
+}
+
+/** What a Claude run would send and cost (free token count; nothing runs, nothing saved). */
+export function estimateAi(siteId: string, task: AiTask): Promise<{ estimate: AiEstimate }> {
+  return call('/api/autofill/estimate', json({ siteId, task }))
+}
+
+/** One Claude call (logged); results saved as Ready to review. Only on Angel's click. */
+export function runAi(siteId: string, task: AiTask): Promise<{ rows: AutofillRow[] }> {
+  return call('/api/autofill/run-ai', json({ siteId, task }))
 }
 
 /** Approve / reject rows of one suggestion. */

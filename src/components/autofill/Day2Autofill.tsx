@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Spinner } from '../ui/Loading'
-import { useAutofill, useDecide, useRunRules } from '../../hooks/useAutofill'
+import { useAutofill, useDecide, useEstimateAi, useRunAi, useRunRules } from '../../hooks/useAutofill'
+import { formatUsd, type AiTask } from '../../lib/aiModels'
+import type { AiEstimate } from '../../lib/api'
 import { ApiError } from '../../lib/api'
 import { ROLE_LABEL, ROLE_PILL } from '../../lib/keywordUi'
 import { BTN_GHOST, BTN_LIME, CARD, PILL } from '../../lib/ui'
@@ -11,7 +13,6 @@ import type { AutofillDecision, AutofillItem, AutofillRow, ClientDetail, Keyword
 // applies only to keywords that still have no role / service. Intent, 3×3 matrix and clusters come with Claude (6c).
 
 const CLAUDE_LATER = [
-  { title: 'Intent', what: 'Transactional, commercial, informational (only where Semrush left it empty)' },
   { title: '3×3 matrix', what: 'Suggested primary + backups per cell, from volume and fit' },
   { title: 'Clusters', what: 'Pages drafted, no keyword on two pages' },
 ]
@@ -20,18 +21,19 @@ export default function Day2Autofill({ client: c }: { client: ClientDetail }) {
   const q = useAutofill(c.siteId)
   const run = useRunRules(c.siteId)
   const decide = useDecide(c.siteId)
-  const [open, setOpen] = useState<'roles' | 'services' | null>(null)
+  const [open, setOpen] = useState<'roles' | 'services' | 'intent' | null>(null)
   const rows = q.data ?? []
   const roles = rows.find((r) => r.kind === 'roles')
   const services = rows.find((r) => r.kind === 'services')
+  const intent = rows.find((r) => r.kind === 'intent')
   const svcName = new Map(c.categories.flatMap((k) => k.services.map((s) => [s.id, s.name] as const)))
   const label = (kind: 'roles' | 'services', v: string) => (kind === 'roles' ? ROLE_LABEL[v as KeywordRole] : (svcName.get(v) ?? 'Removed service'))
 
   // Approve all = every single-option row still open, in both suggestions ("needs a look" rows stay open).
   const openSingles = (r?: AutofillRow) => (r?.status === 'ready' ? r.items.filter((i) => !i.decision && i.options.length === 1) : [])
-  const allCount = openSingles(roles).length + openSingles(services).length
+  const allCount = openSingles(roles).length + openSingles(services).length + openSingles(intent).length
   const approveAll = async () => {
-    for (const r of [roles, services]) {
+    for (const r of [roles, services, intent]) {
       const list = openSingles(r)
       if (r && list.length) await decide.mutateAsync({ autofillId: r.id, decisions: list.map((i) => ({ keywordId: i.keywordId, action: 'approve' })) })
     }
@@ -66,6 +68,9 @@ export default function Day2Autofill({ client: c }: { client: ClientDetail }) {
         {open === 'roles' && roles && <Review row={roles} label={(v) => label('roles', v)} pill={(v) => ROLE_PILL[v as KeywordRole]} onDecide={(d) => decide.mutate({ autofillId: roles.id, decisions: d })} busy={decide.isPending} />}
         <KindRow title="Services" what="Each keyword matched to one of the client’s services" row={services} open={open === 'services'} onToggle={() => setOpen(open === 'services' ? null : 'services')} loading={q.isPending} />
         {open === 'services' && services && <Review row={services} label={(v) => label('services', v)} onDecide={(d) => decide.mutate({ autofillId: services.id, decisions: d })} busy={decide.isPending} />}
+        <KindRow title="Intent" what="Informational · Navigational · Commercial · Transactional, only where Semrush left it empty" row={intent} open={open === 'intent'} onToggle={() => setOpen(open === 'intent' ? null : 'intent')} loading={q.isPending} />
+        <AiRun siteId={c.siteId} task="intent" hasRow={!!intent} />
+        {open === 'intent' && intent && <Review row={intent} label={(v) => v} onDecide={(d) => decide.mutate({ autofillId: intent.id, decisions: d })} busy={decide.isPending} />}
         {CLAUDE_LATER.map((f) => (
           <li key={f.title} className="flex items-center justify-between gap-3 border-0 border-t border-solid border-vv-line py-3.5">
             <span className="flex min-w-0 flex-col">
@@ -182,6 +187,48 @@ function ItemRow({ item: i, label, pill, busy, onDecide }: { item: AutofillItem;
             </span>
           </div>
         ))}
+    </li>
+  )
+}
+
+/** Claude run: Estimate (free) → shows keywords, model, tokens, cost → Run with Claude (only on click). */
+function AiRun({ siteId, task, hasRow }: { siteId: string; task: AiTask; hasRow: boolean }) {
+  const est = useEstimateAi(siteId)
+  const run = useRunAi(siteId)
+  const [shown, setShown] = useState<AiEstimate | null>(null)
+  const err = (e: unknown) => (e ? (e instanceof ApiError && e.detail ? e.detail : 'Something went wrong. Nothing was saved.') : '')
+  const error = err(est.error) || err(run.error)
+  return (
+    <li className="-mt-1 flex flex-col gap-2 pb-3.5">
+      {!shown ? (
+        <button
+          type="button"
+          className="self-start border-0 bg-transparent p-0 text-[14px] font-semibold text-vv-purple-deep underline"
+          disabled={est.isPending}
+          onClick={() => est.mutate(task, { onSuccess: setShown })}
+        >
+          {est.isPending ? 'Counting…' : hasRow ? 'Run with Claude again: see the cost first' : 'Run with Claude: see the cost first'}
+        </button>
+      ) : shown.empty ? (
+        <span className="text-[14px] text-vv-body">Nothing to send: every keyword already has one.</span>
+      ) : (
+        <div className="flex flex-col gap-2 rounded-xl border border-solid border-vv-line bg-vv-lavender-50 p-3 text-[14px] text-vv-ink">
+          <span>
+            <strong>{shown.items}</strong> keyword{shown.items === 1 ? '' : 's'} · {shown.model} · ~{(shown.inputTokens + shown.outputTokens).toLocaleString('en-US')} tokens · about <strong>{formatUsd(shown.costUsd)}</strong>
+          </span>
+          <span className="text-[13px] text-vv-body">Sends only the keyword text. Results wait here as Ready to review; nothing changes until you approve.</span>
+          <span className="flex flex-wrap gap-2">
+            <button type="button" className={`${BTN_LIME} min-h-10`} disabled={run.isPending} onClick={() => run.mutate(task, { onSuccess: () => setShown(null) })}>
+              {run.isPending && <Spinner />}
+              Run with Claude
+            </button>
+            <button type="button" className={`${BTN_GHOST} min-h-10`} disabled={run.isPending} onClick={() => setShown(null)}>
+              Cancel
+            </button>
+          </span>
+        </div>
+      )}
+      {error && <span className="text-[13px] font-semibold text-vv-red">{error}</span>}
     </li>
   )
 }

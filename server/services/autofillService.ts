@@ -67,7 +67,7 @@ async function templateWords(c: ClientRow): Promise<Words> {
   return { money: of('money'), faq: of('faq'), service: of('service') }
 }
 
-async function keywordsOf(clientId: string): Promise<KeywordLite[]> {
+export async function keywordsOf(clientId: string): Promise<KeywordLite[]> {
   const out: KeywordLite[] = []
   for (let from = 0; ; from += 1000) {
     const part = must(
@@ -142,7 +142,7 @@ export async function decide(raw: unknown): Promise<AutofillRow[]> {
   const row = must(await db().from('seo_autofill').select(COLS).eq('id', p.data.autofillId).eq('client_id', c.id).maybeSingle(), 'Loading the suggestion') as Row | null
   if (!row) throw new AutofillInputError('That suggestion doesn’t exist.')
   if (row.status !== 'ready') throw new AutofillInputError('This suggestion was already closed or replaced by a newer run.')
-  if (row.kind !== 'roles' && row.kind !== 'services') throw new AutofillInputError('This kind can’t be approved here yet.')
+  if (row.kind !== 'roles' && row.kind !== 'services' && row.kind !== 'intent') throw new AutofillInputError('This kind can’t be approved here yet.')
 
   const items = row.payload.items
   const byId = new Map(items.map((i) => [i.keywordId, i]))
@@ -163,7 +163,7 @@ export async function decide(raw: unknown): Promise<AutofillRow[]> {
   }
 
   // Apply in batches per value; "is null" guard = never overwrite what was set in the meantime.
-  const column = row.kind === 'roles' ? 'role' : 'service_id'
+  const column = row.kind === 'roles' ? 'role' : row.kind === 'intent' ? 'intent' : 'service_id'
   if (row.kind === 'services') {
     const ids = [...toApply.keys()]
     if (ids.length) {
