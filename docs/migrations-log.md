@@ -38,22 +38,71 @@ first. A SQL file is used only for a true one-time cleanup.
 
 Read-only check, not a change: `checks/rls-check.sql` (RLS on for every `seo_` table, no policies).
 
-## Before go-live: migrations applied automatically (plan, not done)
+## Go-live: one place owns all database migrations (Option A, Angel's decision, plan, not done)
 
-Goal: nobody runs SQL by hand. A migration is reviewed in a pull request and applied by the deploy step.
+SEO Hub and Visual Vibe HQ share one Supabase project. Plan: **one small repo owns every database change for both
+apps**, with one Supabase CLI history, applied by CI. Nobody runs SQL by hand.
 
-1. **Supabase CLI in the repo.** Add the `supabase` CLI as a pinned dev dependency, then `supabase link` to the SEO Hub
-   project. The database password lives in CI secrets, never in the repo.
-2. **Baseline what's already there.** 0001–0012 were run by hand, and the CLI's history table
-   (`supabase_migrations.schema_migrations`) doesn't exist yet. Mark them as applied without running them again:
-   `supabase migration repair --status applied 0001 … 0012`. Check with `supabase migration list`.
-3. **Shared project with HQ.** The CLI keeps **one** migration history per database. Before step 2, agree with
-   Alexia / the HQ repo: either one repo owns all migrations, or both use distinct version numbers (e.g. SEO Hub keeps
-   `0001…` while HQ uses timestamps) and neither repo ever runs `db reset`. **Blocker to settle first.**
-4. **Deploy step.** On merge to `main`, CI runs `supabase db push`, which applies only new files in order and stops on
-   the first error, before the Vercel deploy. Pull requests run `supabase db push --dry-run` so the review shows
-   what would run.
-5. **Safety checks in CI after each push:** every `seo_` table has RLS on and no policies (`checks/rls-check.sql`), and
-   no migration touches a non-`seo_` table (a simple file check that fails the build).
-6. **Rules stay:** migrations are re-runnable where possible (`if not exists`), there are no destructive changes
-   without Angel's OK, and each new file gets a row in this log in the same pull request.
+### Where things stand (read-only check, Nov 25)
+| | HQ (`../visual-vibe-dashboard`) | SEO Hub |
+|---|---|---|
+| How it changes the DB | Hand-written `supabase/migrations/0001…0006`, each "run once in the SQL Editor" | Same: `0001…0012`, run by Angel in the SQL Editor |
+| CLI / automation | None. CI (`checks.yml`) only runs typecheck, lint and page tests | None |
+| Tables in the live DB | 15 (team_members, projects, tasks, daily_updates, snapshots, alerts, sod_drafts, build_plans, sync_logs, settings, task_status_changes, daily_digests, client_updates, wins, win_comments): **matches its 6 files** | 21 `seo_` tables: **matches its 12 files** |
+| Outside any file | Storage bucket `wins` (only a comment in 0006) | Storage bucket `seo-imports` (made in the dashboard) |
+
+Also in the live DB: RLS on for all 36 tables, **0 policies** (incl. storage), extensions `pgcrypto`,
+`uuid-ossp`, `pg_stat_statements`, `supabase_vault`, one function (`seo_touch_updated_at`), no scheduled jobs, and **no
+CLI history table** (`supabase_migrations.schema_migrations` doesn't exist).
+**Clash:** both repos number their files `0001…`. The CLI needs every version to be unique, so the old files can't
+simply be copied into one folder.
+
+### The new home: a small private repo `vv-database`
+```
+vv-database/
+  supabase/config.toml            linked to the shared project (no secrets in the repo)
+  supabase/migrations/
+    20261201000000_baseline_schema.sql        one file = the live schema today (both apps)
+    20261201000001_baseline_storage.sql       the two buckets, re-runnable ("on conflict do nothing")
+    2026MMDDhhmmss_hq_<what>.sql              new HQ changes
+    2026MMDDhhmmss_seo_<what>.sql             new SEO Hub changes
+  checks/                          safety checks CI runs (below)
+  migrations-log.md                this log, moved here (both apps' rows)
+```
+Why a repo and not a folder inside one app: neither app owns the other, and the database deploy runs on its own
+(before either app deploys).
+
+### Moving to it without touching any data
+1. **Freeze:** no SQL by hand while switching (minutes).
+2. **Create `vv-database`** (Angel): `supabase init`, then `supabase link --project-ref <project>` with the database
+   password kept locally / in CI secrets only.
+3. **Baseline = read only.** `supabase db dump --schema public` writes the live schema (tables, checks, indexes, RLS,
+   triggers, the function) to `…_baseline_schema.sql`. **No data rows** (it's a schema dump). Add the two storage
+   buckets as a re-runnable file. Check that the dump has no `insert`/`copy` lines before committing.
+4. **Mark the baseline as already applied, without running it:**
+   `supabase migration repair --status applied 20261201000000 20261201000001`. This only creates the CLI's own
+   history table and writes 2 rows to it. No HQ or SEO table is touched.
+5. **Prove it matches:** `supabase migration list` (local = remote) and `supabase db diff` must show **no differences**.
+   If it shows any, stop and look before going on.
+6. **Archive the old files** in each app repo: move `supabase/migrations/*` to `supabase/migrations-archive/` with a
+   README ("already applied, history only; new changes go to vv-database"). The SEO Hub side I can do. **HQ's side is
+   done in HQ's own session** (this repo never changes HQ files).
+7. **CLAUDE.md in both apps:** "database changes = a PR in vv-database", replacing "Angel runs it in the SQL Editor".
+
+### How a change works after that
+1. A PR in `vv-database` with one new file `…_seo_<what>.sql` or `…_hq_<what>.sql` + a row in the log.
+2. CI on the PR: `supabase db push --dry-run` (shows exactly what would run) + safety checks:
+   every `public` table has RLS on; no new policy unless the PR says why; `_seo_` files touch only `seo_` tables,
+   `_hq_` files never touch `seo_` tables; `drop` / `delete` / `truncate` fail the check unless the file has an
+   explicit "approved by Angel" line.
+3. Angel reviews and merges → CI runs `supabase db push` (applies only new files, in order, stops at the first error).
+4. **Then** the app change deploys (app PRs link the DB PR). App code keeps tolerating a missing column for one release,
+   as SEO Hub does today, so the order can't break the live site.
+5. Fixes are forward-only (a new file). Before go-live: check the plan's backups / point-in-time restore in Supabase.
+
+### Who does what
+- **Angel:** creates `vv-database`, adds CI secrets (`SUPABASE_ACCESS_TOKEN`, DB password), runs steps 2–5 once (or
+  lets CI do 4–5 with the dry-run output shown first), merges DB PRs.
+- **SEO Hub session (me):** baseline file, storage file, checks, CI workflow, moving SEO Hub's files to the archive,
+  the log.
+- **HQ session:** moving HQ's files to the archive + its CLAUDE.md line.

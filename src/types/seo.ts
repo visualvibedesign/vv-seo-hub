@@ -277,6 +277,8 @@ export interface KeywordItem {
   id: string
   keyword: string
   role: KeywordRole | null
+  /** Primary of a matrix cell or of a page right now (a Primary role without either is flagged). */
+  isPrimarySomewhere: boolean
   serviceId: string | null
   intent: string | null
   /** KP range as text ("10–100", "No data", "Not checked"); null = not set yet. */

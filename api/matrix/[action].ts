@@ -26,7 +26,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       return Response.json({ matrix: await getMatrix(new URL(request.url).searchParams.get('site') ?? '') })
     }
     if (method === 'POST' && action === 'cell') {
-      return Response.json({ matrix: await setCell(await request.json().catch(() => null)) })
+      return Response.json(await setCell(await request.json().catch(() => null)))
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {

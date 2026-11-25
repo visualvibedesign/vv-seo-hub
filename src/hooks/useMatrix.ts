@@ -11,7 +11,11 @@ export function useSetMatrixCell(siteId: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (cell: Omit<MatrixCellInput, 'siteId'>) => setMatrixCell({ ...cell, siteId }),
-    onSuccess: (data) => qc.setQueryData(['matrix', siteId], data),
+    onSuccess: (data) => {
+      qc.setQueryData(['matrix', siteId], { matrix: data.matrix })
+      // A hand-picked primary may get the Primary role: refresh what shows roles.
+      for (const key of [['keywords', siteId], ['client', siteId], ['clients']]) void qc.invalidateQueries({ queryKey: key })
+    },
   })
 }
 

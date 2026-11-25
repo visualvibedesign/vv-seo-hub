@@ -28,6 +28,8 @@ interface Row {
   notes: string | null
   created_at: string
   seo_keyword_sources: { source: ImportSource; segment: string | null; volume_raw: string | null }[]
+  seo_matrix_keywords: { kind: string }[]
+  seo_page_keywords: { role: string } | { role: string }[] | null
 }
 
 async function clientIdFor(siteId: string): Promise<string> {
@@ -52,7 +54,7 @@ export async function listKeywords(siteId: string): Promise<KeywordItem[]> {
     const part = must(
       await db()
         .from('seo_keywords')
-        .select('id, keyword, role, service_id, intent, kp_volume, kp_volume_by, semrush_volume, kd, cpc, track, status, notes, created_at, seo_keyword_sources(source, segment, volume_raw)')
+        .select('id, keyword, role, service_id, intent, kp_volume, kp_volume_by, semrush_volume, kd, cpc, track, status, notes, created_at, seo_keyword_sources(source, segment, volume_raw), seo_matrix_keywords(kind), seo_page_keywords(role)')
         .eq('client_id', clientId)
         .order('keyword')
         .order('id')
@@ -66,6 +68,8 @@ export async function listKeywords(siteId: string): Promise<KeywordItem[]> {
     id: r.id,
     keyword: r.keyword,
     role: r.role,
+    isPrimarySomewhere:
+      r.seo_matrix_keywords.some((m) => m.kind === 'primary') || [r.seo_page_keywords ?? []].flat().some((p) => p.role === 'primary'),
     serviceId: r.service_id,
     intent: r.intent,
     kpVolume: r.kp_volume,

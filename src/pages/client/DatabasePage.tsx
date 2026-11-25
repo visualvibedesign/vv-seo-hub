@@ -415,7 +415,10 @@ function SortTh(props: { label: string; k: SortKey; sort: { key: SortKey; dir: 1
 }
 
 function RoleSelect({ k, onSave }: { k: KeywordItem; onSave: (r: KeywordRole | null) => void }) {
+  // Primary role, but not the primary of any matrix cell or page (e.g. replaced in the matrix): flagged, never changed.
+  const unused = k.role === 'primary' && !k.isPrimarySomewhere
   return (
+    <span className="inline-flex flex-col items-start gap-1">
     <select
       aria-label={`Role for ${k.keyword}`}
       className={`${k.role ? ROLE_PILL[k.role] : 'inline-flex rounded-full border border-dashed border-vv-field-line bg-transparent px-3 py-1 text-xs font-bold text-vv-muted'} cursor-pointer appearance-none border-0 text-center`}
@@ -425,6 +428,12 @@ function RoleSelect({ k, onSave }: { k: KeywordItem; onSave: (r: KeywordRole | n
       <option value="">Needs role</option>
       {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
     </select>
+    {unused && (
+      <span className="text-[11px] font-semibold text-vv-orange-ink" title="Primary role, but not the primary of any matrix cell or page. Change the role or use it.">
+        Not a primary anywhere
+      </span>
+    )}
+    </span>
   )
 }
 

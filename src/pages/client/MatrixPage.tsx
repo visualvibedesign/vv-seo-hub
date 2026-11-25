@@ -20,6 +20,7 @@ export default function MatrixPage() {
   const m = useMatrix(c.siteId)
   const kws = useKeywords(c.siteId)
   const [open, setOpen] = useState<{ category: MatrixCell['category']; area: MatrixCell['area'] } | null>(null)
+  const [replaced, setReplaced] = useState<string | null>(null)
   const tracked = trackedKeywords(kws.data ?? [])
   const a1 = c.areas.find((a) => a.code === 'A1')
 
@@ -64,8 +65,21 @@ export default function MatrixPage() {
             cell={m.data.rows.find((r) => r.code === open.category)!.cells.find((x) => x.area === open.area)!}
             keywords={kws.data ?? []}
             loadingKeywords={kws.isPending}
-            onClose={() => setOpen(null)}
+            onClose={(old) => {
+              setOpen(null)
+              setReplaced(old ?? null)
+            }}
           />
+        )}
+        {replaced && !open && (
+          <p role="status" className="m-0 flex flex-wrap items-center gap-2 rounded-2xl bg-vv-orange-100 px-4 py-2.5 text-[14px] text-vv-orange-ink">
+            <span>
+              “{replaced}” is no longer this cell’s primary. It keeps its Primary role; the Database flags it as “Not a primary anywhere” until you change it.
+            </span>
+            <button type="button" className="border-0 bg-transparent p-0 text-[14px] font-semibold text-vv-orange-ink underline" onClick={() => setReplaced(null)}>
+              OK
+            </button>
+          </p>
         )}
         {a1?.status === 'active' && m.data && !open && <p className="m-0 text-[13px] text-vv-muted">Click a cell to pick its primary keyword and backups.</p>}
       </section>
@@ -208,7 +222,8 @@ function CellEditor({
   cell: MatrixCell
   keywords: KeywordItem[]
   loadingKeywords: boolean
-  onClose: () => void
+  /** `replaced` = the old primary when it was replaced (shown as a note). */
+  onClose: (replaced?: string | null) => void
 }) {
   const save = useSetMatrixCell(c.siteId)
   const [primary, setPrimary] = useState<string>(cell.primary?.id ?? '')
@@ -227,7 +242,7 @@ function CellEditor({
   const error = save.error ? (save.error instanceof ApiError && save.error.detail ? save.error.detail : 'Couldn’t save. Try again.') : ''
 
   const submit = () =>
-    save.mutate({ category: cell.category, area: cell.area, primaryId: primary || null, backupIds: [...backups].filter((id) => id !== primary) }, { onSuccess: onClose })
+    save.mutate({ category: cell.category, area: cell.area, primaryId: primary || null, backupIds: [...backups].filter((id) => id !== primary) }, { onSuccess: (data) => onClose(data.replaced) })
 
   return (
     <div className="flex flex-col gap-4 rounded-[18px] border border-solid border-vv-line bg-vv-lavender-50 p-5 phone:p-4" role="group" aria-label="Edit cell">
@@ -315,7 +330,7 @@ function CellEditor({
           {save.isPending && <Spinner />}
           Save cell
         </button>
-        <button type="button" className={BTN_GHOST} onClick={onClose} disabled={save.isPending}>
+        <button type="button" className={BTN_GHOST} onClick={() => onClose()} disabled={save.isPending}>
           Cancel
         </button>
       </div>

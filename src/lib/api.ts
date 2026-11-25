@@ -161,7 +161,8 @@ export function getMatrix(siteId: string): Promise<{ matrix: MatrixState }> {
 }
 
 /** Replaces one cell's primary + backups. */
-export function setMatrixCell(cell: MatrixCellInput): Promise<{ matrix: MatrixState }> {
+/** Replaces one cell's primary + backups. `replaced` = the old primary's text (it keeps its role; the Database flags it). */
+export function setMatrixCell(cell: MatrixCellInput): Promise<{ matrix: MatrixState; replaced: string | null }> {
   return call('/api/matrix/cell', json(cell))
 }
 

@@ -91,7 +91,7 @@ const CellSchema = z.object({
 })
 
 /** Replaces one cell's primary + backups. A keyword can be the primary of one cell only. */
-export async function setCell(raw: unknown): Promise<MatrixState> {
+export async function setCell(raw: unknown): Promise<{ matrix: MatrixState; replaced: string | null }> {
   const p = CellSchema.safeParse(raw)
   if (!p.success) throw new MatrixInputError('That matrix cell isn’t right.')
   const input: MatrixCellInput = p.data
@@ -136,12 +136,22 @@ export async function setCell(raw: unknown): Promise<MatrixState> {
     if (taken.length) throw new MatrixInputError('That keyword is already the primary of another cell. Pick a different one, or clear the other cell first.')
   }
 
-  // Replace this cell's links (only links: keywords are never touched).
+  // The primary this cell had before (to say so when it's replaced: it keeps its role, the Database flags it).
+  const before = (must(
+    await db().from('seo_matrix_keywords').select('keyword_id, seo_keywords(keyword)').eq('cell_id', cell.id).eq('kind', 'primary').maybeSingle(),
+    'Loading the cell',
+  ) as unknown as { keyword_id: string; seo_keywords: { keyword: string } | null } | null)
+
+  // Replace this cell's links (only links; the one keyword change is the Primary role below).
   must(await db().from('seo_matrix_keywords').delete().eq('cell_id', cell.id), 'Saving the cell')
   const links = [
     ...(input.primaryId ? [{ cell_id: cell.id, keyword_id: input.primaryId, kind: 'primary', sort: 0 }] : []),
     ...backups.map((id, i) => ({ cell_id: cell.id, keyword_id: id, kind: 'backup', sort: i + 1 })),
   ]
   if (links.length) must(await db().from('seo_matrix_keywords').insert(links), 'Saving the cell')
-  return getMatrix(input.siteId)
+  // A primary picked by hand is Angel's pick: Primary role, only if the keyword has no role yet.
+  if (input.primaryId) must(await db().from('seo_keywords').update({ role: 'primary' }).eq('id', input.primaryId).eq('client_id', c.id).is('role', null), 'Setting the Primary role')
+  // The old primary keeps its role; the Database flags it when it's no longer a primary anywhere.
+  const replaced = before && before.keyword_id !== input.primaryId ? (before.seo_keywords?.keyword ?? null) : null
+  return { matrix: await getMatrix(input.siteId), replaced }
 }
