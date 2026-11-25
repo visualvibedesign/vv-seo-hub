@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { useClientContext } from '../../components/layout/ClientLayout'
 import HeaderTools from '../../components/layout/HeaderTools'
 import ConfirmDialog from '../../components/ui/ConfirmDialog'
@@ -46,7 +46,9 @@ export default function DatabasePage() {
   const c = useClientContext()
   const q = useKeywords(c.siteId)
   const save = useUpdateKeywords(c.siteId)
-  const [f, setF] = useState<Filters>(NO_FILTERS)
+  const [params] = useSearchParams()
+  // ?q=<keyword> (e.g. from Overview › Opportunities) starts with that search; Status = all so nothing hides it.
+  const [f, setF] = useState<Filters>(() => (params.get('q') ? { ...NO_FILTERS, q: params.get('q')!.slice(0, 200), status: 'all' } : NO_FILTERS))
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'keyword', dir: 1 })
   const [page, setPage] = useState(0)
   const [selected, setSelected] = useState<Set<string>>(new Set())

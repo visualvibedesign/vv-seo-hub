@@ -82,6 +82,8 @@
   --vv-chart-impr: #e98fb8;
   --vv-chart-impr-area: #fdeef5;
   --vv-chart-clicks: #5b3fd0;
+  --vv-pos-top: #d3efdc; /* rank pill: positions 1–3 */
+  --vv-pos-top-ink: #00632f;
 
   /* Weekly queue board columns (design-ref Queue) + the tidy-up note */
   --vv-col-ready: #e9f7f5;
@@ -164,6 +166,8 @@
   --vv-chart-impr: #f29cc3;
   --vv-chart-impr-area: rgba(242, 156, 195, 0.14);
   --vv-chart-clicks: #a995ff;
+  --vv-pos-top: #1d5a36;
+  --vv-pos-top-ink: #c9f3d7;
   --vv-avatar-pink: #e99bc0; /* Mica's avatar (unchanged) */
 
   /* Labels: solid pastel, black text */

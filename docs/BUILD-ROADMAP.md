@@ -12,7 +12,7 @@ Details live in:
 | `seo-hub-phases.md` | SEO Hub phases: screens, "done when" checklists, tables, prompts |
 | `vibe-seo-plugin-plan.md` | Vibe SEO releases, connection key, how a site connects, safety rules, questions for Alexia |
 | `vibe-seo-handoff-notes.md` | Check-in API, routes, hub pieces, release steps (from Alexia) |
-| `seo-hub-context-pack.md` | Who, goals, rules, Anassa test data, look |
+| `seo-hub-context-pack.md` | Who, goals, rules, look (Anassa data = history) |
 | `local-seo-playbook.md` | Sam's 10-Day process (the flow the app follows) |
 | `docs/design/` | Exported screens from the design canvas https://claude.ai/artifact/8WkeSEz7sQxqm6NRV5Uu8H |
 
@@ -56,7 +56,7 @@ While building phases 1–4: screens that will show site data later (Overview SE
 - Never store or show a client's private address. Keys/passwords never in tables or the browser.
 - Claude output is "Ready to review" until approved. Never change exported numbers or invent facts.
 - Volumes exactly as exported (KP ranges stay text). Missing data = "—", never 0.
-- Test client: Anassa Wax & Beauty (site id `c6e74adc272c98005f3086f85c88b9da`).
+- Test client: Visual Vibe Design (site id `5c939f2631d6b31bdf4523e5d2f79a2c`), the only client since Nov 26. Anassa (`c6e74adc…`) was deleted and will be re-added from her .xlsx.
 
 ---
 

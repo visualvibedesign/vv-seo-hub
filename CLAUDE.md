@@ -5,7 +5,7 @@ SEO dashboard web app for Visual Vibe Design: one place for every SEO client's s
 ## Read first
 - `docs/BUILD-ROADMAP.md`: **master list** of every phase (SEO Hub + Vibe SEO plugin), in order, with status and prompts
 - `docs/seo-hub-phases.md`: SEO Hub phases 0–6, screens, what "done" means, tables, prompts
-- `docs/seo-hub-context-pack.md`: who, goals, rules, Anassa test data, look
+- `docs/seo-hub-context-pack.md`: who, goals, rules, look (its Anassa data is history: she was deleted Nov 26 and will be re-added from her .xlsx)
 - `docs/local-seo-playbook.md`: Sam's 10-Day Rank Yourself process (the flow the app follows)
 - `docs/vibe-seo-plugin-plan.md`: Vibe SEO releases (1.3.0 / 1.4.0 / 1.5.0), per-site SEO Hub key, how a site connects
 - `docs/vibe-seo-handoff-notes.md`: check-in API, routes, hub pieces (from Alexia)
@@ -21,7 +21,7 @@ Website first (SEO Hub phases 1–4), then the Vibe SEO plugin + site connection
 - Team-only. Login = HQ's shared team password + signed `vv_session` cookie. No Supabase Auth, no user list.
 - Same Supabase project as HQ; SEO tables kept separate from HQ's; RLS on every table. `.env` is never committed.
 - Never store or show a client's private address.
-- Anassa is test data only. Never hard-code a client's name, services, city or industry words.
+- Never hard-code any client: not their name, services, city or industry words. Everything takes the client as input.
 - No Semrush API: CSV imports only, volumes kept exactly as exported (KP ranges stay text like "10–100").
 - GSC + GA4 via free Google APIs. GBP typed in. Whitespark CSV or screenshot. Rank tracking stays in Semrush.
 - Don't rebuild what other tools do (Yoast, ClickUp tasks, rank tracking).
@@ -41,4 +41,4 @@ Same as Visual Vibe HQ: reuse its styles and components. Fraunces headings with 
 ## How to work with Angel
 - Plan first, build after approval, one step per message, then say what to test on localhost.
 - Short answers, bullets/tables, casual.
-- Test client: Anassa Wax & Beauty (data in the context pack).
+- Test client: Visual Vibe Design (`visualvibedesign.com`, site id `5c939f2631d6b31bdf4523e5d2f79a2c`), the only client since Nov 26. Anassa was deleted; she comes back later from her .xlsx.

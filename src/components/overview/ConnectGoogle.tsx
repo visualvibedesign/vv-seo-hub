@@ -132,7 +132,7 @@ function Panel({ client: c, setup: s, onClose }: { client: ClientDetail; setup: 
       </div>
       <label className={LABEL}>
         Local query words (optional)
-        <input className={FIELD} value={words} placeholder="e.g. staten island, waxing, brazilian" onChange={(e) => setWords(e.target.value)} />
+        <input className={FIELD} value={words} placeholder="the city + main service words, comma-separated" onChange={(e) => setWords(e.target.value)} />
         <span className="text-[12px] font-normal text-vv-muted">City + service words for the “local searches” view (comma-separated).</span>
       </label>
       <div className="flex flex-wrap items-center gap-3">

@@ -24,5 +24,5 @@
 ## Standing rules (short)
 - Never push, merge to a remote or deploy without Angel. Local commits only.
 - SQL: show it, Angel runs it, log it in `docs/migrations-log.md`. Data fixes go through the app, not one-off SQL.
-- Works for any client (Anassa = test data). No fake numbers, no addresses, links only (never logins).
+- Works for any client (test client = Visual Vibe Design since Nov 26; Anassa deleted, re-added later from her .xlsx). No fake numbers, no addresses, links only (never logins).
 - Claude output is "Ready to review" until approved; every call logged in `seo_ai_log`.

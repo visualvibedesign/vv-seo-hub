@@ -793,6 +793,8 @@ export interface RankPlan {
   dates: string[]
   /** Semrush period line, e.g. "20261117 - 20261118" */
   period: string | null
+  /** Date the export's change columns compare with (period start); null = no change column */
+  compareFrom: string | null
   keywords: number
   /** Keywords that are already in this client's Database (the rest are listed, not created) */
   matched: number
@@ -808,20 +810,43 @@ export interface RankPlan {
 export interface RankRow {
   keyword: string
   position: number | null
+  /** Position at the comparison date (Semrush's own "difference" column, or the previous saved CSV date) */
   prevPosition: number | null
   landingUrl: string | null
   /** The page that owns this keyword (Clusters), when it differs from the ranking URL */
   swappedWith: { name: string; url: string } | null
+  /** Exactly as exported (text: "n/a" stays "n/a"); null = column not in the CSV */
+  volume: string | null
+  kd: string | null
+  visibility: number | null
+  traffic: number | null
+  /** Semrush's result type: "local" = local pack (map pin); anything else but "organic" = another SERP feature */
+  serpType: string | null
+  /** Positions over saved dates (oldest first), for the sparkline (3+ dates) */
+  history: (number | null)[]
 }
 
 export interface RankingsOverview {
   /** null = no Position Tracking CSV yet */
   latest: string | null
+  /** The date "Change" compares with (the export's period start, or the previous saved CSV date) */
   previous: string | null
   lastImport: { fileName: string; at: string } | null
   buckets: { label: string; now: number; prev: number | null }[]
   moves: { keyword: string; from: number | null; to: number | null }[]
   rows: RankRow[]
   swapped: number
+  /** Average over ranking keywords only */
   avgPosition: number | null
+  ranking: number
+  total: number
+  /** Which optional columns the CSV had */
+  columns: { volume: boolean; kd: boolean; visibility: boolean; traffic: boolean; serpType: boolean }
+  /** Sum of the keywords' visibility (Semrush's visibility %), its value at the comparison date, and per saved date */
+  visibility: { now: number; prev: number | null; series: { date: string; value: number }[] } | null
+  traffic: { now: number; prev: number | null } | null
+  /** Keywords whose result type is "local" (map pin); null = no type column */
+  localPack: number | null
+  /** Tracked keywords not ranking yet, biggest volume first */
+  opportunities: { keyword: string; volume: string | null; kd: string | null }[]
 }

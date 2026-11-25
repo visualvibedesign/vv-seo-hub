@@ -98,7 +98,9 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
 | 2f | Results: monthly reports, every number vs baseline, wins, Claude report notes (reviewed), next actions | 2e |
 | 2g (later) | GBP / map grid from a screenshot (Claude), report PDF | — |
 
-Anassa's real baseline (Semrush Nov 17–18 CSV in `test-data/anassa/`) is the test data for 2c and 2e.
+Test data for 2c and 2e: Visual Vibe's real Position Tracking CSV (Nov 19–25, 27 keywords, uploaded Nov 26). Anassa's Nov 17–18 CSV stays in `test-data/anassa/` for when she is re-added.
+
+**2c export facts (Visual Vibe file):** one position column per date (`<domain>_<YYYYMMDD>`, plus `_visibility`, `_type`, `_landing`), and `<domain>_difference` / `_visibility_difference` = change since the period start (`Period: 20261119 - 20261125`). So a 7-day export has ONE date column; Change and Biggest moves use the difference column (vs the period start). `_type` = `organic` / `local` (local pack, map pin) / `ai overview` (other SERP feature). No estimated-traffic column in this export. Search Volume, KD, CPC, Intents kept as text exactly as exported; read from the stored raw file (no extra table columns).
 
 ## SQL (0016, draft, not run)
 

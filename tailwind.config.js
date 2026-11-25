@@ -75,6 +75,8 @@ export default {
         'vv-chart-impr': 'var(--vv-chart-impr)',
         'vv-chart-impr-area': 'var(--vv-chart-impr-area)',
         'vv-chart-clicks': 'var(--vv-chart-clicks)',
+        'vv-pos-top': 'var(--vv-pos-top)',
+        'vv-pos-top-ink': 'var(--vv-pos-top-ink)',
         'vv-col-ready': 'var(--vv-col-ready)',
         'vv-col-prog': 'var(--vv-col-prog)',
         'vv-col-qa': 'var(--vv-col-qa)',

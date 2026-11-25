@@ -106,6 +106,7 @@ function PlanView({ plan: p, done }: { plan: RankPlan; done: boolean }) {
   const facts: [string, string][] = [
     ['Tracked site', p.domain],
     ['Positions from', dates],
+    ...(p.compareFrom ? ([['Change compared with', `${day(p.compareFrom)} (Semrush period start)`]] as [string, string][]) : []),
     ['Keywords', `${p.keywords}${p.matched < p.keywords ? ` · ${p.matched} in the Database` : ' · all in the Database'}`],
     [`On ${day(p.latest.date)}`, `${p.latest.ranked} in the top 100 · ${p.latest.top10} in the top 10 · ${p.latest.top3} in the top 3${p.latest.avgPosition !== null ? ` · avg ${p.latest.avgPosition.toFixed(1)}` : ''}`],
   ]
