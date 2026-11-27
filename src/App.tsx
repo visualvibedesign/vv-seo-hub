@@ -16,6 +16,8 @@ const router = createBrowserRouter([
     element: <RequireSession />,
     hydrateFallbackElement: <BootLoader />,
     children: [
+      // 2g · a monthly report laid out for A4 ("Save as PDF"): signed in like every page, but no sidebar.
+      { path: '/clients/:siteId/results/:reportId/print', lazy: page(() => import('./pages/client/ReportPrintPage')) },
       {
         element: <AppLayout />,
         children: [

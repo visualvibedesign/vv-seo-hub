@@ -91,6 +91,9 @@ function Loaded({ siteId, r, onClose }: { siteId: string; r: Report; onClose: ()
               Mark as sent
             </button>
           )}
+          <a href={`/clients/${encodeURIComponent(siteId)}/results/${encodeURIComponent(r.id)}/print?print=1`} target="_blank" rel="noopener" className={`${BTN_GHOST} min-h-10 px-4 text-[13px] no-underline`}>
+            Download PDF
+          </a>
           <button type="button" className={`${BTN_LINK} px-2`} onClick={onClose}>
             Close
           </button>
