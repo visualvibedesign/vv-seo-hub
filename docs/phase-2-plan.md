@@ -123,7 +123,7 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
 | 2d | GBP typed form + Whitespark (typed now, CSV when the sample is in) → Overview cards | Decision 2, 3 |
 | 2e | Baseline: save / start new, six cards with dates, Baseline vs now on Overview (**built Nov 28**: Visual Vibe "Day 3" saved; map grid optional until a scan) | 2b–2d |
 | 2f | Results: monthly reports, every number vs baseline, wins, Claude report notes (reviewed), next actions | 2e |
-| 2g (later) | GBP / map grid from a screenshot (Claude), report PDF | — |
+| 2g | Report PDF (print view), GBP numbers from a screenshot (Claude, Ready to review), map grid from a screenshot (optional). **Planned Nov 28, waiting for OK** (see "2g plan" below) | 2f |
 
 Test data for 2c and 2e: Visual Vibe's real Position Tracking CSV (Nov 19–25, 27 keywords, uploaded Nov 26). Anassa's Nov 17–18 CSV stays in `test-data/anassa/` for when she is re-added.
 
@@ -136,3 +136,79 @@ New tables (RLS on, no policies, server only; every one cascades with the client
 `seo_map_grid_points`, `seo_gbp_snapshots`, `seo_baselines`, `seo_baseline_values`, `seo_reports`,
 `seo_report_actions`. Plus `seo_imports`: report `position_tracking`, `whitespark_grid`; source `whitespark`.
 No existing rows change. Full SQL in the migration file.
+
+## 2g plan (Nov 28) · waiting for Angel's OK, no code yet
+
+### a) Report PDF
+
+**Way: a print view + the browser's "Save as PDF"** (not a server PDF).
+- New page `/clients/{site id}/results/{report id}/print`: the report laid out for A4, light mode always, no sidebar,
+  Vibe look (Fraunces headings with the purple italic word, Inter body, lavender table header, lime / green change
+  pills). "Download PDF" on the report view opens it in a new tab and opens the print dialog once fonts are loaded.
+- Content, in order: header (Visual Vibe Design · client name · site domain), title ("November 2026 report") with the
+  period (Search Console window) and "vs Day 3 baseline, saved Nov 28, 2026"; baseline vs this month table (value +
+  dates + change, same rows and rules as the report view); "Not available this month" reasons; wins (code, same as
+  Results); approved notes only (a draft or no notes = the section is left out and the screen warns before printing);
+  next actions (status, category, owner, due). Footer: "Prepared by Visual Vibe Design · {sent date or today}" and
+  page numbers (CSS `@page` margin boxes).
+- Never printed: the client's private address, account logins / links, internal Notes & links, Claude costs, Claude
+  drafts, anything from other clients. Uses only what the report already holds (frozen numbers, approved notes,
+  actions) + client name / domain.
+- **Vercel functions: none added (stays at 12)**. The page is a front-end route; it reads the existing `report` action.
+- Why not a server PDF: a headless-browser PDF (Chromium) is too big for a Vercel Hobby function; a JS PDF library
+  (`@react-pdf/renderer`) would fit inside `api/metrics` (still 12) but needs its own second layout, bundled font
+  files and makes every metrics call load it. Print CSS keeps one layout and the exact Vibe fonts. If we later need
+  to email PDFs automatically, revisit then.
+
+### b) GBP numbers from a screenshot (+ map grid, optional)
+
+- GBP card › "Read a screenshot": pick a GBP › Performance screenshot (PNG / JPG). The browser shrinks it (max
+  1600 px wide, JPEG) so the upload stays under Vercel's 4.5 MB request limit. **The image is never stored** (a GBP
+  screenshot can show the address / phone): it goes to Claude once and only the read numbers are saved.
+- Estimate first, like the notes: model, tokens in (free count, image included), tokens out, about $ (expect
+  ~$0.01–0.02 per image on Sonnet 5.5). Then "Read it".
+- Claude (task `gbp_screenshot`, Sonnet 5.5, effort low, structured output) returns only: the period shown (from /
+  to, or empty if not visible), profile views, the 4-way views breakdown, calls, website clicks, directions, plus a
+  list of fields it couldn't read. Rules: copy numbers exactly as shown, empty when not visible (never 0, never a
+  guess), ignore names / addresses / phone numbers. Logged in `seo_ai_log`.
+- Saved as **"Ready to review"** (one open read per client; a new read supersedes the old one). It counts nowhere
+  (Overview, Baseline, reports) until approved. Review = the existing GBP form, pre-filled, with the screenshot shown
+  beside it while it's still in the browser, fields Claude couldn't read marked. Approve = saved through the normal GBP
+  save (same checks), the read marked approved; Discard = marked rejected.
+- Map grid (optional, same plumbing): task `map_screenshot` reads a Whitespark grid screenshot into the typed grid
+  form (keyword, date, size 5×5 / 7×7, spacing, rank per point; area name only, digits refused as today). Review +
+  approve through the existing "Type in a scan" form.
+- Vercel functions: none added. New actions in `api/metrics/[action].ts`: `shot-estimate`, `shot-read`,
+  `shot-approve`, `shot-discard`; open reads come back with `local`.
+
+### c) Migration, files, test steps, order
+
+**Migration 0020 (draft, not written yet):** reuse `seo_autofill` (it already has "Ready to review", one open item
+per client + kind, `superseded`, the Claude log link). Only its kind list grows. `step` = 2 (Day 3, the numbers step).
+```sql
+alter table public.seo_autofill drop constraint if exists seo_autofill_kind_check;
+alter table public.seo_autofill add constraint seo_autofill_kind_check check (kind in (
+  'setup_services', 'setup_areas', 'setup_kickoff', 'roles', 'services', 'services_ai', 'intent', 'triage', 'scope',
+  'matrix', 'clusters', 'gbp_screenshot', 'map_screenshot'));
+```
+Rows affected: 0 (it only widens the allowed list; the 15 existing rows all use kinds already in it). The PDF needs
+no migration.
+
+**Files**
+- PDF: `src/pages/client/ReportPrintPage.tsx` (new), `src/App.tsx` (route), print styles (`@media print`, `@page`) in
+  `src/styles/`, `src/components/results/ReportView.tsx` ("Download PDF"), shared rows / wins from `src/lib/baseline.ts`.
+- Screenshots: `server/services/screenshotService.ts` (new: estimate, read, approve, discard), `api/metrics/[action].ts`,
+  `src/lib/aiModels.ts` (2 tasks), `src/lib/imageShrink.ts` (new), `src/types/seo.ts`, `src/lib/api.ts`,
+  `src/hooks/useLocal.ts`, `src/components/overview/LocalCards.tsx` (buttons + review), migration 0020.
+
+**Test steps on localhost (Visual Vibe)**
+1. PDF: open the November 2026 report › Download PDF › A4 preview: header, period, table with dates, missing reason,
+   wins line, approved notes, 3 actions, footer page numbers; no address / accounts; light mode even when the app is
+   dark; phone "Share › Print" works.
+2. GBP screenshot: read a real GBP Performance screenshot › estimate shows › read › "Ready to review" with the
+   numbers in the form next to the image › fix one number › Approve › the GBP card + Sources update; Settings shows
+   the call. Discard path; a blurry / wrong screenshot gives empty fields, not zeros.
+3. Map grid screenshot (if built): same flow into the grid form.
+
+**Order:** 1) PDF print view (no SQL). 2) 0020 + screenshot server (GBP). 3) GBP review UI. 4) Map grid screenshot
+(optional, after your OK and a sample screenshot).
