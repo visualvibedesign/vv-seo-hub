@@ -1002,7 +1002,9 @@ export interface Report extends ReportSummary {
 export interface ReportsState {
   reports: ReportSummary[]
   /** The last 6 months (newest first) and whether each has a report: what "Create report" can offer */
-  months: { month: string; title: string; exists: boolean; current: boolean }[]
+  months: { month: string; title: string; exists: boolean; current: boolean; beforeBaseline: boolean }[]
+  /** Reports start from the month the current baseline ends in (decided Nov 28); null = no baseline */
+  firstMonth: string | null
   /** Search Console clicks per calendar month, last 6 (oldest first); partial = the month isn't fully pulled */
   clicksByMonth: { month: string; clicks: number | null; partial: boolean }[]
   hasBaseline: boolean

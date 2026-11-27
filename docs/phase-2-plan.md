@@ -102,6 +102,11 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
 - **2f step 1 built (Nov 28):** `server/services/reportService.ts` + migration 0019. Actions in `api/metrics`:
   `reports` (list + last 6 months + clicks per month), `report`, `report-preview` (read only), `report-create`,
   `report-refresh` (draft only), `report-status` (draft / sent + sent date), `report-actions` (up to 3). Still 12.
+- **Decided Nov 28:** reports start from the month the current baseline ends in (Visual Vibe: November 2026). Earlier
+  months aren't offered and the server refuses them.
+- **2f step 2 built (Nov 28):** Results page: Create report (month + preview of dates / missing), wins (code, latest
+  report vs its baseline), every number vs baseline (last 3 reports), clicks per month, reports list, report view
+  (?report=id) with Refresh / Mark as sent / Reopen and up to 3 next actions.
 
 ## Build steps (each: plan OK → build → Angel tests → commit; stop at the end of phase 2)
 

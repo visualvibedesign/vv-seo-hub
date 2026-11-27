@@ -62,6 +62,25 @@ function parseMonth(v: unknown): string {
   return month
 }
 
+/**
+ * Reports start from the month the current baseline ends in (decided Nov 28): a month that ends before the baseline's
+ * numbers end can't be compared "vs baseline". End = the latest date in the baseline (saved date if it has none).
+ */
+function firstReportMonth(b: { savedAt: string; snapshots: BaselineSnapshot[] }): string {
+  const ends = b.snapshots.map((s) => s.to).filter((d): d is string => !!d)
+  const end = ends.length ? ends.sort()[ends.length - 1] : b.savedAt.slice(0, 10)
+  return `${end.slice(0, 7)}-01`
+}
+
+/** The current baseline, refusing a month before it. */
+async function baselineFor(clientId: string, month: string) {
+  const b = await currentBaseline(clientId)
+  if (!b) throw new ReportInputError('Save a baseline first (Baseline page): every report compares with it.')
+  const first = firstReportMonth(b)
+  if (month < first) throw new ReportInputError(`Reports start from ${monthName(first)}, the month the baseline ends in. ${monthName(month)} is before the baseline.`)
+  return b
+}
+
 // ---- The month's numbers ----------------------------------------------------------------------------------------
 
 async function usesMapGrid(clientId: string): Promise<boolean> {
@@ -187,12 +206,13 @@ export async function reportsState(siteId: string): Promise<ReportsState> {
   const first6 = addMonths(thisMonth, -5)
   const [list, baseline, link] = await Promise.all([
     db().from('seo_reports').select(REPORT_COLS).eq('client_id', c.id).order('month', { ascending: false }),
-    db().from('seo_baselines').select('id').eq('client_id', c.id).eq('is_current', true).maybeSingle(),
+    currentBaseline(c.id),
     db().from('seo_google_links').select('gsc_property').eq('client_id', c.id).maybeSingle(),
   ])
   const reports = (must(list, 'Loading reports') as ReportRow[]).map(toSummary)
   const have = new Set(reports.map((r) => r.month))
-  const months = Array.from({ length: 6 }, (_, i) => addMonths(thisMonth, -i)).map((m) => ({ month: m, title: titleOf(m), exists: have.has(m), current: m === thisMonth }))
+  const firstMonth = baseline ? firstReportMonth(baseline) : null
+  const months = Array.from({ length: 6 }, (_, i) => addMonths(thisMonth, -i)).map((m) => ({ month: m, title: titleOf(m), exists: have.has(m), current: m === thisMonth, beforeBaseline: !firstMonth || m < firstMonth }))
 
   // Clicks per calendar month (oldest first). Before the first pulled day = unknown (null), never 0.
   const byMonth = new Map<string, number>()
@@ -212,7 +232,7 @@ export async function reportsState(siteId: string): Promise<ReportsState> {
     return { month: m, clicks: known ? (byMonth.get(m) ?? 0) : null, partial: known && (!lastDay || lastDay < monthEnd(m) || (!!firstDay && firstDay > m)) }
   })
 
-  return { reports, months, clicksByMonth, hasBaseline: !!must(baseline, 'Loading the baseline') }
+  return { reports, months, clicksByMonth, hasBaseline: !!baseline, firstMonth }
 }
 
 export async function reportById(siteId: string, id: unknown): Promise<Report> {
@@ -226,8 +246,7 @@ export async function reportById(siteId: string, id: unknown): Promise<Report> {
 export async function createReport(siteId: string, raw: unknown): Promise<Report> {
   const c = await client(siteId)
   const month = parseMonth((raw as { month?: unknown } | null)?.month)
-  const b = await currentBaseline(c.id)
-  if (!b) throw new ReportInputError('Save a baseline first (Baseline page): every report compares with it.')
+  const b = await baselineFor(c.id, month)
   const exists = must(await db().from('seo_reports').select('id').eq('client_id', c.id).eq('month', month).maybeSingle(), 'Loading reports')
   if (exists) throw new ReportInputError(`The ${titleOf(month)} already exists: open it from the list.`)
   const numbers = await monthNumbers(c.id, month, { id: b.id, label: b.label, savedAt: b.savedAt, snapshots: b.snapshots })
@@ -296,7 +315,6 @@ export async function saveReportActions(siteId: string, raw: unknown): Promise<R
 export async function previewReport(siteId: string, rawMonth: unknown): Promise<ReportNumbers> {
   const c = await client(siteId)
   const month = parseMonth(rawMonth)
-  const b = await currentBaseline(c.id)
-  if (!b) throw new ReportInputError('Save a baseline first (Baseline page): every report compares with it.')
+  const b = await baselineFor(c.id, month)
   return monthNumbers(c.id, month, { id: b.id, label: b.label, savedAt: b.savedAt, snapshots: b.snapshots })
 }

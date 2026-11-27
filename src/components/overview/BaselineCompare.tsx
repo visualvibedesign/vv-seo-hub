@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { useBaseline } from '../../hooks/useBaseline'
-import { changeOf, COMPARE_ROWS, fmtMetric, shortDates, SOURCE_NAME, type Change } from '../../lib/baseline'
+import { CHANGE_TONE as TONE, changeOf, COMPARE_ROWS, fmtMetric, shortDates, SOURCE_NAME } from '../../lib/baseline'
 import { clientPath } from '../../lib/clientSetup'
 import { PILL } from '../../lib/ui'
 import { Bone } from '../ui/Loading'
@@ -10,12 +10,6 @@ import { LilacTable, Panel } from './OverviewParts'
 // own dates. Search Console + GA4 "now" = the last 28 days (same length as the baseline's). Green = better (for
 // positions and map grid rank, lower is better). Missing on either side = "—", never 0.
 
-const TONE: Record<Change['tone'], string> = {
-  better: 'bg-vv-green-100 text-vv-green-ink',
-  worse: 'bg-vv-red-100 text-vv-red',
-  same: 'bg-vv-st-todo text-vv-st-todo-ink',
-  none: 'text-vv-muted',
-}
 const SHORT_SOURCE = { ...SOURCE_NAME, semrush: 'Semrush CSV', gbp: 'GBP (typed in)', whitespark: 'Whitespark' }
 const savedOn = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 

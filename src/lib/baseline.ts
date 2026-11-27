@@ -1,6 +1,6 @@
 // Phase 2e · How baseline numbers are labelled and written (Baseline page now, "Baseline vs now" + Results later).
 // The numbers themselves come from the server (server/services/baselineService.ts). null = missing → "—", never 0.
-import type { BaselineSnapshot, BaselineSource } from '../types/seo'
+import type { BaselineSnapshot, BaselineSource, ReportsState } from '../types/seo'
 
 export type MetricDef = { key: string; label: string; kind: 'count' | 'pct' | 'pos' | 'secs' | 'rating'; lowerIsBetter?: boolean }
 
@@ -136,4 +136,51 @@ export function changeOf(row: Pick<CompareRow, 'kind' | 'lowerIsBetter'>, base: 
   if (same) return { text: 'Same', tone: 'same' }
   const better = row.lowerIsBetter ? d < 0 : d > 0
   return { text, tone: better ? 'better' : 'worse' }
+}
+
+// ---- Results: every number vs baseline + wins ------------------------------------------------------------------
+
+/** The Results table rows: the Overview rows + CTR (9 rows, as in the design). */
+export const REPORT_ROWS: CompareRow[] = [
+  ...COMPARE_ROWS.slice(0, 2),
+  { source: 'gsc', metric: 'ctr', label: 'Search CTR', kind: 'pct' },
+  ...COMPARE_ROWS.slice(2),
+]
+
+export type Win = { label: string; big: string; text: string }
+
+/**
+ * Up to 3 wins, worked out by code (no Claude): the rows that got better vs the baseline, biggest relative
+ * improvement first. Lower is better for positions / ranks. A row missing on either side is never a win.
+ */
+export function winsOf(rows: CompareRow[], base: BaselineSnapshot[], now: BaselineSnapshot[], since: string): Win[] {
+  const out: (Win & { score: number })[] = []
+  for (const r of rows) {
+    const b = base.find((s) => s.source === r.source)?.values[r.metric]
+    const n = now.find((s) => s.source === r.source)?.values[r.metric]
+    if (b === null || b === undefined || n === null || n === undefined) continue
+    const ch = changeOf(r, b, n)
+    if (ch.tone !== 'better') continue
+    const score = b !== 0 ? Math.abs(n - b) / Math.abs(b) : 1
+    const pct = b !== 0 ? Math.round((Math.abs(n - b) / Math.abs(b)) * 100) : null
+    const from = fmtMetric(r.kind, b)
+    const to = fmtMetric(r.kind, n)
+    const big = r.kind === 'count' && pct !== null ? `+${pct}%` : `${from} → ${to}`
+    const verb = r.lowerIsBetter ? 'improved' : 'up'
+    out.push({ label: r.label, big, text: `${r.label} ${verb} from ${from} to ${to} since ${since}`, score })
+  }
+  return out.sort((a, b) => b.score - a.score).slice(0, 3).map(({ label, big, text }) => ({ label, big, text }))
+}
+
+/** Change pill colours: green = better, red = worse, grey = same; "none" = plain dash. */
+export const CHANGE_TONE: Record<Change['tone'], string> = {
+  better: 'bg-vv-green-100 text-vv-green-ink',
+  worse: 'bg-vv-red-100 text-vv-red',
+  same: 'bg-vv-st-todo text-vv-st-todo-ink',
+  none: 'text-vv-muted',
+}
+
+/** Months a report can be created for: from the baseline's month onward, without a report yet (newest first). */
+export function creatableMonths(s: ReportsState) {
+  return s.months.filter((m) => !m.exists && !m.beforeBaseline)
 }
