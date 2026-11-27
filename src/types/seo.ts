@@ -900,3 +900,45 @@ export interface LocalState {
   /** Newest scan first */
   grids: MapGrid[]
 }
+
+// ---- Phase 2e · Baseline (seo_baselines + seo_baseline_values, saved through seo_save_baseline(), migration 0018) ----
+
+/** Site check comes later; it is never saved until it exists. */
+export type BaselineSource = 'gsc' | 'ga4' | 'semrush' | 'gbp' | 'whitespark'
+
+/**
+ * One source's numbers with their own dates. Metric keys per source:
+ * gsc: impressions, clicks, ctr, position · ga4: sessions, users, key_events, avg_engagement_sec ·
+ * semrush: avg_position, top3, top10, top100, tracked · gbp: views, calls, directions, website_clicks, reviews, rating ·
+ * whitespark: avg_rank, top3, found, points (+ texts: keyword, grid, spacing).
+ * A value of null = missing (never 0).
+ */
+export interface BaselineSnapshot {
+  source: BaselineSource
+  from: string | null
+  to: string | null
+  values: Record<string, number | null>
+  texts: Record<string, string>
+}
+
+export interface BaselineSummary {
+  id: string
+  label: string | null
+  note: string | null
+  savedAt: string
+  /** Sources saved in it */
+  sources: BaselineSource[]
+}
+
+export interface BaselineState {
+  /** Sources that must be saved: GSC, GA4, Semrush, GBP always; Whitespark only once the client has a map grid scan */
+  required: BaselineSource[]
+  /** The current baseline, or null before the first save */
+  current: (BaselineSummary & { snapshots: BaselineSnapshot[] }) | null
+  /** Required sources saved in the current baseline */
+  savedRequired: number
+  /** The numbers a save would freeze right now (also "now" for Baseline vs now). A source with no data is left out. */
+  live: BaselineSnapshot[]
+  /** Every baseline for the client, newest first (the current one included) */
+  history: BaselineSummary[]
+}

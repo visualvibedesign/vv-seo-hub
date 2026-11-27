@@ -17,6 +17,7 @@ import { googleSetup, GoogleInputError, saveGoogleLink, testGoogle } from '../..
 import { metricsOverview, syncAll, syncClient } from '../../server/services/metricsService.js'
 import { rankingsOverview, RankInputError } from '../../server/services/rankService.js'
 import { deleteGbp, deleteMapGrid, localState, LocalInputError, saveGbp, saveMapGrid } from '../../server/services/localService.js'
+import { baselineById, BaselineInputError, baselineState, saveBaseline } from '../../server/services/baselineService.js'
 import { requireSession } from '../../server/utils/auth.js'
 import { timingSafeEqual } from 'node:crypto'
 import type { MetricRange } from '../../src/types/seo.js'
@@ -69,6 +70,13 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       else await deleteMapGrid(site, body.id)
       return Response.json({ ok: true })
     }
+    // Phase 2e · Baseline: state (current + live + history), one past baseline, save (new / fill missing)
+    if (method === 'GET' && action === 'baseline') return Response.json(await baselineState(params.get('site') ?? ''))
+    if (method === 'GET' && action === 'baseline-history') return Response.json(await baselineById(params.get('site') ?? '', params.get('id')))
+    if (method === 'POST' && action === 'baseline-save') {
+      const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
+      return Response.json(await saveBaseline(String(body.siteId ?? ''), body))
+    }
     if (method === 'POST' && action === 'sync') {
       const body = (await request.json().catch(() => ({}))) as { siteId?: unknown }
       return Response.json(await syncClient(String(body.siteId ?? '')))
@@ -79,7 +87,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
-    if (err instanceof GoogleInputError || err instanceof GoogleConfigError || err instanceof RankInputError || err instanceof LocalInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
+    if (err instanceof GoogleInputError || err instanceof GoogleConfigError || err instanceof RankInputError || err instanceof LocalInputError || err instanceof BaselineInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof DatabaseError) return Response.json({ error: 'database', detail: err.message }, { status: 500 })
     throw err
   }

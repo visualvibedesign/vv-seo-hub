@@ -6,11 +6,12 @@ import { periodLabel } from '../../lib/local'
 import { BTN_GHOST, BTN_LINK } from '../../lib/ui'
 import type { ClientDetail } from '../../types/seo'
 
-// Overview: one compact "Sources · 2 of 5 connected" button with a dot per source. Opens a small popover with each
+// Overview: one compact "Sources · 2 of 4 connected" button with a dot per source. Opens a small popover with each
 // source's real status and the Google properties (Change opens the Connect panel). Closes on outside click / Esc.
+// The map grid (Whitespark) is optional: it only counts once the client has a scan (same rule as the baseline's required sources).
 
-type State = 'on' | 'part' | 'off' | 'warn'
-const DOT: Record<State, string> = { on: 'bg-vv-green', part: 'bg-vv-purple', off: 'bg-vv-muted opacity-50', warn: 'bg-vv-orange-ink' }
+type State = 'on' | 'part' | 'off' | 'warn' | 'optional'
+const DOT: Record<State, string> = { on: 'bg-vv-green', part: 'bg-vv-purple', off: 'bg-vv-muted opacity-50', warn: 'bg-vv-orange-ink', optional: 'box-border border border-dashed border-vv-muted' }
 const short = (iso: string) => new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
 export default function SourcesButton({ client: c, onChangeGoogle }: { client: ClientDetail; onChangeGoogle: () => void }) {
@@ -51,10 +52,11 @@ export default function SourcesButton({ client: c, onChangeGoogle }: { client: C
     ranks?.latest
       ? { name: 'Semrush', note: `CSV · positions from ${short(ranks.latest)}`, state: 'on' }
       : { name: 'Semrush', note: 'No rankings CSV yet', state: 'off' },
-    grid ? { name: 'Whitespark', note: `Typed in · scan ${short(grid.scannedOn)}`, state: 'on' } : { name: 'Whitespark', note: 'No map grid yet', state: 'off' },
+    grid ? { name: 'Whitespark', note: `Typed in · scan ${short(grid.scannedOn)}`, state: 'on' } : { name: 'Whitespark', note: 'Optional · not set up', state: 'optional' },
     gbp ? { name: 'GBP', note: `Typed in · ${periodLabel(gbp.periodFrom, gbp.periodTo)}`, state: 'on' } : { name: 'GBP', note: 'Not typed in yet', state: 'off' },
   ]
-  const on = list.filter((s) => s.state === 'on' || s.state === 'warn').length
+  const counted = list.filter((s) => s.state !== 'optional')
+  const on = counted.filter((s) => s.state === 'on' || s.state === 'warn').length
 
   return (
     <div ref={box} className="relative self-start">
@@ -68,7 +70,7 @@ export default function SourcesButton({ client: c, onChangeGoogle }: { client: C
       >
         <strong>Sources</strong>
         <span className="text-vv-body">
-          · {on} of {list.length} connected
+          · {on} of {counted.length} connected
         </span>
         <span className="flex items-center gap-1" aria-hidden="true">
           {list.map((s) => (

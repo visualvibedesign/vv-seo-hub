@@ -77,6 +77,14 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
   `seo_baseline_values` (a frozen copy: re-pulling Google later never changes it). Each source card shows "Saved · date"
   or "Missing". The Day 3 checklist (already live) ticks "starting numbers" automatically once 4 of 5 are saved.
 - **Start a new baseline** keeps the old one (history) and marks the new one current.
+- **Decided Nov 28:** the map grid (Whitespark) is **optional** until a client has a scan. Required = Search Console,
+  GA4, Semrush, GBP (+ Whitespark once scanned). Sources reads "N of 4" (map grid "Optional · not set up"), the
+  Baseline pill "N of 4 saved", and the Day 3 "Starting numbers" task ticks itself when every required source is in
+  the current baseline.
+- **2e step 1 built (Nov 28):** `server/services/baselineService.ts` (live numbers per source with their own dates:
+  GSC + GA4 = last 28 days to each one's last pulled day, same totals as the Overview; Semrush = latest CSV; GBP =
+  latest period; map grid = latest scan), saved via `seo_save_baseline()` (0018; `new` / `fill`, a saved source is never
+  overwritten). Actions in `api/metrics/[action].ts`: `baseline`, `baseline-history`, `baseline-save` (still 12).
 
 ## Results (Day 10 + monthly)
 - **Monthly report** per client per month (`seo_reports`): a frozen copy of the month's numbers vs the baseline,

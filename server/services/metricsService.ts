@@ -213,6 +213,34 @@ function ga4Totals(byDay: Map<string, Record<string, number>>, from: string, to:
 
 const monthStart = (d: string) => `${d.slice(0, 7)}-01`
 
+type Window<T> = { from: string; to: string; totals: T } | null
+
+/**
+ * The last `n` days each Google source has (ending on its own last pulled day), with the same totals the Overview
+ * shows. Used by Baseline (the frozen copy) and "Baseline vs now". null = not linked or nothing pulled yet.
+ */
+export async function googleWindow(clientId: string, n = 28): Promise<{ gsc: Window<GscTotals>; ga4: Window<Ga4Totals> }> {
+  const link = must(await db().from('seo_google_links').select('gsc_property, ga4_property').eq('client_id', clientId).maybeSingle(), 'Loading the Google link') as { gsc_property: string | null; ga4_property: string | null } | null
+  const one = async <T>(source: 'gsc' | 'ga4', linked: boolean, totals: (m: Map<string, Record<string, number>>, from: string, to: string) => T): Promise<Window<T>> => {
+    if (!linked) return null
+    const to = await lastDay(clientId, source)
+    if (!to) return null
+    const from = addDays(to, -(n - 1))
+    const byDay = new Map<string, Record<string, number>>()
+    for await (const r of pagedRows<{ metric: string; day: string; value: string | number }>(
+      (a, b) => db().from('seo_metric_daily').select('metric, day, value').eq('client_id', clientId).eq('source', source).gte('day', from).lte('day', to).order('metric').order('day').range(a, b),
+      'Loading the numbers',
+    )) {
+      const d = byDay.get(r.day) ?? {}
+      d[r.metric] = Number(r.value)
+      byDay.set(r.day, d)
+    }
+    return { from, to, totals: totals(byDay, from, to) }
+  }
+  const [gsc, ga4] = await Promise.all([one('gsc', !!link?.gsc_property, gscTotals), one('ga4', !!link?.ga4_property, ga4Totals)])
+  return { gsc, ga4 }
+}
+
 export async function metricsOverview(siteId: string, range: MetricRange): Promise<MetricsOverview> {
   const { clientId, link } = await linkFor(siteId)
   const n = RANGE_DAYS[range]

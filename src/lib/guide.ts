@@ -83,7 +83,7 @@ export const GUIDE: GuideStep[] = [
       { key: 'geogrid', label: 'Whitespark geogrid: top 1–3 services, main city, 5×5' },
       { key: 'gsc', label: 'Search Console: Domain property verified' },
       { key: 'ga4', label: 'GA4 installed, goal “Generate leads”' },
-      { key: 'numbers', label: 'Starting numbers with dates: GSC, GA4, GBP, map grid' },
+      { key: 'numbers', label: 'Starting numbers with dates: GSC, GA4, Semrush, GBP (+ map grid if used)', auto: true, hint: 'Ticks itself when the current baseline has every required source (the map grid only once the client has a scan).' },
       { key: 'log', label: 'Start the change log' },
     ],
     tools: 'Semrush Position Tracking · Whitespark · Search Console · GA4 · GBP',
