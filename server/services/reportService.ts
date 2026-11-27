@@ -19,7 +19,7 @@ import { callStructured, countInputTokens } from './aiService.js'
 import { clientDetail, clientRow } from './clientService.js'
 import { googleWindow } from './metricsService.js'
 import { latestToday } from '../utils/dates.js'
-import { agencyDay } from '../../src/lib/agencyTime.js'
+import { agencyDate, agencyDay } from '../../src/lib/agencyTime.js'
 
 /** A problem the person can fix (400). */
 export class ReportInputError extends Error {}
@@ -290,13 +290,14 @@ export async function setReportStatus(siteId: string, raw: unknown): Promise<Rep
 const clean = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ').slice(0, max) : '')
 
 /**
- * Replaces the report's next actions (up to 3, in order). Ticking done works on sent reports too (it's follow-up).
+ * Replaces the report's next actions (up to 3, in order). Draft only: a sent report is read-only until it's reopened.
  * The new rows go in first and the old ones are removed after, so a failed save never loses the list.
  */
 export async function saveReportActions(siteId: string, raw: unknown): Promise<Report> {
   const c = await client(siteId)
   const b = (raw ?? {}) as { id?: unknown; actions?: unknown }
   const r = await loadReport(c.id, b.id)
+  if (r.status === 'sent') throw new ReportInputError('This report was sent, so it’s read-only. Reopen it as a draft to change the next actions.')
   if (!Array.isArray(b.actions)) throw new ReportInputError('No actions sent.')
   if (b.actions.length > MAX_ACTIONS) throw new ReportInputError(`Up to ${MAX_ACTIONS} next actions.`)
   const rows = b.actions.map((a: unknown, i: number) => {
@@ -333,8 +334,11 @@ export async function previewReport(siteId: string, rawMonth: unknown): Promise<
 // last month's approved notes: never the private address or account details.
 
 const NOTES_TASK = 'report_notes' as const
-/** Saved-at dates in the prompt are the agency's calendar day (Asia/Manila), never the UTC day. */
-const AGENCY_TZ_NOTE = 'agency time, Asia/Manila'
+/**
+ * Every date in the prompt is already written the way the report shows it, in the agency's time zone (Asia/Manila):
+ * "Nov 28, 2026", or "Oct 29, 2026 to Nov 25, 2026". Claude is told to copy dates exactly (no ISO, no UTC day).
+ */
+const span = (from: string | null, to: string | null) => (!from || !to ? 'no dates' : from === to ? agencyDate(to) : `${agencyDate(from)} to ${agencyDate(to)}`)
 const NOTES_MAX = 6000
 
 const NotesOut = z.object({
@@ -351,6 +355,7 @@ Rules:
 - "Same" means it hasn't moved since the baseline; say so plainly, don't dress it up.
 - "Likely why" gives possible reasons as possibilities ("likely", "may"), only from what the data shows (the dates, the next actions, last month's notes). Don't claim work was done unless the data says so.
 - "Next 30 days" follows the next actions listed, in the same order; if there are none, suggest at most three concrete steps that fit the numbers.
+- Dates: write every date exactly as it is given in the data (for example "Nov 28, 2026"). Never reformat a date, never change it, never work out a new one.
 - No promises about rankings or traffic.`
 
 type NoteKind = 'count' | 'pct' | 'pos' | 'secs'
@@ -396,7 +401,7 @@ async function notesPrompt(c: ClientRowT, r: ReportRow): Promise<string> {
   lines.push(`Business: ${d.name}${d.city ? `, ${d.city}${d.state ? `, ${d.state}` : ''}` : ''}`)
   if (services.length) lines.push(`Services: ${services.join('; ')}`)
   if (areas.length) lines.push(`Areas served: ${areas.join(', ')}`)
-  lines.push('', `Report: ${titleOf(r.month)}. Compared with the baseline "${n.baseline.label ?? 'Baseline'}" saved ${agencyDay(n.baseline.savedAt)} (${AGENCY_TZ_NOTE}).`)
+  lines.push('', `Report: ${titleOf(r.month)}. Compared with the baseline "${n.baseline.label ?? 'Baseline'}" saved ${agencyDate(n.baseline.savedAt)}.`)
   lines.push('', 'Numbers (metric | baseline [dates] | this month [dates] | change):')
   for (const x of NOTE_ROWS) {
     if (!n.sources.includes(x.source)) continue
@@ -416,10 +421,10 @@ async function notesPrompt(c: ClientRowT, r: ReportRow): Promise<string> {
         change = `${diff > 0 ? '+' : ''}${amount}, ${better ? 'better' : 'worse'}`
       }
     }
-    lines.push(`- ${x.label} | ${fmtN(x.kind, bv)} [${b ? `${b.from} to ${b.to}` : 'not in baseline'}] | ${fmtN(x.kind, mv)} [${m ? `${m.from} to ${m.to}` : 'none this month'}] | ${change}`)
+    lines.push(`- ${x.label} | ${fmtN(x.kind, bv)} [${b ? span(b.from, b.to) : 'not in baseline'}] | ${fmtN(x.kind, mv)} [${m ? span(m.from, m.to) : 'none this month'}] | ${change}`)
   }
   if (n.missing.length) lines.push('', 'Not available this month:', ...n.missing.map((m) => `- ${m.reason}`))
-  lines.push('', 'Next actions:', ...(actions.length ? actions.map((a, i) => `${i + 1}. [${a.kind}] ${a.body}${a.owner ? ` (owner: ${a.owner})` : ''}${a.due ? ` (due ${a.due})` : ''}${a.done ? ' (done)' : ''}`) : ['none yet']))
+  lines.push('', 'Next actions:', ...(actions.length ? actions.map((a, i) => `${i + 1}. [${a.kind}] ${a.body}${a.owner ? ` (owner: ${a.owner})` : ''}${a.due ? ` (due ${agencyDate(a.due)})` : ''}${a.done ? ' (done)' : ''}`) : ['none yet']))
   if (prev[0]) lines.push('', `Last approved notes (${titleOf(prev[0].month)}):`, prev[0].notes)
   return lines.join('\n')
 }
