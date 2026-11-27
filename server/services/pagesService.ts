@@ -168,8 +168,10 @@ export async function saveHotspots(siteId: string, raw: unknown): Promise<PagesS
     meta_description: text(b.metaDescription, 320, 'Meta description'),
     h1: text(b.h1, 160, 'H1'),
     url_target: urlTarget,
-    hotspots_at: new Date().toISOString(),
+    hotspots_at: null as string | null,
   }
+  // "Hotspots saved" only when there's something in them (clearing every field = no hotspots).
+  if (patch.seo_title || patch.meta_description || patch.h1 || (urlTarget && pathOf(urlTarget) !== pathOf(page.url))) patch.hotspots_at = new Date().toISOString()
   must(await db().from('seo_pages').update(patch).eq('id', page.id).eq('client_id', c.id), 'Saving the hotspots')
 
   // A live page moving to a new URL needs a redirect (old → new), sent to the site later (phase 5).
