@@ -4,11 +4,10 @@ Shareable status note for the reviewer Claude: what was built, commit ids, what'
 waiting on Angel. Updated after every step.
 
 ## Where we are
-- **Phase 2 is finished** (2a–2g). 2a–2f are live in Production (`main` = merge `324d0f3`, Nov 28). The 2g work and
-  the fixes after it are on **`phase-2`** (pushed, Vercel Preview), **not on `main` yet** (needs Angel's OK).
+- **Phase 2 is finished and live in Production**: `main` = merge `6dbd2e4` (Nov 28: 2g PDF + GBP screenshot + fixes), after `324d0f3` (2a–2f).
 - **Skipped for now:** Whitespark (map grid from a screenshot / CSV): no Whitespark account yet. The map grid stays
   optional and typed in by hand.
-- **Phase 3 · Pages started** on branch **`phase-3`**: plan approved Nov 28 (`docs/phase-3-plan.md`; ClickUp later, site structure per client default service first, page codes P1… auto). **Step 1: migration 0021 written** (`supabase/migrations/0021_seo_phase3_pages.sql`), **waiting for Angel to run it.** No Phase 3 app code yet.
+- **Phase 3 · Pages** on branch **`phase-3`** (plan `docs/phase-3-plan.md`, approved Nov 28: ClickUp later, structure per client default service first, page codes P1… auto). Step 1 done: **migration 0021 run by Angel and checked**. Next: step 2 (backfill + Sitemap + hotspots screen).
 - Test client: **Visual Vibe Design** (`5c939f2631d6b31bdf4523e5d2f79a2c`): "Day 3" baseline (Nov 28) + the
   November 2026 report (Sent).
 - 12 Vercel functions (Hobby cap). Migrations 0001–0020 run and checked.
@@ -72,9 +71,9 @@ Angel already tested all of these; this is for an independent check. Don't chang
 13. Phone width + dark mode on Overview, Baseline, Results.
 
 ## Waiting on Angel
-1. OK to merge `phase-2` into `main` and push to Production (2g + fixes).
+1. ~~Merge `phase-2` into `main`~~ done (`6dbd2e4`, pushed to Production Nov 28).
 2. Fix the November report notes date yourself (old approved text says "2026-11-27").
-3. **Run migration 0021** in the Supabase SQL Editor and say so (adds page fields + 3 tables; nothing deleted; existing pages unchanged; the 1 client gets site_structure = service_first).
+3. ~~Run migration 0021~~ done.
 4. Later: Whitespark account (map grid from a screenshot / CSV); GBP API (not applied for yet).
 5. `ANTHROPIC_API_KEY` set in Vercel Production env (Claude notes + GBP screenshots in Production).
 
