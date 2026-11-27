@@ -7,7 +7,7 @@ waiting on Angel. Updated after every step.
 - **Phase 2 is finished and live in Production**: `main` = merge `6dbd2e4` (Nov 28: 2g PDF + GBP screenshot + fixes), after `324d0f3` (2a–2f).
 - **Skipped for now:** Whitespark (map grid from a screenshot / CSV): no Whitespark account yet. The map grid stays
   optional and typed in by hand.
-- **Phase 3 · Pages** on branch **`phase-3`** (plan `docs/phase-3-plan.md`, approved Nov 28: ClickUp later, structure per client default service first, page codes P1… auto). Step 1 done: migration 0021 run and checked. **Step 2 done (`c0b4097`): Sitemap + hotspots screen**, waiting for Angel to test. Next: step 3 Site plan (tree + redirects queue).
+- **Phase 3 · Pages** on branch **`phase-3`** (plan `docs/phase-3-plan.md`, approved Nov 28: ClickUp later, structure per client default service first, page codes P1… auto). Step 1 done: migration 0021 run and checked. Step 2 done (`c0b4097`, Sitemap + hotspots) and **step 3 done (`b376d6e`, Site plan)**, both tested by Claude. Next: step 4, Claude hotspot drafts (Ready to review, approve into the page).
 - Test client: **Visual Vibe Design** (`5c939f2631d6b31bdf4523e5d2f79a2c`): "Day 3" baseline (Nov 28) + the
   November 2026 report (Sent).
 - 12 Vercel functions (Hobby cap). Migrations 0001–0020 run and checked.
@@ -92,7 +92,21 @@ it; a planned page's URL adds no redirect; duplicate / bad codes and a 121-chara
 switch + back; add-page refusals (no name, unknown category, keyword already on another page). Everything put back
 afterwards: the only real change kept is the fill (codes P1–P9, types, Keep / New). Checked read-only: hotspots
 empty on all 9 pages, 0 redirects, structure service first, 9 pages. A real "+ Add page" was NOT run (cleaning up
-would need a delete). Fix found while testing: clearing every hotspot field now counts as "no hotspots".
+would need a delete). Fix found while testing: clearing every hotspot field now counts as "no hotspots" (`14b9d66`).
+
+| `b376d6e` | **Step 3 · Site plan** (Strategy Builder › Day 5): page tree in the client's structure order (Home → service / location pages → children under their parent → supporting); "Move under…" per page (never itself or its own child); planned pages marked New; body-copy linking rule. Redirects queue: added automatically when a live page's URL changes; click a status to move it Queued → Sent to site → Live (→ Queued). API page-parent, redirect-status in `api/clusters` (still 12) |
+
+**Step 3 tested by Claude on Visual Vibe: 12 / 12 passed** (P3 + P4 under P2; loop, self and unknown parent
+refused; a P2 URL change gives 1 queued redirect with its page code; status Queued → Sent → Live → Queued; bad status
+/ unknown redirect refused; then everything put back). Fix found while testing: clearing a live page's target URL
+(empty instead of setting it back) now also drops its still-queued redirect. Checked read-only after: 0 redirects,
+no parents, no hotspots, 9 pages. Screen rendered with the captured state (light desktop, dark phone).
+
+## How to test step 3 (localhost, Visual Vibe › Strategy Builder › Day 5 · Site plan)
+1. Tree: P1 Home on top, then "Service pages" P2…P9 (all service pages today), planned ones marked New.
+2. "Move under…" on P3 › Under P2 Web Design hub › P3 moves under P2. Try moving P2 under P3: refused. Top level puts it back.
+3. On Sitemap + hotspots change P2's URL and save › Site plan shows 1 redirect /web-design → new › click its status: Sent to site → Live → Queued.
+4. Back on Sitemap + hotspots, clear P2's URL (or set it back) and save › the queued redirect is gone.
 
 ## How to test step 2 (localhost, Visual Vibe › Strategy Builder › Day 5 · Sitemap + hotspots)
 1. Banner "9 pages have no code…" › See what would change › list P1–P9 (Home keep, 4 hubs keep, 5 city pages new) › Fill 9 pages.
