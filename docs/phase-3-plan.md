@@ -62,14 +62,19 @@ Test client: Visual Vibe Design (9 pages from Clusters: 4 live, 5 planned, keywo
 | `page_copy` | Sonnet 5.5 | V1 header + footer, or V2 all 11 sections | exactly 3 path steps; [placeholders] kept; no invented facts |
 Approving copies the draft into the page / BrandScript / brief; nothing is published anywhere.
 
-## Decisions for Angel
+## Decisions (answered Nov 28)
+- **ClickUp: Later** (button stays "Later"; no token needed now).
+- **Site structure: per client, default service first** (Sam: most common; switch to location first for physical locations, flat for few pages).
+- **Page codes: auto P1, P2… in page order (Home = P1), editable.**
+
+## Decisions for Angel (original questions)
 1. **Send to ClickUp** (Web Page tasks): needs a ClickUp API token in `.env.local` / Vercel and the list id. Build it in
    Phase 3 (last step), or leave the button as "Later"? *Recommended: Later* (one less secret; copy works today).
 2. **Site structure** per client: pick it on Sitemap (service first / location first / flat), default "service
    first". OK?
 3. **Page codes**: auto P1, P2… in page order (Home = P1), editable. OK?
 
-## Database · migration 0021 (draft, shown here, NOT written / run yet)
+## Database · migration 0021 (`supabase/migrations/0021_seo_phase3_pages.sql`, written Nov 28, waiting for Angel to run it)
 Only adds columns + new tables; nothing is deleted. Rows affected: 0 updated except the backfill noted below.
 ```sql
 -- Pages: code, type, parent, keep / improve / new, hotspots, target URL

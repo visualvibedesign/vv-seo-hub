@@ -8,7 +8,7 @@ waiting on Angel. Updated after every step.
   the fixes after it are on **`phase-2`** (pushed, Vercel Preview), **not on `main` yet** (needs Angel's OK).
 - **Skipped for now:** Whitespark (map grid from a screenshot / CSV): no Whitespark account yet. The map grid stays
   optional and typed in by hand.
-- **Next: Phase 3 · Pages** (sitemap, hotspots, site plan, page briefs; Sam Days 5–6). **Plan written:** `docs/phase-3-plan.md` on branch **`phase-3`** (from `phase-2`). No code until Angel approves it and answers its 3 decisions (ClickUp now or later, site structure per client, page codes P1…). Migration 0021 is drafted inside the plan, not written or run.
+- **Phase 3 · Pages started** on branch **`phase-3`**: plan approved Nov 28 (`docs/phase-3-plan.md`; ClickUp later, site structure per client default service first, page codes P1… auto). **Step 1: migration 0021 written** (`supabase/migrations/0021_seo_phase3_pages.sql`), **waiting for Angel to run it.** No Phase 3 app code yet.
 - Test client: **Visual Vibe Design** (`5c939f2631d6b31bdf4523e5d2f79a2c`): "Day 3" baseline (Nov 28) + the
   November 2026 report (Sent).
 - 12 Vercel functions (Hobby cap). Migrations 0001–0020 run and checked.
@@ -74,7 +74,7 @@ Angel already tested all of these; this is for an independent check. Don't chang
 ## Waiting on Angel
 1. OK to merge `phase-2` into `main` and push to Production (2g + fixes).
 2. Fix the November report notes date yourself (old approved text says "2026-11-27").
-3. Approve the Phase 3 plan (`docs/phase-3-plan.md`) and answer its 3 decisions before any Phase 3 code.
+3. **Run migration 0021** in the Supabase SQL Editor and say so (adds page fields + 3 tables; nothing deleted; existing pages unchanged; the 1 client gets site_structure = service_first).
 4. Later: Whitespark account (map grid from a screenshot / CSV); GBP API (not applied for yet).
 5. `ANTHROPIC_API_KEY` set in Vercel Production env (Claude notes + GBP screenshots in Production).
 
