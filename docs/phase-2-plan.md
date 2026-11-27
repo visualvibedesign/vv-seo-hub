@@ -77,6 +77,14 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
   `seo_baseline_values` (a frozen copy: re-pulling Google later never changes it). Each source card shows "Saved · date"
   or "Missing". The Day 3 checklist (already live) ticks "starting numbers" automatically once 4 of 5 are saved.
 - **Start a new baseline** keeps the old one (history) and marks the new one current.
+- **Decided Nov 28:** the map grid (Whitespark) is **optional** until a client has a scan. Required = Search Console,
+  GA4, Semrush, GBP (+ Whitespark once scanned). Sources reads "N of 4" (map grid "Optional · not set up"), the
+  Baseline pill "N of 4 saved", and the Day 3 "Starting numbers" task ticks itself when every required source is in
+  the current baseline.
+- **2e step 1 built (Nov 28):** `server/services/baselineService.ts` (live numbers per source with their own dates:
+  GSC + GA4 = last 28 days to each one's last pulled day, same totals as the Overview; Semrush = latest CSV; GBP =
+  latest period; map grid = latest scan), saved via `seo_save_baseline()` (0018; `new` / `fill`, a saved source is never
+  overwritten). Actions in `api/metrics/[action].ts`: `baseline`, `baseline-history`, `baseline-save` (still 12).
 
 ## Results (Day 10 + monthly)
 - **Monthly report** per client per month (`seo_reports`): a frozen copy of the month's numbers vs the baseline,
@@ -87,6 +95,23 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
   approves; only the approved text is saved in the report. Logged in `seo_ai_log` like every call.
 - **Up to 3 next actions** (`seo_report_actions`: type, text, owner, due date, done).
 - **PDF:** later (2g); the report page prints cleanly first.
+- **Decided Nov 28:** a report's Search Console + GA4 numbers = the 28 days ending on the month's last pulled day
+  (the month's end, or the last pulled day if earlier), same length as the baseline. Titled "November 2026 report"
+  with the exact dates under it. Semrush = latest CSV dated in the month; GBP = the month's typed period; map grid =
+  latest scan in the month. Nothing for the month = "missing" with the reason (never 0 or an older month).
+- **2f step 1 built (Nov 28):** `server/services/reportService.ts` + migration 0019. Actions in `api/metrics`:
+  `reports` (list + last 6 months + clicks per month), `report`, `report-preview` (read only), `report-create`,
+  `report-refresh` (draft only), `report-status` (draft / sent + sent date), `report-actions` (up to 3). Still 12.
+- **Decided Nov 28:** reports start from the month the current baseline ends in (Visual Vibe: November 2026). Earlier
+  months aren't offered and the server refuses them.
+- **2f step 2 built (Nov 28):** Results page: Create report (month + preview of dates / missing), wins (code, latest
+  report vs its baseline), every number vs baseline (last 3 reports), clicks per month, reports list, report view
+  (?report=id) with Refresh / Mark as sent / Reopen and up to 3 next actions.
+- **2f step 3 built (Nov 28):** report notes. "Draft with Claude" (task `report_notes`, Sonnet 5.5, effort medium,
+  estimate first, logged in seo_ai_log) gets the frozen numbers + dates, missing, next actions, last approved notes,
+  business name / city / services / areas (no address). Saved as "Ready to review" (notes_draft); Angel edits and
+  approves (only approved text = notes). Numbers check (src/lib/notesCheck.ts) flags any number not in the report
+  (never removes). Sent reports lock their notes. Actions: `report-notes-estimate`, `-draft`, `-approve`, `-discard`.
 
 ## Build steps (each: plan OK → build → Angel tests → commit; stop at the end of phase 2)
 
@@ -96,7 +121,7 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
 | 2b | Daily pull (cron + Update numbers), Overview KPI tiles, Search performance, Website traffic, Top searches / pages, range switch | 2a |
 | 2c | Semrush Position Tracking import (Uploads Day 3) → Keyword rankings, biggest moves, swapped-page flags | — |
 | 2d | GBP typed form + Whitespark (typed now, CSV when the sample is in) → Overview cards | Decision 2, 3 |
-| 2e | Baseline: save / start new, six cards with dates, Baseline vs now on Overview | 2b–2d |
+| 2e | Baseline: save / start new, six cards with dates, Baseline vs now on Overview (**built Nov 28**: Visual Vibe "Day 3" saved; map grid optional until a scan) | 2b–2d |
 | 2f | Results: monthly reports, every number vs baseline, wins, Claude report notes (reviewed), next actions | 2e |
 | 2g (later) | GBP / map grid from a screenshot (Claude), report PDF | — |
 

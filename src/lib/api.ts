@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -399,4 +399,76 @@ export function saveMapGrid(siteId: string, input: MapGridInput): Promise<{ grid
 
 export function deleteMapGrid(siteId: string, id: string): Promise<{ ok: true }> {
   return call('/api/metrics/map-delete', json({ siteId, id }))
+}
+
+// ---- Phase 2e · Baseline ---------------------------------------------------------------------------------------
+
+/** Current baseline (+ what a save would freeze now) and the history. */
+export function getBaseline(siteId: string): Promise<BaselineState> {
+  return call('/api/metrics/baseline?site=' + encodeURIComponent(siteId))
+}
+
+/** One saved baseline (current or past) with its numbers. */
+export function getBaselineById(siteId: string, id: string): Promise<BaselineSummary & { snapshots: BaselineSnapshot[] }> {
+  return call('/api/metrics/baseline-history?site=' + encodeURIComponent(siteId) + '&id=' + encodeURIComponent(id))
+}
+
+/** new = save a new current baseline (the old one stays in history); fill = add only the missing sources. */
+export function saveBaseline(siteId: string, input: { mode: 'new' | 'fill'; label?: string; note?: string; sources?: BaselineSource[] }): Promise<BaselineState> {
+  return call('/api/metrics/baseline-save', json({ siteId, ...input }))
+}
+
+// ---- Phase 2f · Monthly reports ---------------------------------------------------------------------------------
+
+/** Reports list, the months "Create report" can offer, Search Console clicks per month. */
+export function getReports(siteId: string): Promise<ReportsState> {
+  return call('/api/metrics/reports?site=' + encodeURIComponent(siteId))
+}
+
+export function getReport(siteId: string, id: string): Promise<Report> {
+  return call('/api/metrics/report?site=' + encodeURIComponent(siteId) + '&id=' + encodeURIComponent(id))
+}
+
+/** What a report for this month would freeze, without saving. month = "2026-11" */
+export function previewReport(siteId: string, month: string): Promise<ReportNumbers> {
+  return call('/api/metrics/report-preview?site=' + encodeURIComponent(siteId) + '&month=' + encodeURIComponent(month))
+}
+
+/** month = "2026-11" */
+export function createReport(siteId: string, month: string): Promise<Report> {
+  return call('/api/metrics/report-create', json({ siteId, month }))
+}
+
+/** Re-reads the month's numbers (draft only). */
+export function refreshReport(siteId: string, id: string): Promise<Report> {
+  return call('/api/metrics/report-refresh', json({ siteId, id }))
+}
+
+export function setReportStatus(siteId: string, id: string, status: 'draft' | 'sent', sentOn?: string): Promise<Report> {
+  return call('/api/metrics/report-status', json({ siteId, id, status, sentOn }))
+}
+
+/** Replaces the next actions (up to 3, in order). */
+export function saveReportActions(siteId: string, id: string, actions: Omit<ReportAction, 'id'>[]): Promise<Report> {
+  return call('/api/metrics/report-actions', json({ siteId, id, actions }))
+}
+
+// ---- 2f step 3 · Report notes (Claude drafts, Angel approves) ---------------------------------------------------
+
+export function estimateReportNotes(siteId: string, id: string): Promise<ReportNotesEstimate> {
+  return call('/api/metrics/report-notes-estimate?site=' + encodeURIComponent(siteId) + '&id=' + encodeURIComponent(id))
+}
+
+/** Claude drafts the notes; saved as "Ready to review" (the approved notes stay until you approve a new text). */
+export function draftReportNotes(siteId: string, id: string): Promise<Report> {
+  return call('/api/metrics/report-notes-draft', json({ siteId, id }))
+}
+
+/** Your (edited) text becomes the report's notes. */
+export function approveReportNotes(siteId: string, id: string, text: string): Promise<Report> {
+  return call('/api/metrics/report-notes-approve', json({ siteId, id, text }))
+}
+
+export function discardReportNotes(siteId: string, id: string): Promise<Report> {
+  return call('/api/metrics/report-notes-discard', json({ siteId, id }))
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useDeleteGbp, useDeleteMapGrid, useLocal, useSaveGbp, useSaveMapGrid } from '../../hooks/useLocal'
 import { ApiError } from '../../lib/api'
 import { rememberAuthor, savedAuthor } from '../../lib/notes'
@@ -6,9 +6,10 @@ import { BTN_GHOST, BTN_LIME, BTN_LINK, FIELD, LABEL } from '../../lib/ui'
 import { gridStats, periodLabel } from '../../lib/local'
 import type { GbpInput, GbpSnapshot, MapGrid } from '../../types/seo'
 import ConfirmDialog from '../ui/ConfirmDialog'
+import Modal from '../ui/Modal'
 import Icon from '../ui/Icon'
 import { Bone, Spinner } from '../ui/Loading'
-import { Dash, Panel } from './OverviewParts'
+import { Dash, Panel, Ring } from './OverviewParts'
 
 // Phase 2d · Overview cards for the numbers the team types in: Google Business Profile (once a month) and the
 // Whitespark map grid (typed scan now, CSV once the sample is in). Real values only; empty = "—". The grid centre is an
@@ -19,40 +20,33 @@ const d12 = (d: string) => new Date(`${d}T12:00:00`)
 const short = (d: string) => d12(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-function Modal({ open, title, onClose, children, wide = false }: { open: boolean; title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
-  const ref = useRef<HTMLDialogElement>(null)
-  useEffect(() => {
-    const d = ref.current
-    if (!d) return
-    if (open && !d.open) d.showModal()
-    if (!open && d.open) d.close()
-  }, [open])
-  return (
-    <dialog
-      ref={ref}
-      onClose={onClose}
-      onClick={(e) => e.target === ref.current && onClose()}
-      aria-label={title}
-      className={`m-auto w-[calc(100%-32px)] ${wide ? 'max-w-[560px]' : 'max-w-[480px]'} rounded-[26px] border-0 bg-vv-surface p-0 text-vv-ink shadow-[0_30px_60px_-30px_rgba(42,28,110,0.5)] backdrop:bg-[rgba(42,28,110,0.18)]`}
-    >
-      {open && (
-        <div className="flex flex-col gap-3.5 p-[26px] phone:p-5">
-          <h2 className="m-0 font-display text-[24px] font-semibold leading-[1.2]">{title}</h2>
-          {children}
-        </div>
-      )}
-    </dialog>
-  )
-}
 
 // ---- GBP ----------------------------------------------------------------------------------------------------
 
-const GBP_NUMS: { key: 'views' | 'calls' | 'directions' | 'websiteClicks'; label: string }[] = [
-  { key: 'views', label: 'Profile views' },
-  { key: 'calls', label: 'Calls' },
-  { key: 'directions', label: 'Direction requests' },
-  { key: 'websiteClicks', label: 'Website clicks' },
-]
+/** The three things people do from the profile, in a fixed colour order (checked for colour blindness). */
+const ACTIONS = [
+  { key: 'calls', label: 'Calls', bar: 'bg-vv-gbp-calls' },
+  { key: 'websiteClicks', label: 'Website clicks', bar: 'bg-vv-gbp-web' },
+  { key: 'directions', label: 'Directions', bar: 'bg-vv-gbp-dir' },
+] as const
+
+/**
+ * Typed actions (calls, website clicks, directions) per 100 profile views. Uses the actions that ARE typed: a
+ * service-area business never has directions. Unknown only when views are missing / 0 or no action is typed.
+ * `used` = which actions went in, so two months are only compared when they used the same ones.
+ */
+const per100 = (s: GbpSnapshot | undefined): { value: number; used: string; missing: string[] } | null => {
+  if (!s || !s.views) return null
+  const typed = ACTIONS.filter((a) => s[a.key] !== null)
+  if (!typed.length) return null
+  return { value: (typed.reduce((t, a) => t + (s[a.key] ?? 0), 0) / s.views) * 100, used: typed.map((a) => a.key).join(','), missing: ACTIONS.filter((a) => s[a.key] === null).map((a) => a.label.toLowerCase()) }
+}
+
+/** Axis label: "Oct" for a calendar month, else the start date. */
+const tick = (s: GbpSnapshot) => {
+  const l = periodLabel(s.periodFrom, s.periodTo)
+  return l.includes('–') ? short(s.periodFrom) : d12(s.periodFrom).toLocaleDateString('en-US', { month: 'short' })
+}
 
 function Change({ now, prev, prevLabel }: { now: number | null; prev: number | null; prevLabel: string }) {
   if (now === null || prev === null) return null
@@ -94,31 +88,22 @@ export function GbpCard({ siteId }: { siteId: string }) {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3">
-            {GBP_NUMS.map((n) => (
-              <div key={n.key} className="flex flex-col gap-0.5 rounded-[14px] bg-vv-pink-100 p-3">
-                <div className="text-[22px] font-bold">{now?.[n.key] ?? <Dash />}</div>
-                <div className="text-[12px] text-vv-body">{n.label}</div>
-                {now && prev && <Change now={now[n.key]} prev={prev[n.key]} prevLabel={prevLabel} />}
-              </div>
-            ))}
+            <div className="flex min-w-0 flex-col gap-0.5 rounded-[14px] bg-vv-pink-100 p-3">
+              <div className="text-[22px] font-bold">{now?.views ?? <Dash />}</div>
+              <div className="text-[12px] text-vv-body">Profile views</div>
+              {now && prev && <Change now={now.views} prev={prev.views} prevLabel={prevLabel} />}
+            </div>
+            <Per100 now={now} prev={prev} prevLabel={prevLabel} />
           </div>
-          {now && <ViewsDonut s={now} />}
-          <p className="m-0 text-[13px] text-vv-body">
-            {now ? (
-              <>
-                {now.rating !== null && <strong className="inline-flex items-center gap-1 text-vv-ink">
-                    <Icon name="star" className="h-3.5 w-3.5 text-vv-orange-ink" fill />
-                    {now.rating.toFixed(1)}
-                  </strong>}
-                {now.rating !== null && now.reviews !== null && ' · '}
-                {now.reviews !== null && `${now.reviews} reviews`}
-                {now.newestReviewOn && ` · newest ${short(now.newestReviewOn)}`}
-                {now.rating === null && now.reviews === null && 'No review numbers typed.'}
-              </>
-            ) : (
-              'Nothing typed yet. Once a month: GBP › Performance, pick last month, type the four numbers + reviews.'
-            )}
-          </p>
+          {now ? (
+            <>
+              <ActionsChart months={list.slice(0, 6).reverse()} />
+              <Reviews now={now} prev={prev} prevLabel={prevLabel} />
+              <ViewsDonut s={now} />
+            </>
+          ) : (
+            <p className="m-0 text-[13px] text-vv-body">Nothing typed yet. Once a month: GBP › Performance, pick last month, type the four numbers + reviews.</p>
+          )}
           {list.length > 0 && (
             <details className="text-[13px]">
               <summary className="cursor-pointer font-semibold text-vv-purple-deep">All months ({list.length})</summary>
@@ -250,6 +235,149 @@ function GbpForm({ siteId, start, onDone }: { siteId: string; start: GbpInput; o
   )
 }
 
+
+// ---- Actions per 100 views, actions by month, reviews ----------------------------------------------------------
+
+function Per100({ now, prev, prevLabel }: { now: GbpSnapshot | undefined; prev: GbpSnapshot | undefined; prevLabel: string }) {
+  const a = per100(now)
+  const b = per100(prev)
+  const d = a && b && a.used === b.used ? Math.round((a.value - b.value) * 10) / 10 : null
+  return (
+    <div className="flex min-w-0 flex-col gap-0.5 rounded-[14px] bg-vv-lavender-50 p-3" title="Typed actions (calls + website clicks + directions) per 100 profile views">
+      <div className="text-[22px] font-bold">{a === null ? <Dash /> : a.value.toFixed(1)}</div>
+      <div className="text-[12px] text-vv-body">Actions per 100 views</div>
+      {a && a.missing.length > 0 && <span className="text-[11px] text-vv-muted">{a.missing.join(', ')} not tracked</span>}
+      {d !== null &&
+        (d === 0 ? (
+          <span className="text-[11px] text-vv-body">same as {prevLabel}</span>
+        ) : (
+          <span className={`text-[11px] font-semibold ${d > 0 ? 'text-vv-green-ink' : 'text-vv-red'}`}>{`${d > 0 ? '+' : '−'}${Math.abs(d).toFixed(1)} vs ${prevLabel}`}</span>
+        ))}
+    </div>
+  )
+}
+
+/** Grouped bars: calls / website clicks / directions per typed month (up to 6, oldest left). Grey stub = not typed. */
+function ActionsChart({ months }: { months: GbpSnapshot[] }) {
+  const [hover, setHover] = useState<string | null>(null)
+  const vals = months.flatMap((m) => ACTIONS.map((a) => m[a.key])).filter((v): v is number => v !== null)
+  if (vals.length === 0) return null
+  const max = Math.max(1, ...vals)
+  const now = months[months.length - 1]
+  const prev = months.length > 1 ? months[months.length - 2] : undefined
+  const prevLabel = prev ? periodLabel(prev.periodFrom, prev.periodTo) : ''
+  const hasGap = months.some((m) => ACTIONS.some((a) => m[a.key] === null))
+  return (
+    <div className="flex flex-col gap-2.5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="m-0 text-[12px] font-bold uppercase tracking-[0.05em] text-vv-body">Actions by month</h3>
+        <span className="text-[11px] text-vv-muted">{months.length === 1 ? 'one month so far' : `last ${months.length} months`}</span>
+      </div>
+      <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[12px]">
+        {ACTIONS.map((a) => (
+          <li key={a.key} className="flex items-center gap-1.5">
+            <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-sm ${a.bar}`} />
+            <span className="text-vv-body">{a.label}</span>
+            <strong>{now[a.key] ?? '—'}</strong>
+            {prev && <Change now={now[a.key]} prev={prev[a.key]} prevLabel={prevLabel} />}
+          </li>
+        ))}
+      </ul>
+      <div className="relative pl-7">
+        <span className="absolute left-0 top-0 w-6 text-right text-[10px] leading-none text-vv-muted">{max}</span>
+        <span className="absolute bottom-[18px] left-0 w-6 text-right text-[10px] leading-none text-vv-muted">0</span>
+        <span aria-hidden="true" className="absolute left-7 right-0 top-0 border-0 border-t border-dashed border-vv-line" />
+        <div className="flex h-[120px] items-end gap-2 border-0 border-b border-solid border-vv-line">
+          {months.map((m, i) => {
+            const label = periodLabel(m.periodFrom, m.periodTo)
+            const tipPos = i === 0 ? 'left-0' : i === months.length - 1 ? 'right-0' : 'left-1/2 -translate-x-1/2'
+            return (
+              <div
+                key={m.id}
+                tabIndex={0}
+                aria-label={`${label}: ${ACTIONS.map((a) => `${a.label} ${m[a.key] ?? 'not typed'}`).join(', ')}`}
+                onMouseEnter={() => setHover(m.id)}
+                onMouseLeave={() => setHover(null)}
+                onFocus={() => setHover(m.id)}
+                onBlur={() => setHover(null)}
+                className={`relative flex h-full min-w-0 flex-1 cursor-default items-end justify-center gap-[2px] rounded-t-md px-1 outline-none focus-visible:ring-2 focus-visible:ring-vv-purple ${hover === m.id ? 'bg-vv-lavender-50' : ''}`}
+              >
+                {ACTIONS.map((a) => {
+                  const v = m[a.key]
+                  return v === null ? (
+                    <span key={a.key} className="h-[3px] w-full max-w-[14px] rounded-full bg-vv-line" />
+                  ) : (
+                    <span key={a.key} className={`w-full max-w-[14px] rounded-t-[4px] ${a.bar}`} style={{ height: `${(v / max) * 100}%` }} />
+                  )
+                })}
+                {hover === m.id && (
+                  <span role="tooltip" className={`pointer-events-none absolute bottom-full z-20 mb-1.5 flex w-max flex-col gap-0.5 rounded-lg bg-vv-ink px-2.5 py-1.5 text-[12px] text-vv-surface shadow-lg ${tipPos}`}>
+                    <strong>{label}</strong>
+                    {ACTIONS.map((a) => (
+                      <span key={a.key} className="flex items-center gap-1.5">
+                        <span aria-hidden="true" className={`h-2 w-2 rounded-sm ${a.bar}`} />
+                        {a.label} <strong className="ml-auto pl-3">{m[a.key] ?? '—'}</strong>
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+        <div className="mt-1 flex gap-2">
+          {months.map((m) => (
+            <span key={m.id} className="min-w-0 flex-1 truncate text-center text-[11px] text-vv-body">
+              {tick(m)}
+            </span>
+          ))}
+        </div>
+      </div>
+      {hasGap && <span className="text-[11px] text-vv-muted">Grey stub = not typed for that month.</span>}
+    </div>
+  )
+}
+
+/** Day after an ISO date, to tell whether two typed periods follow each other. */
+const nextDay = (d: string) => {
+  const x = d12(d)
+  x.setDate(x.getDate() + 1)
+  return iso(x)
+}
+
+function Reviews({ now, prev, prevLabel }: { now: GbpSnapshot; prev: GbpSnapshot | undefined; prevLabel: string }) {
+  if (now.rating === null && now.reviews === null && !now.newestReviewOn) return <p className="m-0 text-[13px] text-vv-body">No review numbers typed for this month.</p>
+  const added = now.reviews !== null && prev && prev.reviews !== null ? now.reviews - prev.reviews : null
+  const when = prev && nextDay(prev.periodTo) === now.periodFrom ? 'this month' : `since ${prevLabel}`
+  return (
+    <div className="flex items-center gap-3 rounded-[14px] bg-vv-orange-100 p-3">
+      {now.rating !== null ? (
+        <span role="img" aria-label={`Rating ${now.rating.toFixed(1)} of 5`}>
+          <Ring
+            value={now.rating}
+            max={5}
+            color="text-vv-orange-ink"
+            center={
+              <span className="flex items-center gap-0.5">
+                <Icon name="star" className="h-3 w-3 text-vv-orange-ink" fill />
+                {now.rating.toFixed(1)}
+              </span>
+            }
+          />
+        </span>
+      ) : (
+        <span className="flex h-[68px] w-[68px] flex-none items-center justify-center rounded-full border-[7px] border-solid border-vv-line text-[12px] text-vv-muted">—</span>
+      )}
+      <div className="flex min-w-0 flex-col gap-0.5 text-[13px]">
+        <strong>{now.reviews !== null ? `${now.reviews.toLocaleString('en-US')} reviews` : 'Reviews not typed'}</strong>
+        {added !== null && (
+          <span className={added > 0 ? 'font-semibold text-vv-green-ink' : 'text-vv-body'}>{added > 0 ? `+${added} ${when}` : added === 0 ? `No new reviews ${when}` : `${added} ${when}`}</span>
+        )}
+        {now.newestReviewOn && <span className="text-vv-body">Newest review {short(now.newestReviewOn)}</span>}
+      </div>
+    </div>
+  )
+}
 
 // ---- Profile views: Search vs Maps donut (device split on hover / focus) ----------------------------------------
 

@@ -8,6 +8,7 @@ import { google, GoogleApiError, GoogleConfigError } from '../clients/google.js'
 import { db, must, pagedRows } from '../clients/supabase.js'
 import { clientRow } from './clientService.js'
 import { GoogleInputError } from './googleService.js'
+import { agencyDay } from '../../src/lib/agencyTime.js'
 
 const DAY = 86_400_000
 const FIRST_PULL_DAYS = 480
@@ -40,7 +41,7 @@ async function baselineDay(clientId: string): Promise<string | null> {
   const b = must(await db().from('seo_baselines').select('id, saved_at').eq('client_id', clientId).eq('is_current', true).maybeSingle(), 'Loading the baseline') as { id: string; saved_at: string } | null
   if (!b) return null
   const v = must(await db().from('seo_baseline_values').select('date_to').eq('baseline_id', b.id).eq('source', 'gsc').not('date_to', 'is', null).order('date_to', { ascending: false }).limit(1), 'Loading the baseline') as { date_to: string }[]
-  return v[0]?.date_to ?? b.saved_at.slice(0, 10)
+  return v[0]?.date_to ?? agencyDay(b.saved_at)
 }
 
 /** The first day pulled (the start of the history SEO Hub has). */
@@ -212,6 +213,38 @@ function ga4Totals(byDay: Map<string, Record<string, number>>, from: string, to:
 }
 
 const monthStart = (d: string) => `${d.slice(0, 7)}-01`
+
+type Window<T> = { from: string; to: string; totals: T } | null
+
+/**
+ * The last `n` days each Google source has (ending on its own last pulled day), with the same totals the Overview
+ * shows. Used by Baseline (the frozen copy) and "Baseline vs now". null = not linked or nothing pulled yet.
+ */
+export async function googleWindow(clientId: string, n = 28, within?: { from: string; to: string }): Promise<{ gsc: Window<GscTotals>; ga4: Window<Ga4Totals> }> {
+  const link = must(await db().from('seo_google_links').select('gsc_property, ga4_property').eq('client_id', clientId).maybeSingle(), 'Loading the Google link') as { gsc_property: string | null; ga4_property: string | null } | null
+  const one = async <T>(source: 'gsc' | 'ga4', linked: boolean, totals: (m: Map<string, Record<string, number>>, from: string, to: string) => T): Promise<Window<T>> => {
+    if (!linked) return null
+    // `within` (a month): the window ends on the month's last pulled day = the month's end, or the source's last pulled
+    // day if that comes first. Google leaves out days with nothing in them, so "last row in the month" isn't it.
+    const pulledTo = await lastDay(clientId, source)
+    if (!pulledTo) return null
+    const to = within ? (pulledTo < within.to ? pulledTo : within.to) : pulledTo
+    if (within && to < within.from) return null
+    const from = addDays(to, -(n - 1))
+    const byDay = new Map<string, Record<string, number>>()
+    for await (const r of pagedRows<{ metric: string; day: string; value: string | number }>(
+      (a, b) => db().from('seo_metric_daily').select('metric, day, value').eq('client_id', clientId).eq('source', source).gte('day', from).lte('day', to).order('metric').order('day').range(a, b),
+      'Loading the numbers',
+    )) {
+      const d = byDay.get(r.day) ?? {}
+      d[r.metric] = Number(r.value)
+      byDay.set(r.day, d)
+    }
+    return { from, to, totals: totals(byDay, from, to) }
+  }
+  const [gsc, ga4] = await Promise.all([one('gsc', !!link?.gsc_property, gscTotals), one('ga4', !!link?.ga4_property, ga4Totals)])
+  return { gsc, ga4 }
+}
 
 export async function metricsOverview(siteId: string, range: MetricRange): Promise<MetricsOverview> {
   const { clientId, link } = await linkFor(siteId)

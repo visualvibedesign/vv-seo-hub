@@ -6,7 +6,7 @@ import { strategyPath } from '../../lib/clientSetup'
 import { PILL } from '../../lib/ui'
 import type { ClientDetail, RankingsOverview, RankRow } from '../../types/seo'
 import { Bone } from '../ui/Loading'
-import { Panel } from './OverviewParts'
+import { Panel, Ring } from './OverviewParts'
 import Icon, { type IconName } from '../ui/Icon'
 import RankImport from './RankImport'
 
@@ -260,22 +260,6 @@ function Row({ x, hasPrev, cols, trend }: { x: RankRow; hasPrev: boolean; cols: 
         </span>
       </td>
     </tr>
-  )
-}
-
-/** A progress ring: part of a whole, label in the middle. */
-function Ring({ value, max, color, center }: { value: number; max: number; color: string; center: ReactNode }) {
-  const r = 26
-  const c = 2 * Math.PI * r
-  const f = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0
-  return (
-    <span className="relative flex h-[68px] w-[68px] flex-none items-center justify-center">
-      <svg viewBox="0 0 64 64" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
-        <circle cx="32" cy="32" r={r} fill="none" strokeWidth="7" className="stroke-vv-line" />
-        {f > 0 && <circle cx="32" cy="32" r={r} fill="none" strokeWidth="7" strokeLinecap="round" stroke="currentColor" className={color} strokeDasharray={`${f * c} ${c}`} />}
-      </svg>
-      <span className="relative text-center text-[13px] font-bold leading-tight">{center}</span>
-    </span>
   )
 }
 

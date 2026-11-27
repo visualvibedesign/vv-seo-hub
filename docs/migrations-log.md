@@ -28,7 +28,9 @@ file was run wasn't recorded before this log existed.
 | 0014 | `0014_seo_notes_links.sql` | Notes & links: `seo_notes` (Rule / Decision / Note, author name, guide day; no client = agency rule) and `seo_client_links` (links that aren't accounts; https only) | Nov 25 | Yes (checked) |
 | 0015 | `0015_seo_client_sheet.sql` | Whole client Sheet (.xlsx): `seo_imports.report` + `client_sheet` (the .xlsx upload) and `competitors` (Competitors tab, names only); `seo_imports.parent_import_id` (each tab import → its .xlsx) | Nov 25 | Yes (checked) |
 | 0016 | `0016_seo_phase2.sql` | Phase 2: Google links + daily numbers + top queries/pages, Semrush rank snapshots, map grids (+ points), GBP snapshots, baselines (+ values), monthly reports (+ actions); imports `position_tracking` / `whitespark_grid` / source `whitespark` | Nov 26 | Yes (checked) |
-| 0017 | `0017_seo_gbp_views_breakdown.sql` | `seo_gbp_snapshots`: 4 optional columns for the Profile views breakdown (Google Search desktop / mobile, Google Maps desktop / mobile). Nullable, no data change | Nov 26 | No |
+| 0017 | `0017_seo_gbp_views_breakdown.sql` | `seo_gbp_snapshots`: 4 optional columns for the Profile views breakdown (Google Search desktop / mobile, Google Maps desktop / mobile). Nullable, no data change | Nov 26 | Yes, Nov 27 (checked: 4 columns present) |
+| 0018 | `0018_seo_baseline_save.sql` | Phase 2e: `seo_save_baseline()` (one transaction: new baseline / fill missing sources; server-only execute) + index `seo_baselines (client_id, saved_at desc)`. No table or row changes | Nov 27 | Yes, Nov 28 (checked: function present, execute = service_role only, index present) |
+| 0019 | `0019_seo_reports_review.sql` | Phase 2f: `seo_reports` + `baseline_id`, `notes_draft_at`, `notes_draft_log_id`, `notes_approved_at`; check "sent needs sent_on"; `seo_report_actions.sort` 0–2; 2 FK indexes. Tables empty, no rows change | Nov 28 | Yes, Nov 28 (checked: 4 columns, 2 checks, 2 indexes present) |
 
 ## One-time data fixes (not migrations)
 

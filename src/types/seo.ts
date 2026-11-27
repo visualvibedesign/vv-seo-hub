@@ -900,3 +900,120 @@ export interface LocalState {
   /** Newest scan first */
   grids: MapGrid[]
 }
+
+// ---- Phase 2e · Baseline (seo_baselines + seo_baseline_values, saved through seo_save_baseline(), migration 0018) ----
+
+/** Site check comes later; it is never saved until it exists. */
+export type BaselineSource = 'gsc' | 'ga4' | 'semrush' | 'gbp' | 'whitespark'
+
+/**
+ * One source's numbers with their own dates. Metric keys per source:
+ * gsc: impressions, clicks, ctr, position · ga4: sessions, users, key_events, avg_engagement_sec ·
+ * semrush: avg_position, top3, top10, top100, tracked · gbp: views, calls, directions, website_clicks, reviews, rating ·
+ * whitespark: avg_rank, top3, found, points (+ texts: keyword, grid, spacing).
+ * A value of null = missing (never 0).
+ */
+export interface BaselineSnapshot {
+  source: BaselineSource
+  from: string | null
+  to: string | null
+  values: Record<string, number | null>
+  texts: Record<string, string>
+}
+
+export interface BaselineSummary {
+  id: string
+  label: string | null
+  note: string | null
+  savedAt: string
+  /** Sources saved in it */
+  sources: BaselineSource[]
+}
+
+export interface BaselineState {
+  /** Sources that must be saved: GSC, GA4, Semrush, GBP always; Whitespark only once the client has a map grid scan */
+  required: BaselineSource[]
+  /** The current baseline, or null before the first save */
+  current: (BaselineSummary & { snapshots: BaselineSnapshot[] }) | null
+  /** Required sources saved in the current baseline */
+  savedRequired: number
+  /** The numbers a save would freeze right now (also "now" for Baseline vs now). A source with no data is left out. */
+  live: BaselineSnapshot[]
+  /** Every baseline for the client, newest first (the current one included) */
+  history: BaselineSummary[]
+}
+
+// ---- Phase 2f · Monthly reports (seo_reports + seo_report_actions, migrations 0016 + 0019) ----------------------
+
+/**
+ * Frozen when the report is made (and on "Refresh numbers" while it's a draft). Month values per source:
+ * Search Console + GA4 = the 28 days ending on the month's last pulled day (same length as the baseline);
+ * Semrush = the latest CSV dated inside the month; GBP = the period typed for the month; map grid = the latest scan
+ * inside the month. A source with nothing for the month is in `missing` with the reason, never 0 or an older number.
+ */
+export interface ReportNumbers {
+  month: string
+  baseline: { id: string; label: string | null; savedAt: string; snapshots: BaselineSnapshot[] }
+  snapshots: BaselineSnapshot[]
+  missing: { source: BaselineSource; reason: string }[]
+  /** Sources the client uses (the map grid only once it has a scan) */
+  sources: BaselineSource[]
+  frozenAt: string
+}
+
+export type ReportActionKind = 'page' | 'gbp' | 'links' | 'tracking' | 'other'
+
+export interface ReportAction {
+  id: string
+  kind: ReportActionKind
+  body: string
+  owner: string | null
+  due: string | null
+  done: boolean
+}
+
+export interface ReportSummary {
+  id: string
+  /** First day of the month, YYYY-MM-01 */
+  month: string
+  /** "November 2026 report" */
+  title: string
+  status: 'draft' | 'sent'
+  sentOn: string | null
+  /** The Search Console window under the title, e.g. "Nov 1 – Nov 28, 2026 · 28 days" (null = no Search Console) */
+  dates: string | null
+  hasNotes: boolean
+  hasDraft: boolean
+  updatedAt: string
+}
+
+export interface Report extends ReportSummary {
+  baselineId: string | null
+  numbers: ReportNumbers
+  /** Approved text only */
+  notes: string | null
+  /** Claude's draft, waiting for review */
+  notesDraft: string | null
+  notesDraftAt: string | null
+  notesApprovedAt: string | null
+  actions: ReportAction[]
+}
+
+export interface ReportsState {
+  reports: ReportSummary[]
+  /** The last 6 months (newest first) and whether each has a report: what "Create report" can offer */
+  months: { month: string; title: string; exists: boolean; current: boolean; beforeBaseline: boolean }[]
+  /** Reports start from the month the current baseline ends in (decided Nov 28); null = no baseline */
+  firstMonth: string | null
+  /** Search Console clicks per calendar month, last 6 (oldest first); partial = the month isn't fully pulled */
+  clicksByMonth: { month: string; clicks: number | null; partial: boolean }[]
+  hasBaseline: boolean
+}
+
+/** Before "Draft with Claude": what the call will likely cost (count_tokens for the input, a generous output guess). */
+export interface ReportNotesEstimate {
+  model: string
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
+}

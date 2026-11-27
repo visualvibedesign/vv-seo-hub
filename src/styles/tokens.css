@@ -89,6 +89,10 @@
   --vv-seg-21: #a9a3bd;
   --vv-seg-51: #cdc8db;
   --vv-seg-out: #ebe8f3;
+  /* GBP actions bars (calls / website clicks / directions): colour-blind-checked set, own steps per mode */
+  --vv-gbp-calls: #5b3fd0;
+  --vv-gbp-web: #1f9e8a;
+  --vv-gbp-dir: #d9822b;
 
   /* Weekly queue board columns (design-ref Queue) + the tidy-up note */
   --vv-col-ready: #e9f7f5;
@@ -177,6 +181,9 @@
   --vv-seg-21: #77718c;
   --vv-seg-51: #555068;
   --vv-seg-out: #36333f;
+  --vv-gbp-calls: #957bfa;
+  --vv-gbp-web: #12a684;
+  --vv-gbp-dir: #cc7a1c;
   --vv-avatar-pink: #e99bc0; /* Mica's avatar (unchanged) */
 
   /* Labels: solid pastel, black text */

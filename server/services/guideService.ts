@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { GUIDE, GUIDE_STEPS } from '../../src/lib/guide.js'
 import type { ClientDetail, GuideState, GuideStatus, GuideStepState } from '../../src/types/seo.js'
 import { db, must } from '../clients/supabase.js'
+import { baselineComplete } from './baselineService.js'
 import { clientDetail, clientRow, guideSummaryOf } from './clientService.js'
 
 /** A problem the person can fix (400). */
@@ -27,7 +28,7 @@ async function clientId(siteId: string): Promise<string> {
 }
 
 /** Which auto tasks the data says are done, per step. */
-function autoDone(c: ClientDetail, reports: { source: string; report: string }[]): Map<number, string[]> {
+function autoDone(c: ClientDetail, reports: { source: string; report: string }[], baselineDone: boolean): Map<number, string[]> {
   const cat = (code: string) => c.categories.find((k) => k.code === code)
   const named = (code: string) => !!cat(code)?.name.trim()
   const a1 = c.areas.find((a) => a.code === 'A1')
@@ -40,6 +41,7 @@ function autoDone(c: ClientDetail, reports: { source: string; report: string }[]
     '1.import': c.counts.keywords > 0,
     '1.roles': c.counts.keywords > 0 && c.counts.needsRole === 0,
     '2.tracking': c.counts.tracked > 0,
+    '2.numbers': baselineDone,
   }
   const out = new Map<number, string[]>()
   for (const s of GUIDE) out.set(s.n, s.tasks.filter((t) => t.auto && facts[`${s.n}.${t.key}`]).map((t) => t.key))
@@ -50,13 +52,14 @@ function autoDone(c: ClientDetail, reports: { source: string; report: string }[]
 export async function getGuide(siteId: string): Promise<GuideState> {
   const row = await clientRow(siteId)
   if (!row) throw new GuideInputError('That client doesn’t exist.')
-  const [c, rows, imports] = await Promise.all([
+  const [c, rows, imports, baselineDone] = await Promise.all([
     clientDetail(row),
     db().from('seo_guide_progress').select('client_id, step, status, tasks_done, started_at, done_at').eq('client_id', row.id),
     db().from('seo_imports').select('source, report').eq('client_id', row.id),
+    baselineComplete(row.id),
   ])
   const progress = must(rows, 'Loading guide progress') as ProgressRow[]
-  const auto = autoDone(c, must(imports, 'Loading imports') as { source: string; report: string }[])
+  const auto = autoDone(c, must(imports, 'Loading imports') as { source: string; report: string }[], baselineDone)
   const steps: GuideStepState[] = GUIDE.map((s) => {
     const r = progress.find((p) => p.step === s.n)
     const handKeys = new Set(s.tasks.filter((t) => !t.auto).map((t) => t.key))

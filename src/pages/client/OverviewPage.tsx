@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { useClientContext } from '../../components/layout/ClientLayout'
 import { Spinner } from '../../components/ui/Loading'
-import { Dash, LilacTable, PageHead, Panel, Soon } from '../../components/overview/OverviewParts'
+import { PageHead, Panel } from '../../components/overview/OverviewParts'
+import BaselineCompare from '../../components/overview/BaselineCompare'
 import { useSaveAccount } from '../../hooks/useClients'
 import { useNotes } from '../../hooks/useNotes'
 import { useGoogleSetup } from '../../hooks/useGoogle'
@@ -22,17 +23,6 @@ import type { AccountStatus, ClientAccount, ClientDetail, NoteKind } from '../..
 // Client Overview (/clients/{site id}): the default page when you open a client: results + quick access. Design:
 // docs/design/overview/Main.dc.html. Real data now: the client, tracked keywords, accounts, notes. Search Console,
 // GA4, Semrush positions, GBP and the map grid come in phase 2: honest empty states, never sample numbers.
-
-/** Every source's metrics we'll compare (Baseline vs now). Values come in phase 2. */
-const COMPARE: { metric: string; source: string }[] = [
-  { metric: 'Search impressions', source: 'Search Console' },
-  { metric: 'Search clicks', source: 'Search Console' },
-  { metric: 'Organic sessions', source: 'GA4' },
-  { metric: 'Keywords in top 10', source: 'Semrush CSV' },
-  { metric: 'Map grid avg rank', source: 'Whitespark' },
-  { metric: 'GBP calls', source: 'GBP (typed in)' },
-  { metric: 'Reviews', source: 'GBP (typed in)' },
-]
 
 export default function OverviewPage() {
   const c = useClientContext()
@@ -81,27 +71,7 @@ export default function OverviewPage() {
         <GbpCard siteId={c.siteId} />
       </div>
 
-      <Panel
-        flush
-        title="Baseline vs now"
-        sub="Day 3 baseline compared with the latest numbers"
-        right={
-          <span className="flex gap-4 text-[13px] font-semibold">
-            <Link to={clientPath(c.siteId, 'baseline')} className="text-vv-purple-deep">
-              Baseline ›
-            </Link>
-            <Link to={clientPath(c.siteId, 'results')} className="text-vv-purple-deep">
-              Results ›
-            </Link>
-          </span>
-        }
-      >
-        <LilacTable
-          head={['Metric', 'Source', 'Baseline', 'Now', 'Change']}
-          right={[2, 3, 4]}
-          rows={COMPARE.map((r) => [<strong key="m">{r.metric}</strong>, <span key="s" className="text-vv-body">{r.source}</span>, <Dash key="b" />, <Dash key="n" />, <Soon key="c">Not saved yet</Soon>])}
-        />
-      </Panel>
+      <BaselineCompare siteId={c.siteId} />
 
       <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start gap-4 [@media(max-width:1000px)]:grid-cols-1">
         <Accounts client={c} />
