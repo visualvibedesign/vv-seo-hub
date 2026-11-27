@@ -104,7 +104,7 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
 | 2b | Daily pull (cron + Update numbers), Overview KPI tiles, Search performance, Website traffic, Top searches / pages, range switch | 2a |
 | 2c | Semrush Position Tracking import (Uploads Day 3) → Keyword rankings, biggest moves, swapped-page flags | — |
 | 2d | GBP typed form + Whitespark (typed now, CSV when the sample is in) → Overview cards | Decision 2, 3 |
-| 2e | Baseline: save / start new, six cards with dates, Baseline vs now on Overview | 2b–2d |
+| 2e | Baseline: save / start new, six cards with dates, Baseline vs now on Overview (**built Nov 28**: Visual Vibe "Day 3" saved; map grid optional until a scan) | 2b–2d |
 | 2f | Results: monthly reports, every number vs baseline, wins, Claude report notes (reviewed), next actions | 2e |
 | 2g (later) | GBP / map grid from a screenshot (Claude), report PDF | — |
 

@@ -84,3 +84,56 @@ export function snapshotExtra(s: BaselineSnapshot): string | null {
   if (s.source === 'semrush' && s.values.tracked !== null && s.values.tracked !== undefined) return `${fmtMetric('count', s.values.tracked)} keywords tracked`
   return null
 }
+
+/** Compact dates for table cells: "Oct 29 – Nov 25", "Oct 2026", "Nov 25". */
+export function shortDates(s: Pick<BaselineSnapshot, 'from' | 'to'>): string {
+  if (!s.from || !s.to) return ''
+  if (s.from === s.to) return md(s.to)
+  const full = snapshotDates({ ...s, source: 'gbp' })
+  return full.includes('·') ? `${md(s.from)} – ${md(s.to)}` : full
+}
+
+// ---- Baseline vs now (Overview; Results later) -------------------------------------------------------------------
+
+export type CompareRow = { source: BaselineSource; metric: string; label: string; kind: MetricDef['kind']; lowerIsBetter?: boolean }
+
+/** The rows of "Baseline vs now". GSC + GA4 "now" = the last 28 days, the same length as the baseline's. */
+export const COMPARE_ROWS: CompareRow[] = [
+  { source: 'gsc', metric: 'impressions', label: 'Search impressions', kind: 'count' },
+  { source: 'gsc', metric: 'clicks', label: 'Search clicks', kind: 'count' },
+  { source: 'gsc', metric: 'position', label: 'Search avg position', kind: 'pos', lowerIsBetter: true },
+  { source: 'ga4', metric: 'sessions', label: 'Organic sessions', kind: 'count' },
+  { source: 'semrush', metric: 'top10', label: 'Keywords in top 10', kind: 'count' },
+  { source: 'whitespark', metric: 'avg_rank', label: 'Map grid avg rank', kind: 'pos', lowerIsBetter: true },
+  { source: 'gbp', metric: 'calls', label: 'GBP calls', kind: 'count' },
+  { source: 'gbp', metric: 'reviews', label: 'Reviews', kind: 'count' },
+]
+
+export type Change = { text: string; tone: 'better' | 'worse' | 'same' | 'none' }
+
+/** now vs baseline: signed difference (+ % for counts), green when better. Lower is better for positions / ranks. */
+export function changeOf(row: Pick<CompareRow, 'kind' | 'lowerIsBetter'>, base: number | null | undefined, now: number | null | undefined): Change {
+  if (base === null || base === undefined || now === null || now === undefined || !Number.isFinite(base) || !Number.isFinite(now)) return { text: '—', tone: 'none' }
+  const d = now - base
+  const sign = (x: number) => (x > 0 ? '+' : '−')
+  let text: string
+  let same: boolean
+  if (row.kind === 'pct') {
+    const pts = d * 100
+    same = Math.abs(pts) < 0.005
+    text = `${sign(pts)}${Math.abs(pts).toFixed(2)} pts`
+  } else if (row.kind === 'pos' || row.kind === 'rating') {
+    same = Math.abs(d) < 0.05
+    text = `${sign(d)}${Math.abs(d).toFixed(1)}`
+  } else if (row.kind === 'secs') {
+    same = Math.abs(d) < 1
+    text = `${sign(d)}${fmtMetric('secs', Math.abs(d))}`
+  } else {
+    same = Math.round(d) === 0
+    const pct = base > 0 ? ` · ${sign(d)}${Math.abs(Math.round((d / base) * 100))}%` : ''
+    text = `${sign(d)}${Math.abs(Math.round(d)).toLocaleString('en-US')}${pct}`
+  }
+  if (same) return { text: 'Same', tone: 'same' }
+  const better = row.lowerIsBetter ? d < 0 : d > 0
+  return { text, tone: better ? 'better' : 'worse' }
+}
