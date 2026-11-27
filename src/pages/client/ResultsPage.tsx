@@ -85,6 +85,8 @@ export default function ResultsPage() {
       </div>
 
       <div className="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start gap-4 [@media(max-width:1000px)]:grid-cols-1">
+        {/* The open report shows its own notes: the card only shows when the latest report isn't the one open. */}
+        {!(latest && openId === latest.id) && (
         <Panel title="Notes for the report" sub={latest ? latest.title : undefined}>
           {latest?.notes ? (
             <p className="m-0 whitespace-pre-wrap text-[14px] leading-relaxed">{latest.notes}</p>
@@ -103,6 +105,7 @@ export default function ResultsPage() {
             </p>
           )}
         </Panel>
+        )}
         <ReportsList s={s} pending={q.isPending} openId={openId} onOpen={open} />
       </div>
 

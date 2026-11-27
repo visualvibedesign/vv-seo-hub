@@ -10,12 +10,25 @@ import { db } from '../clients/supabase.js'
 
 export class AiCallError extends Error {}
 
+export type AiImage = { mediaType: 'image/jpeg' | 'image/png' | 'image/webp'; data: string }
+
+/** The user message: the image first (if any), then the text. */
+function userContent(user: string, image?: AiImage): Anthropic.MessageParam['content'] {
+  if (!image) return user
+  return [
+    { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } },
+    { type: 'text', text: user },
+  ]
+}
+
 type CallArgs<T extends z.ZodType> = {
   task: string
   clientId: string
   model: AiModelKey
   system: string
   user: string
+  /** Optional image (base64), sent before the text. Used once for the call: never logged or stored. */
+  image?: AiImage
   schema: T
   maxTokens: number
   effort?: 'low' | 'medium' | 'high'
@@ -53,8 +66,8 @@ async function log(row: {
 }
 
 /** Input tokens for a prompt (free count_tokens call), for the estimate shown before a run. */
-export async function countInputTokens(model: AiModelKey, system: string, user: string): Promise<number> {
-  const r = await anthropic().messages.countTokens({ model: AI_MODELS[model].id, system, messages: [{ role: 'user', content: user }] })
+export async function countInputTokens(model: AiModelKey, system: string, user: string, image?: AiImage): Promise<number> {
+  const r = await anthropic().messages.countTokens({ model: AI_MODELS[model].id, system, messages: [{ role: 'user', content: userContent(user, image) }] })
   return r.input_tokens
 }
 
@@ -72,7 +85,7 @@ export async function callStructured<T extends z.ZodType>(a: CallArgs<T>): Promi
         model,
         max_tokens: a.maxTokens,
         system: a.system,
-        messages: [{ role: 'user', content: a.user }],
+        messages: [{ role: 'user', content: userContent(a.user, a.image) }],
         output_config: { effort: a.effort ?? 'low', format: zodOutputFormat(a.schema) },
       })
       .finalMessage()

@@ -899,6 +899,41 @@ export interface LocalState {
   gbp: GbpSnapshot[]
   /** Newest scan first */
   grids: MapGrid[]
+  /** 2g · the open ("Ready to review") GBP screenshot read, or null. Counts nowhere until approved. */
+  gbpRead: GbpScreenshotRead | null
+}
+
+/** 2g · numbers Claude read from a GBP Performance screenshot. null = not readable (never 0, never a guess). */
+export interface GbpScreenshotRead {
+  id: string
+  createdAt: string
+  summary: string
+  /** The period text exactly as shown on the screenshot (never used as a date by itself) */
+  periodShown: string | null
+  /** Fields Claude couldn't read clearly (keys) and their labels */
+  unread: string[]
+  unreadLabels: string[]
+  values: {
+    /** Both null unless the whole period (with its year) was clearly shown: Angel picks it in the form */
+    periodFrom: string | null
+    periodTo: string | null
+    views: number | null
+    viewsSearchDesktop: number | null
+    viewsSearchMobile: number | null
+    viewsMapsDesktop: number | null
+    viewsMapsMobile: number | null
+    calls: number | null
+    websiteClicks: number | null
+    directions: number | null
+  }
+}
+
+/** Before reading a screenshot with Claude: likely cost (count_tokens with the image + an output guess). */
+export interface ScreenshotEstimate {
+  model: string
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
 }
 
 // ---- Phase 2e · Baseline (seo_baselines + seo_baseline_values, saved through seo_save_baseline(), migration 0018) ----

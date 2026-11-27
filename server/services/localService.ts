@@ -71,6 +71,7 @@ export async function localState(siteId: string): Promise<LocalState> {
   const points = grids.length ? (must(await db().from('seo_map_grid_points').select('grid_id, row_no, col_no, rank').in('grid_id', grids.map((g) => g.id)), 'Loading map grid points') as { grid_id: string; row_no: number; col_no: number; rank: number | null }[]) : []
   return {
     gbp: gbp.map(gbpOut),
+    gbpRead: null, // filled in by the API (screenshotService.gbpReadFor): kept here to avoid a circular import
     grids: grids.map((g) => {
       const ranks: (number | null)[][] = Array.from({ length: g.grid_size }, () => Array<number | null>(g.grid_size).fill(null))
       for (const p of points) if (p.grid_id === g.id && p.row_no < g.grid_size && p.col_no < g.grid_size) ranks[p.row_no][p.col_no] = p.rank

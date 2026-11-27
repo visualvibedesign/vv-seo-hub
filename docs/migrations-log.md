@@ -31,6 +31,7 @@ file was run wasn't recorded before this log existed.
 | 0017 | `0017_seo_gbp_views_breakdown.sql` | `seo_gbp_snapshots`: 4 optional columns for the Profile views breakdown (Google Search desktop / mobile, Google Maps desktop / mobile). Nullable, no data change | Nov 26 | Yes, Nov 27 (checked: 4 columns present) |
 | 0018 | `0018_seo_baseline_save.sql` | Phase 2e: `seo_save_baseline()` (one transaction: new baseline / fill missing sources; server-only execute) + index `seo_baselines (client_id, saved_at desc)`. No table or row changes | Nov 27 | Yes, Nov 28 (checked: function present, execute = service_role only, index present) |
 | 0019 | `0019_seo_reports_review.sql` | Phase 2f: `seo_reports` + `baseline_id`, `notes_draft_at`, `notes_draft_log_id`, `notes_approved_at`; check "sent needs sent_on"; `seo_report_actions.sort` 0–2; 2 FK indexes. Tables empty, no rows change | Nov 28 | Yes, Nov 28 (checked: 4 columns, 2 checks, 2 indexes present) |
+| 0020 | `0020_seo_autofill_screenshot_kinds.sql` | Phase 2g: `seo_autofill` kind list + `gbp_screenshot`, `map_screenshot` (screenshot reads saved as "Ready to review"; no image stored). Only widens the check; 15 existing rows all pass; no rows change | Nov 28 | Yes, Nov 28 (checked: both kinds in the check) |
 
 ## One-time data fixes (not migrations)
 

@@ -19,6 +19,7 @@ import { rankingsOverview, RankInputError } from '../../server/services/rankServ
 import { deleteGbp, deleteMapGrid, localState, LocalInputError, saveGbp, saveMapGrid } from '../../server/services/localService.js'
 import { baselineById, BaselineInputError, baselineState, saveBaseline } from '../../server/services/baselineService.js'
 import { approveReportNotes, createReport, discardReportNotes, draftReportNotes, estimateReportNotes, previewReport, refreshReport, reportById, ReportInputError, reportsState, saveReportActions, setReportStatus } from '../../server/services/reportService.js'
+import { approveGbpShot, discardGbpShot, estimateGbpShot, gbpReadFor, readGbpShot, ScreenshotInputError } from '../../server/services/screenshotService.js'
 import { requireSession } from '../../server/utils/auth.js'
 import { timingSafeEqual } from 'node:crypto'
 import type { MetricRange } from '../../src/types/seo.js'
@@ -61,7 +62,21 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       return Response.json(await metricsOverview(params.get('site') ?? '', range))
     }
     if (method === 'GET' && action === 'rankings') return Response.json(await rankingsOverview(params.get('site') ?? ''))
-    if (method === 'GET' && action === 'local') return Response.json(await localState(params.get('site') ?? ''))
+    if (method === 'GET' && action === 'local') {
+      const site = params.get('site') ?? ''
+      const [local, gbpRead] = await Promise.all([localState(site), gbpReadFor(site)])
+      return Response.json({ ...local, gbpRead })
+    }
+    // 2g · GBP screenshot: estimate (count only), read (Claude → "Ready to review"), approve (normal GBP save), discard.
+    // The image is in the request body only: never stored or logged.
+    if (method === 'POST' && ['shot-estimate', 'shot-read', 'shot-approve', 'shot-discard'].includes(action)) {
+      const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
+      const site = String(body.siteId ?? '')
+      if (action === 'shot-estimate') return Response.json(await estimateGbpShot(site, body))
+      if (action === 'shot-read') return Response.json({ read: await readGbpShot(site, body) })
+      if (action === 'shot-approve') return Response.json({ snapshot: await approveGbpShot(site, body) })
+      return Response.json(await discardGbpShot(site, body))
+    }
     if (method === 'POST' && ['gbp-save', 'gbp-delete', 'map-save', 'map-delete'].includes(action)) {
       const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown; id?: unknown }
       const site = String(body.siteId ?? '')
@@ -109,7 +124,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
-    if (err instanceof GoogleInputError || err instanceof GoogleConfigError || err instanceof RankInputError || err instanceof LocalInputError || err instanceof BaselineInputError || err instanceof ReportInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
+    if (err instanceof GoogleInputError || err instanceof GoogleConfigError || err instanceof RankInputError || err instanceof LocalInputError || err instanceof BaselineInputError || err instanceof ReportInputError || err instanceof ScreenshotInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof DatabaseError) return Response.json({ error: 'database', detail: err.message }, { status: 500 })
     throw err
   }

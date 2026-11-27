@@ -91,6 +91,9 @@ function Loaded({ siteId, r, onClose }: { siteId: string; r: Report; onClose: ()
               Mark as sent
             </button>
           )}
+          <a href={`/clients/${encodeURIComponent(siteId)}/results/${encodeURIComponent(r.id)}/print?print=1`} target="_blank" rel="noopener" className={`${BTN_GHOST} min-h-10 px-4 text-[13px] no-underline`}>
+            Download PDF
+          </a>
           <button type="button" className={`${BTN_LINK} px-2`} onClick={onClose}>
             Close
           </button>
@@ -138,7 +141,7 @@ function Loaded({ siteId, r, onClose }: { siteId: string; r: Report; onClose: ()
         </ul>
       )}
 
-      <Actions siteId={siteId} r={r} />
+      {sent ? <ActionsReadOnly r={r} /> : <Actions siteId={siteId} r={r} />}
 
       <ReportNotes siteId={siteId} r={r} />
 
@@ -150,7 +153,7 @@ function Loaded({ siteId, r, onClose }: { siteId: string; r: Report; onClose: ()
         title="Reopen as draft?"
         body={
           <>
-            The sent date is cleared and you can refresh the numbers again. Mark it as sent when you send the update.
+            The sent date is cleared and you can change the numbers, next actions and notes again. Mark it as sent when you send the update.
             {status.error && <span className="mt-2 block font-semibold text-vv-red">{errText(status.error, 'Couldn’t reopen it.')}</span>}
           </>
         }
@@ -173,7 +176,7 @@ function SendForm({ r, busy, error, onCancel, onSend }: { r: Report; busy: boole
         onSend(d)
       }}
     >
-      <p className="m-0 text-[13px] text-vv-body">A sent report is locked: its numbers stay as they are. You can still tick next actions done.</p>
+      <p className="m-0 text-[13px] text-vv-body">A sent report is read-only: its numbers, next actions and notes stay as they are until you reopen it as a draft.</p>
       <label className="flex flex-col gap-1.5 text-[13px] font-semibold text-vv-body">
         Sent on
         <input className={FIELD} type="date" value={d} min={r.month} max={todayIso()} onChange={(e) => setD(e.target.value)} required />
@@ -198,6 +201,31 @@ function SendForm({ r, busy, error, onCancel, onSend }: { r: Report; busy: boole
 
 type Draft = Omit<ReportAction, 'id'>
 const blank = (): Draft => ({ kind: 'page', body: '', owner: null, due: null, done: false })
+
+const KIND_TONE = 'bg-vv-lavender-100 text-vv-purple-ink'
+
+/** A sent report's next actions: read-only until the report is reopened as a draft. */
+function ActionsReadOnly({ r }: { r: Report }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="m-0 text-[12px] font-bold uppercase tracking-[0.05em] text-vv-body">Next actions</h3>
+      {r.actions.length === 0 ? (
+        <p className="m-0 text-[13px] text-vv-body">No next actions were set for this report.</p>
+      ) : (
+        <ol className="m-0 flex list-none flex-col gap-1.5 p-0">
+          {r.actions.map((a) => (
+            <li key={a.id} className="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-xl bg-vv-lavender-50 px-3 py-2 text-[13px]">
+              <span className={`${PILL} !px-2 !py-0.5 !text-[11px] ${a.done ? 'bg-vv-green-100 text-vv-green-ink' : 'bg-vv-st-todo text-vv-st-todo-ink'}`}>{a.done ? 'Done' : 'To do'}</span>
+              <span className={`${PILL} !px-2 !py-0.5 !text-[11px] ${KIND_TONE}`}>{KIND_LABEL[a.kind]}</span>
+              <span className={`min-w-0 flex-1 ${a.done ? 'line-through opacity-70' : ''}`}>{a.body}</span>
+              <span className="text-[12px] text-vv-body">{[a.owner, a.due ? `due ${savedOn(a.due)}` : null].filter(Boolean).join(' · ')}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  )
+}
 
 /** Up to 3 next actions. Edit freely, then Save; "done" ticks save straight away. */
 function Actions({ siteId, r }: { siteId: string; r: Report }) {
