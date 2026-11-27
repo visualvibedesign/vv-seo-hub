@@ -1,50 +1,82 @@
-# Next session (updated Nov 28, 2026, after each step)
+# Next session (updated Nov 28, 2026)
 
-Shareable status note: what changed, commit ids, what's pushed, what's waiting on Angel.
+Shareable status note for the reviewer Claude: what was built, commit ids, what's pushed, what to test, what's
+waiting on Angel. Updated after every step.
 
 ## Where we are
-- **Phase 2a–2f done and live in Production** (`main` = merge `324d0f3`, Nov 28). Visual Vibe Design is the test
-  client (`5c939f2631d6b31bdf4523e5d2f79a2c`): "Day 3" baseline (Nov 28) + the November 2026 report (Sent).
-- Work goes on branch **`phase-2`**; pushing `phase-2` gives a Vercel Preview. `main` / Production only when Angel says.
-- 12 Vercel functions (Hobby cap): new API work = a new action in an existing `api/<group>/[action].ts`.
-- Migrations 0001–0020 run and checked.
+- **Phase 2 is finished** (2a–2g). 2a–2f are live in Production (`main` = merge `324d0f3`, Nov 28). The 2g work and
+  the fixes after it are on **`phase-2`** (pushed, Vercel Preview), **not on `main` yet** (needs Angel's OK).
+- **Skipped for now:** Whitespark (map grid from a screenshot / CSV): no Whitespark account yet. The map grid stays
+  optional and typed in by hand.
+- **Next: Phase 3 · Pages** (sitemap, hotspots, site plan, page briefs; Sam Days 5–6). Plan first, no code.
+- Test client: **Visual Vibe Design** (`5c939f2631d6b31bdf4523e5d2f79a2c`): "Day 3" baseline (Nov 28) + the
+  November 2026 report (Sent).
+- 12 Vercel functions (Hobby cap). Migrations 0001–0020 run and checked.
 
-## Done since Production (on `phase-2`, pushed)
+## Everything built in this session, in order (for the reviewer Claude to check)
+
+### On `main` / Production (merge `324d0f3`)
 | Commit | What |
 |---|---|
-| `463aa23` | Fixes: dates sent to Claude written in Manila time ("Nov 28, 2026") + "copy dates exactly"; a Sent report is read-only (server refuses next-action edits too) until "Reopen as draft"; report notes shown once on Results |
-| `e346e3c` | Docs: 2g plan in `docs/phase-2-plan.md` |
-| `be239db` | **2g step 1, report PDF**: print view `/clients/{site}/results/{report}/print` (team login required, no sidebar, A4, Vibe look, footer "Prepared by Visual Vibe Design · date" + "Page X of Y", approved notes only, never address / accounts / drafts / costs); "Download PDF" on the report. No new function. Tested by Angel ✓ |
-| `63604bc` | 0020 SQL draft + migrations log + this note |
-| `e7eda04` | **2g step 3, GBP screenshot server** (0020 run by Angel): estimate / read / approve / discard actions in `api/metrics` (still 12); image checked (type + first bytes, ≤ 3 MB), used for one Claude call, never stored or logged; only the period + 8 numbers come back; unclear = empty (never 0); period empty unless clearly shown with its year ("pick it"); saved as Ready to review in `seo_autofill` (Day 2 auto-fill never lists them); approve = normal GBP save. Tested by Claude with 2 synthetic screenshots (`test-data/gbp-screenshots/`): 8 numbers exact, directions empty, no-year period empty, supersede / discard / refusals OK, no fake address / phone saved, ~$0.006 per read |
-| `a6bc5b0` | Next-session note after step 3 |
-| `9dce8df` | **2g step 4, GBP review screen**: GBP card › "Read a screenshot" (pick PNG / JPG / WebP → browser shrinks to max 1600 px JPEG, kept in memory only → cost shown → "Read it"); "Ready to review" banner on the card (nothing counts yet); Review = screenshot beside the GBP form pre-filled, unread fields marked orange, unread period empty ("Pick the period yourself"); if the month was typed before, reviews / rating / newest review / note kept from what is saved; Approve numbers = normal GBP save; Discard (confirm); Later. Tested by Claude: review with and without a period, October merge keeps reviews 23 / rating 5, shrink makes a valid JPEG, text file / broken PNG refused |
+| `e906c4c` | GBP card as analytics: actions by month (grouped bars), "actions per 100 views", rating ring + reviews, views donut |
+| `e786176` | Migrations 0017 (GBP views breakdown) + 0018 (`seo_save_baseline()`) |
+| `2b58f45` | 2e step 1 · Baseline server (numbers per source with their own dates, save new / fill missing, history); map grid optional in Sources ("N of 4") |
+| `145adb1` | 2e step 2 · Baseline page (Save baseline, Fill missing, Start a new baseline, past baselines, "N of 4 saved") |
+| `b4fca7d` | 2e step 3 · "Baseline vs now" on the Overview |
+| `d8fb348` | GBP: actions per 100 views from the typed actions ("directions not tracked") |
+| `6d7ed0c` | 2f step 1 · Monthly reports server (create, preview, refresh, status, next actions, clicks per month) + migration 0019 |
+| `b57851f` | 2f step 2 · Results page (create report, wins, every number vs baseline, clicks per month, report view); reports start from the baseline's month |
+| `462ec72` | Fix: "Mark as sent" refused the team's today (server UTC vs Manila); server errors shown in the dialogs |
+| `254ef2c` | 2f step 3 · Claude report notes (estimate → "Ready to review" → approve; numbers check; logged) |
+| `9c702e3` | Dates in the agency time zone (Asia/Manila) everywhere |
 
-Pushed: `phase-2` up to `9dce8df` + this note. Not on `main` yet.
+### On `phase-2` only (pushed, Preview; not on `main` yet)
+| Commit | What |
+|---|---|
+| `463aa23` | Fixes: dates sent to Claude written "Nov 28, 2026" + "copy dates exactly"; a Sent report is read-only (server refuses edits) until "Reopen as draft"; report notes shown once |
+| `e346e3c` | 2g plan in `docs/phase-2-plan.md` |
+| `be239db` | 2g · Report PDF: print view `/clients/{site}/results/{report}/print` (team login, A4, Vibe look, approved notes only, no address / accounts / drafts / costs), "Download PDF" button |
+| `63604bc` | Migration 0020 (screenshot read kinds in `seo_autofill`) |
+| `e7eda04` | 2g · GBP screenshot server (estimate, Claude read → "Ready to review", approve via normal GBP save, discard; image never stored) |
+| `9dce8df` | 2g · GBP review screen ("Read a screenshot" on the GBP card, review beside the screenshot, approve / discard) |
+| `a6bc5b0`, `642b518`, this note | Next-session notes |
+
+## Test checklist for the reviewer Claude (localhost or the `phase-2` Preview, client Visual Vibe)
+Angel already tested all of these; this is for an independent check. Don't change the real November report
+(no redraft / approve / send on it); use a new draft report or mocks.
+
+**Overview**
+1. Sources: "4 of 4 connected", map grid "Optional · not set up".
+2. GBP card: actions by month, "Actions per 100 views 5.1" with "directions not tracked", rating ring, donut.
+3. Baseline vs now: 7 rows, dates under each number, change pills (green = better, lower position = better).
+4. GBP › "Read a screenshot": cost shown first → read → "Ready to review" banner → Review: numbers match, unread
+   fields orange and empty, unclear month left empty to pick, a month typed before keeps its reviews / rating →
+   Approve / Discard / Later. A non-GBP image is refused. Nothing is stored from the image.
+
+**Baseline**
+5. "4 of 4 saved", cards "Saved · dates", "Start a new baseline" keeps the old one under Past baselines.
+6. Day 3 "Starting numbers" ticks itself when all required sources are saved.
+
+**Results**
+7. Only months from the baseline's month are offered (November 2026); earlier months are refused.
+8. Report view: frozen numbers with dates, missing reasons, Refresh (draft only), Mark as sent (no future date;
+   errors show in the dialog), Reopen as draft.
+9. Sent report = read-only: next actions are a plain list, the server refuses edits, notes locked.
+10. Claude notes on a draft: estimate → draft → numbers check flags invented numbers → approve. Dates in the
+    draft read like "Nov 28, 2026". Notes show once when the report is open.
+11. Download PDF: A4, footer "Prepared by Visual Vibe Design · date" + "Page X of Y", light even in dark mode,
+    approved notes only (draft notes left out with an on-screen warning), sign-in required (private window → sign-in).
+
+**Everywhere**
+12. Settings › Claude usage lists "Report notes" and "GBP screenshot" calls with tokens + cost.
+13. Phone width + dark mode on Overview, Baseline, Results.
 
 ## Waiting on Angel
-1. **Test the GBP screenshot flow on localhost** with a real GBP › Performance screenshot (steps in the chat, also below), then say go or what to fix. Map grid from a screenshot is the only 2g step left and waits for the Whitespark sample.
-2. Fix the November report notes date yourself (old approved text says "2026-11-27"): Reopen → redraft / edit →
-   Approve → Mark as sent.
-3. Whitespark map grid **sample screenshot / CSV** (map grid from a screenshot waits for it).
-4. GBP API: not applied for yet (needs Google approval once applied).
-5. Before Claude notes are used in Production: `ANTHROPIC_API_KEY` set in Vercel Production env.
-
-## Next (2g, in order; stop after each step for Angel to check)
-1. ~~Report PDF (print view)~~ done (`be239db`).
-2. ~~Migration 0020~~ run by Angel, checked.
-3. ~~GBP screenshot server~~ done (`e7eda04`), waiting for Angel's check.
-4. ~~GBP review screen~~ done (`9dce8df`), waiting for Angel's test.
-5. Map grid from a screenshot: after Angel's sample.
-
-## How to test the GBP screenshot flow (localhost, Visual Vibe › Overview › GBP card)
-1. "Read a screenshot" › pick a real GBP › Performance screenshot › cost shows › "Read it" (up to ~20 s).
-2. Review opens: screenshot beside the form; numbers match the screenshot; anything unclear is orange and empty.
-3. If the month wasn't readable: From / To are empty and marked; pick them.
-4. If that month was typed before: reviews / rating / newest review are already filled from what's saved.
-5. Approve numbers › the GBP card updates (views, actions, donut); Baseline "Ready to save" numbers follow.
-6. Try Later (banner stays), Discard (banner goes, nothing changes), and a non-GBP image (refused, nothing saved).
-7. Settings › Claude usage shows "GBP screenshot" calls.
+1. OK to merge `phase-2` into `main` and push to Production (2g + fixes).
+2. Fix the November report notes date yourself (old approved text says "2026-11-27").
+3. Approve the Phase 3 plan (`docs/phase-3-plan.md`, coming next) before any Phase 3 code.
+4. Later: Whitespark account (map grid from a screenshot / CSV); GBP API (not applied for yet).
+5. `ANTHROPIC_API_KEY` set in Vercel Production env (Claude notes + GBP screenshots in Production).
 
 ## Rules to keep
 - Works for any client; never hard-code a client. No fake numbers: empty = "—" / unknown, never 0.
