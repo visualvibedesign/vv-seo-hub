@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import { useDeleteGbp, useDeleteMapGrid, useLocal, useSaveGbp, useSaveMapGrid } from '../../hooks/useLocal'
 import { ApiError } from '../../lib/api'
 import { rememberAuthor, savedAuthor } from '../../lib/notes'
@@ -6,6 +6,7 @@ import { BTN_GHOST, BTN_LIME, BTN_LINK, FIELD, LABEL } from '../../lib/ui'
 import { gridStats, periodLabel } from '../../lib/local'
 import type { GbpInput, GbpSnapshot, MapGrid } from '../../types/seo'
 import ConfirmDialog from '../ui/ConfirmDialog'
+import Modal from '../ui/Modal'
 import Icon from '../ui/Icon'
 import { Bone, Spinner } from '../ui/Loading'
 import { Dash, Panel, Ring } from './OverviewParts'
@@ -19,31 +20,6 @@ const d12 = (d: string) => new Date(`${d}T12:00:00`)
 const short = (d: string) => d12(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
-function Modal({ open, title, onClose, children, wide = false }: { open: boolean; title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {
-  const ref = useRef<HTMLDialogElement>(null)
-  useEffect(() => {
-    const d = ref.current
-    if (!d) return
-    if (open && !d.open) d.showModal()
-    if (!open && d.open) d.close()
-  }, [open])
-  return (
-    <dialog
-      ref={ref}
-      onClose={onClose}
-      onClick={(e) => e.target === ref.current && onClose()}
-      aria-label={title}
-      className={`m-auto w-[calc(100%-32px)] ${wide ? 'max-w-[560px]' : 'max-w-[480px]'} rounded-[26px] border-0 bg-vv-surface p-0 text-vv-ink shadow-[0_30px_60px_-30px_rgba(42,28,110,0.5)] backdrop:bg-[rgba(42,28,110,0.18)]`}
-    >
-      {open && (
-        <div className="flex flex-col gap-3.5 p-[26px] phone:p-5">
-          <h2 className="m-0 font-display text-[24px] font-semibold leading-[1.2]">{title}</h2>
-          {children}
-        </div>
-      )}
-    </dialog>
-  )
-}
 
 // ---- GBP ----------------------------------------------------------------------------------------------------
 
