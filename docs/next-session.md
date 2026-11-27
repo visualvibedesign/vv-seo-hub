@@ -85,6 +85,15 @@ Angel already tested all of these; this is for an independent check. Don't chang
 | `f1e8420` | `main` (with Phase 2g) merged into `phase-3` |
 | `c0b4097` | **Step 2 · Sitemap + hotspots** (Strategy Builder › Day 5): structure picker; "fill codes" banner with a dry run (only empty fields: P1… in page order, Home → home, S1–S3 → service, FAQ → supporting, live → Keep, planned → New); page list P1… with Keep / Improve / New; hotspot editor with live counters (title 50–60, meta 150–160), checks (meta ends with a CTA, primary keyword near the start, full state name in the title, abbreviation in the URL, no [brackets]), Google preview, "Google may show /x instead" flag; saving a new URL on a live page queues a redirect (shown in step 3); + Add page. Claude draft, page brief, push to site, ClickUp shown as later. API in `api/clusters` (still 12). Tested by Claude: real 9 pages, dry run, refusals, screen light / phone dark |
 
+**Step 2 tested by Claude on Visual Vibe (Nov 28, server functions the screen calls): 22 / 22 passed.** Fill dry run
+→ applied (P1–P9: Home keep, 4 hubs keep, 5 city pages new; run again = nothing left); hotspots save + URL cleaned to
+a slug; a live page's URL change queues 1 redirect, a second change updates it (not doubled), setting it back removes
+it; a planned page's URL adds no redirect; duplicate / bad codes and a 121-character title refused; structure
+switch + back; add-page refusals (no name, unknown category, keyword already on another page). Everything put back
+afterwards: the only real change kept is the fill (codes P1–P9, types, Keep / New). Checked read-only: hotspots
+empty on all 9 pages, 0 redirects, structure service first, 9 pages. A real "+ Add page" was NOT run (cleaning up
+would need a delete). Fix found while testing: clearing every hotspot field now counts as "no hotspots".
+
 ## How to test step 2 (localhost, Visual Vibe › Strategy Builder › Day 5 · Sitemap + hotspots)
 1. Banner "9 pages have no code…" › See what would change › list P1–P9 (Home keep, 4 hubs keep, 5 city pages new) › Fill 9 pages.
 2. Pick a page › type a title: the counter turns green at 50–60; meta warns without a call to action; Google preview updates.
