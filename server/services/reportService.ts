@@ -15,6 +15,7 @@ import { db, must, pagedRows } from '../clients/supabase.js'
 import { currentBaseline } from './baselineService.js'
 import { clientRow } from './clientService.js'
 import { googleWindow } from './metricsService.js'
+import { latestToday } from '../utils/dates.js'
 
 /** A problem the person can fix (400). */
 export class ReportInputError extends Error {}
@@ -26,7 +27,8 @@ const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 
 const d12 = (d: string) => new Date(`${d}T12:00:00Z`)
 const isoDay = (d: Date) => d.toISOString().slice(0, 10)
-const todayIso = () => new Date().toISOString().slice(0, 10)
+/** The team's today (server is UTC, the team is ahead of it): see server/utils/dates.ts. */
+const todayIso = latestToday
 const monthEnd = (m: string) => {
   const d = d12(m)
   return isoDay(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0, 12)))

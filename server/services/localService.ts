@@ -5,12 +5,14 @@
 // Privacy: the grid centre is a town / area name only. Anything with a digit (house number, ZIP) is refused.
 import type { GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput } from '../../src/types/seo.js'
 import { db, must } from '../clients/supabase.js'
+import { latestToday } from '../utils/dates.js'
 import { clientRow } from './clientService.js'
 
 export class LocalInputError extends Error {}
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/
-const today = () => new Date().toISOString().slice(0, 10)
+/** The team's today is never "in the future" (server is UTC, the team is ahead of it). */
+const today = latestToday
 
 async function client(siteId: string) {
   const c = await clientRow(siteId)

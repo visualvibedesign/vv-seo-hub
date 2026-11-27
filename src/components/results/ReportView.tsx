@@ -74,11 +74,17 @@ function Loaded({ siteId, r, onClose }: { siteId: string; r: Report; onClose: ()
             </button>
           )}
           {sent ? (
-            <button type="button" className={`${BTN_GHOST} min-h-10 px-4 text-[13px]`} onClick={() => setReopen(true)}>
+            <button type="button" className={`${BTN_GHOST} min-h-10 px-4 text-[13px]`} onClick={() => {
+                status.reset()
+                setReopen(true)
+              }}>
               Reopen as draft
             </button>
           ) : (
-            <button type="button" className={`${BTN_LIME} min-h-10 px-4 text-[13px]`} onClick={() => setSending(true)}>
+            <button type="button" className={`${BTN_LIME} min-h-10 px-4 text-[13px]`} onClick={() => {
+                status.reset()
+                setSending(true)
+              }}>
               Mark as sent
             </button>
           )}
@@ -87,7 +93,7 @@ function Loaded({ siteId, r, onClose }: { siteId: string; r: Report; onClose: ()
           </button>
         </div>
       </div>
-      {(refresh.error || status.error) && <p className="m-0 text-[13px] font-semibold text-vv-red">{errText(refresh.error ?? status.error, 'Couldn’t save.')}</p>}
+      {refresh.error && <p className="m-0 text-[13px] font-semibold text-vv-red">{errText(refresh.error, 'Couldn’t refresh the numbers.')}</p>}
 
       <div className="overflow-hidden rounded-2xl border border-solid border-vv-line">
         <LilacTable
@@ -137,12 +143,17 @@ function Loaded({ siteId, r, onClose }: { siteId: string; r: Report; onClose: ()
       </div>
 
       <Modal open={sending} title={`Mark the ${r.title} as sent`} onClose={() => !status.isPending && setSending(false)}>
-        {sending && <SendForm r={r} busy={status.isPending} onCancel={() => setSending(false)} onSend={(d) => status.mutate({ id: r.id, status: 'sent', sentOn: d }, { onSuccess: () => setSending(false) })} />}
+        {sending && <SendForm r={r} busy={status.isPending} error={status.error} onCancel={() => setSending(false)} onSend={(d) => status.mutate({ id: r.id, status: 'sent', sentOn: d }, { onSuccess: () => setSending(false) })} />}
       </Modal>
       <ConfirmDialog
         open={reopen}
         title="Reopen as draft?"
-        body="The sent date is cleared and you can refresh the numbers again. Mark it as sent when you send the update."
+        body={
+          <>
+            The sent date is cleared and you can refresh the numbers again. Mark it as sent when you send the update.
+            {status.error && <span className="mt-2 block font-semibold text-vv-red">{errText(status.error, 'Couldn’t reopen it.')}</span>}
+          </>
+        }
         confirmLabel="Reopen"
         busy={status.isPending}
         onCancel={() => setReopen(false)}
@@ -152,7 +163,7 @@ function Loaded({ siteId, r, onClose }: { siteId: string; r: Report; onClose: ()
   )
 }
 
-function SendForm({ r, busy, onCancel, onSend }: { r: Report; busy: boolean; onCancel: () => void; onSend: (date: string) => void }) {
+function SendForm({ r, busy, error, onCancel, onSend }: { r: Report; busy: boolean; error: unknown; onCancel: () => void; onSend: (date: string) => void }) {
   const [d, setD] = useState(todayIso())
   return (
     <form
@@ -167,6 +178,11 @@ function SendForm({ r, busy, onCancel, onSend }: { r: Report; busy: boolean; onC
         Sent on
         <input className={FIELD} type="date" value={d} min={r.month} max={todayIso()} onChange={(e) => setD(e.target.value)} required />
       </label>
+      {error !== null && error !== undefined && (
+        <p role="alert" className="m-0 text-[13px] font-semibold text-vv-red">
+          {errText(error, 'Couldn’t mark it as sent.')}
+        </p>
+      )}
       <div className="flex flex-wrap justify-end gap-2">
         <button type="button" className={`${BTN_LINK} px-3`} onClick={onCancel} disabled={busy}>
           Cancel
