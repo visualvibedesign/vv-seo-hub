@@ -9,7 +9,9 @@
 //   from its current URL, a redirect old → new is queued (one open per page; a later change updates it).
 // - addPage(): a planned "new" page in a category, optionally owning one primary keyword (never moved off another page).
 // - setStructure(): service first / location first / flat.
-import type { CategoryCode, HotspotsInput, PageAction, PagesBackfillPlan, PagesState, PageType, SitePage, SiteStructure } from '../../src/types/seo.js'
+// - setParent(): a page under another one (Site plan tree); never itself, never a loop.
+// - setRedirectStatus(): Queued → Sent to site → Live, moved by hand (sending to the site comes with phase 5).
+import type { CategoryCode, HotspotsInput, PageAction, PagesBackfillPlan, PagesState, PageType, RedirectStatus, SitePage, SiteRedirect, SiteStructure } from '../../src/types/seo.js'
 import { db, must } from '../clients/supabase.js'
 import { listClusters } from './clusterService.js'
 import { clientRow } from './clientService.js'
@@ -45,10 +47,11 @@ const actionFromStatus = (s: string): PageAction => (s === 'live' ? 'keep' : 'ne
 
 export async function pagesState(siteId: string): Promise<PagesState> {
   const c = await client(siteId)
-  const [pages, extraRes, ranks] = await Promise.all([
+  const [pages, extraRes, ranks, redirectRes] = await Promise.all([
     listClusters(siteId),
     db().from('seo_pages').select(EXTRA_COLS).eq('client_id', c.id),
     rankingsOverview(siteId).catch(() => null), // no CSV yet = no swapped flags
+    db().from('seo_redirects').select('id, page_id, old_url, new_url, why, status, updated_at').eq('client_id', c.id).order('created_at', { ascending: false }),
   ])
   const extra = new Map((must(extraRes, 'Loading pages') as ExtraRow[]).map((r) => [r.id, r]))
   // Swapped: Google ranks a different URL for a keyword owned by this page (rankService decides ownership).
@@ -84,6 +87,10 @@ export async function pagesState(siteId: string): Promise<PagesState> {
     state: c.state ?? null,
     pages: out,
     needsBackfill: out.filter((p) => !p.code || !p.type || !p.action).length,
+    redirects: (must(redirectRes, 'Loading redirects') as { id: string; page_id: string | null; old_url: string; new_url: string; why: string | null; status: RedirectStatus; updated_at: string }[]).map((r): SiteRedirect => {
+      const pg = out.find((p) => p.id === r.page_id)
+      return { id: r.id, pageId: r.page_id, pageCode: pg?.code ?? null, pageName: pg?.name ?? null, oldUrl: r.old_url, newUrl: r.new_url, why: r.why, status: r.status, updatedAt: r.updated_at }
+    }),
   }
 }
 
@@ -182,8 +189,9 @@ export async function saveHotspots(siteId: string, raw: unknown): Promise<PagesS
     const why = `${code ?? page.name} URL now matches the keyword`.slice(0, 200)
     if (open[0]) must(await db().from('seo_redirects').update({ old_url: oldPath, new_url: urlTarget!, why }).eq('id', open[0].id), 'Saving the redirect')
     else must(await db().from('seo_redirects').insert({ client_id: c.id, page_id: page.id, old_url: oldPath, new_url: urlTarget!, why }), 'Saving the redirect')
-  } else if (page.status === 'live' && oldPath && newPath === oldPath) {
-    // Back to the current URL: a still-queued redirect for this page is no longer needed.
+  } else if (page.status === 'live' && oldPath && (!newPath || newPath === oldPath)) {
+    // Target cleared or set back to the current URL: the page stays where it is, so a still-queued redirect for it
+    // is no longer needed (sent / live ones are kept as history).
     must(await db().from('seo_redirects').delete().eq('client_id', c.id).eq('page_id', page.id).eq('status', 'queued'), 'Saving the redirect')
   }
   return pagesState(siteId)
@@ -223,5 +231,40 @@ export async function setStructure(siteId: string, raw: unknown): Promise<PagesS
   const s = (raw as { structure?: unknown } | null)?.structure
   if (!STRUCTURES.includes(s as SiteStructure)) throw new PagesInputError('Pick service first, location first or flat.')
   must(await db().from('seo_clients').update({ site_structure: s }).eq('id', c.id), 'Saving the site structure')
+  return pagesState(siteId)
+}
+
+const UUID = /^[0-9a-f-]{36}$/i
+
+/** Puts a page under another one (or back on top with parentId null). Never under itself or its own child. */
+export async function setParent(siteId: string, raw: unknown): Promise<PagesState> {
+  const c = await client(siteId)
+  const b = (raw ?? {}) as { pageId?: unknown; parentId?: unknown }
+  if (typeof b.pageId !== 'string' || !UUID.test(b.pageId)) throw new PagesInputError('That page doesn’t exist.')
+  const parentId = b.parentId === null || b.parentId === undefined || b.parentId === '' ? null : String(b.parentId)
+  if (parentId && !UUID.test(parentId)) throw new PagesInputError('That parent page doesn’t exist.')
+  const rows = must(await db().from('seo_pages').select('id, parent_id').eq('client_id', c.id), 'Loading pages') as { id: string; parent_id: string | null }[]
+  const byId = new Map(rows.map((r) => [r.id, r]))
+  if (!byId.has(b.pageId)) throw new PagesInputError('That page doesn’t exist.')
+  if (parentId) {
+    if (!byId.has(parentId)) throw new PagesInputError('That parent page doesn’t exist.')
+    if (parentId === b.pageId) throw new PagesInputError('A page can’t sit under itself.')
+    // Walk up from the new parent: reaching this page means it would sit under its own child.
+    for (let at: string | null = parentId, n = 0; at && n < 50; at = byId.get(at)?.parent_id ?? null, n++) {
+      if (at === b.pageId) throw new PagesInputError('That would put the page under one of its own children.')
+    }
+  }
+  must(await db().from('seo_pages').update({ parent_id: parentId }).eq('id', b.pageId).eq('client_id', c.id), 'Saving the page')
+  return pagesState(siteId)
+}
+
+/** Moves a redirect along: Queued → Sent to site → Live (any of the three, by hand). */
+export async function setRedirectStatus(siteId: string, raw: unknown): Promise<PagesState> {
+  const c = await client(siteId)
+  const b = (raw ?? {}) as { id?: unknown; status?: unknown }
+  if (typeof b.id !== 'string' || !UUID.test(b.id)) throw new PagesInputError('That redirect doesn’t exist.')
+  if (!['queued', 'sent', 'live'].includes(String(b.status))) throw new PagesInputError('Pick Queued, Sent to site or Live.')
+  const r = must(await db().from('seo_redirects').update({ status: b.status }).eq('id', b.id).eq('client_id', c.id).select('id'), 'Saving the redirect') as { id: string }[]
+  if (!r.length) throw new PagesInputError('That redirect doesn’t exist.')
   return pagesState(siteId)
 }

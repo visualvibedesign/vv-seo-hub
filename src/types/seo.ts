@@ -1084,6 +1084,8 @@ export interface PagesState {
   pages: SitePage[]
   /** Pages missing a code, type or keep / improve / new (the backfill can fill them) */
   needsBackfill: number
+  /** The redirects queue, newest first */
+  redirects: SiteRedirect[]
 }
 
 export interface PagesBackfillPlan {
@@ -1100,4 +1102,19 @@ export interface HotspotsInput {
   metaDescription: string | null
   h1: string | null
   urlTarget: string | null
+}
+
+export type RedirectStatus = 'queued' | 'sent' | 'live'
+
+/** A redirect old → new, queued when a live page's URL changes (sent to the site later, phase 5). */
+export interface SiteRedirect {
+  id: string
+  pageId: string | null
+  pageCode: string | null
+  pageName: string | null
+  oldUrl: string
+  newUrl: string
+  why: string | null
+  status: RedirectStatus
+  updatedAt: string
 }

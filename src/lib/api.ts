@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -517,4 +517,14 @@ export function addPage(siteId: string, input: { name: string; category: Categor
 
 export function setSiteStructure(siteId: string, structure: SiteStructure): Promise<PagesState> {
   return call('/api/clusters/structure', json({ siteId, structure }))
+}
+
+/** Site plan: a page under another one (parentId null = top level). */
+export function setPageParent(siteId: string, pageId: string, parentId: string | null): Promise<PagesState> {
+  return call('/api/clusters/page-parent', json({ siteId, pageId, parentId }))
+}
+
+/** Site plan: Queued → Sent to site → Live. */
+export function setRedirectStatus(siteId: string, id: string, status: RedirectStatus): Promise<PagesState> {
+  return call('/api/clusters/redirect-status', json({ siteId, id, status }))
 }

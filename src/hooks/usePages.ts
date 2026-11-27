@@ -1,7 +1,7 @@
 // Phase 3 · Pages: the ideal sitemap + hotspots of a client (seo_pages, migration 0021).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { addPage, backfillPages, getPages, saveHotspots, setSiteStructure } from '../lib/api'
-import type { CategoryCode, HotspotsInput, PagesState, PageType, SiteStructure } from '../types/seo'
+import { addPage, backfillPages, getPages, saveHotspots, setPageParent, setRedirectStatus, setSiteStructure } from '../lib/api'
+import type { CategoryCode, HotspotsInput, PagesState, PageType, RedirectStatus, SiteStructure } from '../types/seo'
 
 export function usePages(siteId: string) {
   return useQuery({ queryKey: ['pages', siteId], queryFn: () => getPages(siteId), staleTime: 60_000 })
@@ -21,6 +21,8 @@ function usePagesMutation<T>(siteId: string, fn: (v: T) => Promise<PagesState>) 
 export const useSaveHotspots = (siteId: string) => usePagesMutation(siteId, (v: HotspotsInput) => saveHotspots(siteId, v))
 export const useAddPage = (siteId: string) => usePagesMutation(siteId, (v: { name: string; category: CategoryCode; type?: PageType; keywordId?: string }) => addPage(siteId, v))
 export const useSiteStructure = (siteId: string) => usePagesMutation(siteId, (s: SiteStructure) => setSiteStructure(siteId, s))
+export const usePageParent = (siteId: string) => usePagesMutation(siteId, (v: { pageId: string; parentId: string | null }) => setPageParent(siteId, v.pageId, v.parentId))
+export const useRedirectStatus = (siteId: string) => usePagesMutation(siteId, (v: { id: string; status: RedirectStatus }) => setRedirectStatus(siteId, v.id, v.status))
 
 /** Dry run (apply = false) or apply; applying reloads the pages. */
 export function useBackfillPages(siteId: string) {

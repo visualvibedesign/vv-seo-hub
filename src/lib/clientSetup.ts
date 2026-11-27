@@ -130,7 +130,7 @@ export const STRATEGY_GROUPS: ClientGroup[] = [
     step: 4,
     items: [
       { key: 'pages', label: 'Sitemap + hotspots', path: 'strategy/pages', live: true, tag: '' },
-      { key: 'plan', label: 'Site plan', path: 'strategy/plan', live: false, tag: 'P3' },
+      { key: 'plan', label: 'Site plan', path: 'strategy/plan', live: true, tag: '' },
     ],
   },
   { key: 'day6', label: 'Day 6 · Page briefs', step: 5, items: [{ key: 'briefs', label: 'Page briefs', path: 'strategy/briefs', live: false, tag: 'P3' }] },

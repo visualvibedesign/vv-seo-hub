@@ -4,11 +4,13 @@ import { useClientContext } from '../../components/layout/ClientLayout'
 import HeaderTools from '../../components/layout/HeaderTools'
 import { Bone, Spinner } from '../../components/ui/Loading'
 import Modal from '../../components/ui/Modal'
-import { useAddPage, useBackfillPages, usePages, useSaveHotspots, useSiteStructure } from '../../hooks/usePages'
+import { useBackfillPages, usePages, useSaveHotspots, useSiteStructure } from '../../hooks/usePages'
 import { ApiError } from '../../lib/api'
 import { hotspotChecks, inRange, META_RANGE, slugPath, TITLE_RANGE } from '../../lib/hotspots'
+import { ACTION_LABEL, ACTION_TONE, STRUCTURE_LABEL, TYPE_LABEL } from '../../lib/pages'
 import { BTN_GHOST, BTN_LIME, BTN_LINK, CARD, FIELD, LABEL, PILL, siteLabel } from '../../lib/ui'
-import type { CategoryCode, PageAction, PagesState, PageType, SitePage, SiteStructure } from '../../types/seo'
+import AddPageDialog from '../../components/pages/AddPageDialog'
+import type { PageAction, PagesState, PageType, SitePage, SiteStructure } from '../../types/seo'
 
 // Strategy Builder › Day 5 · Sitemap + hotspots (/clients/{site id}/strategy/pages). Design: docs/design/Pages.png.
 // One page per keyword cluster (the Clusters pages), each with a code (P1…), keep / improve / new and its SEO hotspots:
@@ -17,10 +19,6 @@ import type { CategoryCode, PageAction, PagesState, PageType, SitePage, SiteStru
 // the site waits for the Vibe SEO connection. Claude drafts come in step 4; Push to site in phase 5; ClickUp later.
 
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError && e.detail ? e.detail : fallback)
-const STRUCTURE_LABEL: Record<SiteStructure, string> = { service_first: 'service first', location_first: 'location first', flat: 'flat' }
-const TYPE_LABEL: Record<PageType, string> = { home: 'Home page', service: 'Service page', location: 'Location page', supporting: 'Supporting page' }
-const ACTION_LABEL: Record<PageAction, string> = { keep: 'Keep', improve: 'Improve', new: 'New' }
-const ACTION_TONE: Record<PageAction, string> = { keep: 'bg-vv-green-100 text-vv-green-ink', improve: 'bg-vv-lavender-100 text-vv-purple-ink', new: 'bg-vv-orange-100 text-vv-orange-ink' }
 const primaryOf = (p: SitePage) => p.keywords.find((k) => k.role === 'primary')?.keyword ?? null
 
 export default function SitemapPage() {
@@ -89,7 +87,7 @@ export default function SitemapPage() {
         </div>
       )}
 
-      {adding && s && <AddPage siteId={c.siteId} state={s} onClose={() => setAdding(false)} onAdded={(id) => { setAdding(false); if (id) select(id) }} />}
+      {adding && s && <AddPageDialog siteId={c.siteId} state={s} onClose={() => setAdding(false)} onAdded={(id) => { setAdding(false); if (id) select(id) }} />}
       {filling && <Backfill siteId={c.siteId} onClose={() => setFilling(false)} />}
     </>
   )
@@ -305,63 +303,6 @@ function HotspotEditor({ siteId, state, page }: { siteId: string; state: PagesSt
         </span>
       </div>
     </section>
-  )
-}
-
-function AddPage({ siteId, state, onClose, onAdded }: { siteId: string; state: PagesState; onClose: () => void; onAdded: (id: string | null) => void }) {
-  const add = useAddPage(siteId)
-  const [name, setName] = useState('')
-  const [category, setCategory] = useState<CategoryCode>('S1')
-  const [type, setType] = useState<PageType>('service')
-  return (
-    <Modal open title="Add a page" onClose={onClose}>
-      <form
-        className="flex flex-col gap-3"
-        onSubmit={(e) => {
-          e.preventDefault()
-          const before = new Set(state.pages.map((p) => p.id))
-          add.mutate({ name, category, type }, { onSuccess: (st) => onAdded(st.pages.find((p) => !before.has(p.id))?.id ?? null) })
-        }}
-      >
-        <p className="m-0 text-[13px] text-vv-body">A planned page (New) with the next free code. Give it its keywords in Clusters (a keyword sits on one page only).</p>
-        <label className={LABEL}>
-          Page name
-          <input className={FIELD} value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="e.g. Web Design · Springdale" required />
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className={LABEL}>
-            Category
-            <select className={FIELD} value={category} onChange={(e) => setCategory(e.target.value as CategoryCode)}>
-              {(['Home', 'S1', 'S2', 'S3', 'FAQ'] as CategoryCode[]).map((k) => (
-                <option key={k} value={k}>
-                  {k}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className={LABEL}>
-            Type
-            <select className={FIELD} value={type} onChange={(e) => setType(e.target.value as PageType)}>
-              {(Object.keys(TYPE_LABEL) as PageType[]).map((k) => (
-                <option key={k} value={k}>
-                  {TYPE_LABEL[k]}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {add.error && <p className="m-0 text-[13px] font-semibold text-vv-red">{errText(add.error, 'Couldn’t add the page.')}</p>}
-        <div className="flex flex-wrap justify-end gap-2">
-          <button type="button" className={`${BTN_LINK} px-3`} onClick={onClose} disabled={add.isPending}>
-            Cancel
-          </button>
-          <button type="submit" className={BTN_LIME} disabled={add.isPending || !name.trim()}>
-            {add.isPending && <Spinner />}
-            Add page
-          </button>
-        </div>
-      </form>
-    </Modal>
   )
 }
 
