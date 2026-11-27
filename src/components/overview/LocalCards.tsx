@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { useDeleteGbp, useDeleteMapGrid, useLocal, useSaveGbp, useSaveMapGrid } from '../../hooks/useLocal'
+import { useApproveGbpShot, useDeleteGbp, useDeleteMapGrid, useDiscardGbpShot, useLocal, useSaveGbp, useSaveMapGrid } from '../../hooks/useLocal'
 import { ApiError } from '../../lib/api'
 import { rememberAuthor, savedAuthor } from '../../lib/notes'
 import { BTN_GHOST, BTN_LIME, BTN_LINK, FIELD, LABEL } from '../../lib/ui'
 import { gridStats, periodLabel } from '../../lib/local'
-import type { GbpInput, GbpSnapshot, MapGrid } from '../../types/seo'
+import type { GbpInput, GbpScreenshotRead, GbpSnapshot, MapGrid } from '../../types/seo'
 import ConfirmDialog from '../ui/ConfirmDialog'
 import Modal from '../ui/Modal'
+import GbpShotDialog from './GbpShotDialog'
 import Icon from '../ui/Icon'
 import { Bone, Spinner } from '../ui/Loading'
 import { Dash, Panel, Ring } from './OverviewParts'
@@ -61,7 +62,16 @@ export function GbpCard({ siteId }: { siteId: string }) {
   const del = useDeleteGbp(siteId)
   const [edit, setEdit] = useState<GbpInput | null>(null)
   const [remove, setRemove] = useState<GbpSnapshot | null>(null)
+  const [reading, setReading] = useState(false)
+  const [reviewing, setReviewing] = useState(false)
+  // The screenshot stays in this browser only (object URL) while you review it; never stored.
+  const [preview, setPreview] = useState<string | null>(null)
+  const dropPreview = () => {
+    if (preview) URL.revokeObjectURL(preview)
+    setPreview(null)
+  }
   const list = q.data?.gbp ?? []
+  const shot = q.data?.gbpRead ?? null
   const [now, prev] = list
   const prevLabel = prev ? periodLabel(prev.periodFrom, prev.periodTo) : ''
 
@@ -78,11 +88,26 @@ export function GbpCard({ siteId }: { siteId: string }) {
       title="Google Business Profile"
       sub={now ? `Typed in · ${periodLabel(now.periodFrom, now.periodTo)}${prev ? ` vs ${prevLabel}` : ''}` : 'Typed in once a month'}
       right={
-        <button type="button" className={`${now ? BTN_GHOST : BTN_LIME} min-h-10 px-4 text-[13px]`} onClick={() => setEdit(lastMonth())} disabled={q.isPending}>
-          Add this month’s numbers
-        </button>
+        <span className="flex flex-wrap gap-2">
+          <button type="button" className={`${BTN_GHOST} min-h-10 px-4 text-[13px]`} onClick={() => setReading(true)} disabled={q.isPending}>
+            Read a screenshot
+          </button>
+          <button type="button" className={`${now ? BTN_GHOST : BTN_LIME} min-h-10 px-4 text-[13px]`} onClick={() => setEdit(lastMonth())} disabled={q.isPending}>
+            Add this month’s numbers
+          </button>
+        </span>
       }
     >
+      {shot && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[14px] bg-vv-orange-100 px-3 py-2.5 text-[13px] text-vv-orange-ink">
+          <span>
+            <strong>Screenshot read · Ready to review.</strong> {shot.values.periodFrom && shot.values.periodTo ? periodLabel(shot.values.periodFrom, shot.values.periodTo) : 'Period not read: you pick it'} · nothing counts until you approve.
+          </span>
+          <button type="button" className={`${BTN_LIME} min-h-9 px-4 text-[13px]`} onClick={() => setReviewing(true)}>
+            Review
+          </button>
+        </div>
+      )}
       {q.isPending ? (
         <Bone className="h-[120px] w-full rounded-2xl" />
       ) : (
@@ -132,6 +157,31 @@ export function GbpCard({ siteId }: { siteId: string }) {
           )}
         </>
       )}
+      <GbpShotDialog
+        siteId={siteId}
+        open={reading}
+        onClose={() => setReading(false)}
+        onRead={(_, url) => {
+          dropPreview()
+          setPreview(url)
+          setReading(false)
+          setReviewing(true)
+        }}
+      />
+      <Modal open={reviewing && !!shot} title="Check the screenshot numbers" onClose={() => setReviewing(false)} wide>
+        {reviewing && shot && (
+          <ShotReview
+            siteId={siteId}
+            shot={shot}
+            preview={preview}
+            existing={list}
+            onDone={() => {
+              dropPreview()
+              setReviewing(false)
+            }}
+          />
+        )}
+      </Modal>
       <Modal open={!!edit} title="GBP numbers" onClose={() => setEdit(null)}>
         {edit && <GbpForm siteId={siteId} start={edit} onDone={() => setEdit(null)} />}
       </Modal>
@@ -148,7 +198,9 @@ export function GbpCard({ siteId }: { siteId: string }) {
   )
 }
 
-function GbpForm({ siteId, start, onDone }: { siteId: string; start: GbpInput; onDone: () => void }) {
+type ReviewMode = { label: string; busy: boolean; error: unknown; unread: string[]; onApprove: (input: GbpInput) => void; extra?: React.ReactNode }
+
+function GbpForm({ siteId, start, onDone, review }: { siteId: string; start: GbpInput; onDone: () => void; review?: ReviewMode }) {
   const save = useSaveGbp(siteId)
   const [v, setV] = useState<Record<string, string>>(() => {
     const author = start.typedBy ?? savedAuthor()
@@ -163,15 +215,18 @@ function GbpForm({ siteId, start, onDone }: { siteId: string; start: GbpInput; o
   const splitNote = partsSum !== null && n('views') !== null && partsSum !== n('views') ? `The four add up to ${partsSum}, Profile views says ${n('views')}. Fine if that’s what GBP shows.` : ''
   const submit = () => {
     if (v.typedBy.trim()) rememberAuthor(v.typedBy)
-    save.mutate(
-      { periodFrom: v.periodFrom, periodTo: v.periodTo, views: n('views'), viewsSearchDesktop: n('viewsSearchDesktop'), viewsSearchMobile: n('viewsSearchMobile'), viewsMapsDesktop: n('viewsMapsDesktop'), viewsMapsMobile: n('viewsMapsMobile'), calls: n('calls'), directions: n('directions'), websiteClicks: n('websiteClicks'), reviews: n('reviews'), rating: n('rating'), newestReviewOn: v.newestReviewOn || null, typedBy: v.typedBy || null, note: v.note || null },
-      { onSuccess: onDone },
-    )
+    const input: GbpInput = { periodFrom: v.periodFrom, periodTo: v.periodTo, views: n('views'), viewsSearchDesktop: n('viewsSearchDesktop'), viewsSearchMobile: n('viewsSearchMobile'), viewsMapsDesktop: n('viewsMapsDesktop'), viewsMapsMobile: n('viewsMapsMobile'), calls: n('calls'), directions: n('directions'), websiteClicks: n('websiteClicks'), reviews: n('reviews'), rating: n('rating'), newestReviewOn: v.newestReviewOn || null, typedBy: v.typedBy || null, note: v.note || null }
+    if (review) review.onApprove(input)
+    else save.mutate(input, { onSuccess: onDone })
   }
+  // Review mode: fields Claude couldn't read are marked so you fill or check them.
+  const unread = (k: string) => !!review?.unread.includes(k)
+  const mark = (k: string) => (unread(k) ? '!border-vv-orange-ink !bg-vv-orange-100' : '')
   const num = (k: string, label: string, step = '1') => (
     <label className={LABEL}>
       {label}
-      <input className={FIELD} type="number" inputMode={step === '1' ? 'numeric' : 'decimal'} min={step === '1' ? 0 : 1} max={step === '1' ? undefined : 5} step={step} value={v[k]} onChange={set(k)} />
+      {unread(k) && <span className="text-[11px] font-semibold text-vv-orange-ink">Not read: fill in or leave empty</span>}
+      <input className={`${FIELD} ${mark(k)}`} type="number" inputMode={step === '1' ? 'numeric' : 'decimal'} min={step === '1' ? 0 : 1} max={step === '1' ? undefined : 5} step={step} value={v[k]} onChange={set(k)} />
     </label>
   )
   return (
@@ -186,11 +241,11 @@ function GbpForm({ siteId, start, onDone }: { siteId: string; start: GbpInput; o
       <div className="grid grid-cols-2 gap-3">
         <label className={LABEL}>
           From
-          <input className={FIELD} type="date" value={v.periodFrom} onChange={set('periodFrom')} required />
+          <input className={`${FIELD} ${mark('period')}`} type="date" value={v.periodFrom} onChange={set('periodFrom')} required />
         </label>
         <label className={LABEL}>
           To
-          <input className={FIELD} type="date" value={v.periodTo} onChange={set('periodTo')} required />
+          <input className={`${FIELD} ${mark('period')}`} type="date" value={v.periodTo} onChange={set('periodTo')} required />
         </label>
         {num('views', 'Profile views')}
         {num('calls', 'Calls')}
@@ -221,17 +276,91 @@ function GbpForm({ siteId, start, onDone }: { siteId: string; start: GbpInput; o
         Note (optional)
         <input className={FIELD} value={v.note} maxLength={300} onChange={set('note')} placeholder="e.g. new photos added this month" />
       </label>
-      {save.error && <p className="m-0 text-[13px] font-semibold text-vv-red">{errText(save.error, 'Couldn’t save.')}</p>}
-      <div className="flex flex-wrap justify-end gap-2">
+      {(review ? review.error : save.error) ? <p className="m-0 text-[13px] font-semibold text-vv-red">{errText(review ? review.error : save.error, 'Couldn’t save.')}</p> : null}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {review?.extra}
         <button type="button" className={`${BTN_LINK} px-3`} onClick={onDone}>
-          Cancel
+          {review ? 'Later' : 'Cancel'}
         </button>
-        <button type="submit" className={BTN_LIME} disabled={save.isPending}>
-          {save.isPending && <Spinner />}
-          Save
+        <button type="submit" className={BTN_LIME} disabled={review ? review.busy : save.isPending}>
+          {(review ? review.busy : save.isPending) && <Spinner />}
+          {review ? review.label : 'Save'}
         </button>
       </div>
     </form>
+  )
+}
+
+/**
+ * 2g · Check a screenshot read: the screenshot (still in this browser) beside the GBP form pre-filled with what Claude
+ * read. Fields it couldn't read are marked; an unread period is empty for you to pick. Approve = the normal GBP save.
+ * A screenshot has no reviews / rating: if that period was typed before, those are kept from what's saved.
+ */
+function ShotReview({ siteId, shot, preview, existing, onDone }: { siteId: string; shot: GbpScreenshotRead; preview: string | null; existing: GbpSnapshot[]; onDone: () => void }) {
+  const approve = useApproveGbpShot(siteId)
+  const discard = useDiscardGbpShot(siteId)
+  const [dropping, setDropping] = useState(false)
+  const r = shot.values
+  const same = r.periodFrom && r.periodTo ? existing.find((s) => s.periodFrom === r.periodFrom && s.periodTo === r.periodTo) : undefined
+  const start: GbpInput = {
+    periodFrom: r.periodFrom ?? '',
+    periodTo: r.periodTo ?? '',
+    views: r.views,
+    viewsSearchDesktop: r.viewsSearchDesktop,
+    viewsSearchMobile: r.viewsSearchMobile,
+    viewsMapsDesktop: r.viewsMapsDesktop,
+    viewsMapsMobile: r.viewsMapsMobile,
+    calls: r.calls,
+    websiteClicks: r.websiteClicks,
+    directions: r.directions,
+    reviews: same?.reviews ?? null,
+    rating: same?.rating ?? null,
+    newestReviewOn: same?.newestReviewOn ?? null,
+    typedBy: null,
+    note: same?.note ?? 'Read from a GBP screenshot',
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1 rounded-xl bg-vv-lavender-50 px-3 py-2.5 text-[13px]">
+        <span>
+          Claude read this from your screenshot{shot.periodShown ? ` (period shown: “${shot.periodShown}”)` : ''}. Check every number against the screenshot, fix anything wrong, then approve. Nothing counts until you do.
+        </span>
+        {shot.unreadLabels.length > 0 && <span className="font-semibold text-vv-orange-ink">Not read clearly: {shot.unreadLabels.join(', ')}.</span>}
+        {!r.periodFrom && <span className="font-semibold text-vv-orange-ink">Pick the period (From / To) yourself: it wasn’t clear on the screenshot.</span>}
+        {same && <span className="text-vv-body">This period was typed in before: approving updates it (reviews, rating and note are kept from what’s saved).</span>}
+      </div>
+      {preview ? (
+        <img src={preview} alt="Your GBP screenshot" className="max-h-[320px] w-full rounded-xl border border-solid border-vv-line object-contain object-top" />
+      ) : (
+        <p className="m-0 text-[12px] text-vv-muted">The screenshot isn’t kept (it was only in the browser where you read it). Open GBP › Performance next to this to compare.</p>
+      )}
+      <GbpForm
+        siteId={siteId}
+        start={start}
+        onDone={onDone}
+        review={{
+          label: 'Approve numbers',
+          busy: approve.isPending,
+          error: approve.error ?? discard.error,
+          unread: shot.unread,
+          onApprove: (input) => approve.mutate({ id: shot.id, input }, { onSuccess: onDone }),
+          extra: (
+            <button type="button" className={`${BTN_LINK} px-2 !text-vv-red`} onClick={() => setDropping(true)} disabled={approve.isPending || discard.isPending}>
+              Discard
+            </button>
+          ),
+        }}
+      />
+      <ConfirmDialog
+        open={dropping}
+        title="Discard this screenshot read?"
+        body="The read numbers are thrown away. Nothing that’s saved changes."
+        confirmLabel="Discard"
+        busy={discard.isPending}
+        onCancel={() => setDropping(false)}
+        onConfirm={() => discard.mutate(shot.id, { onSuccess: () => { setDropping(false); onDone() } })}
+      />
+    </div>
   )
 }
 
