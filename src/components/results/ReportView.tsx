@@ -8,9 +8,10 @@ import { LilacTable } from '../overview/OverviewParts'
 import ConfirmDialog from '../ui/ConfirmDialog'
 import { Bone, Spinner } from '../ui/Loading'
 import Modal from '../ui/Modal'
+import ReportNotes from './ReportNotes'
 
 // Results › one monthly report: the month's frozen numbers vs the baseline copy it was made with, Draft / Sent, refresh
-// (draft only), up to 3 next actions, and the notes (approved text only; Claude's draft comes in 2f step 3).
+// (draft only), up to 3 next actions, and the notes (Claude drafts, Angel approves: ReportNotes).
 
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError && e.detail ? e.detail : fallback)
 const savedOn = (iso: string) => new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -137,10 +138,7 @@ function Loaded({ siteId, r, onClose }: { siteId: string; r: Report; onClose: ()
 
       <Actions siteId={siteId} r={r} />
 
-      <div className="flex flex-col gap-1.5">
-        <h3 className="m-0 text-[12px] font-bold uppercase tracking-[0.05em] text-vv-body">Notes for the report</h3>
-        {r.notes ? <p className="m-0 whitespace-pre-wrap text-[14px] leading-relaxed">{r.notes}</p> : <p className="m-0 text-[13px] text-vv-body">No approved notes yet. Claude drafts them from these numbers next (2f step 3); you edit and approve before they go in.</p>}
-      </div>
+      <ReportNotes siteId={siteId} r={r} />
 
       <Modal open={sending} title={`Mark the ${r.title} as sent`} onClose={() => !status.isPending && setSending(false)}>
         {sending && <SendForm r={r} busy={status.isPending} error={status.error} onCancel={() => setSending(false)} onSend={(d) => status.mutate({ id: r.id, status: 'sent', sentOn: d }, { onSuccess: () => setSending(false) })} />}

@@ -10,10 +10,13 @@
 //   Map grid = the latest scan inside the month (only once the client uses the map grid)
 // Nothing for the month = listed in `missing` with the reason. Never 0, never an older month's number.
 // Notes: `notes` holds approved text only; Claude's draft (step 3) waits in `notes_draft`.
-import type { BaselineSnapshot, BaselineSource, Report, ReportAction, ReportActionKind, ReportNumbers, ReportsState, ReportSummary } from '../../src/types/seo.js'
+import { z } from 'zod'
+import { AI_MODELS, AI_TASKS, costUsd } from '../../src/lib/aiModels.js'
+import type { BaselineSnapshot, BaselineSource, Report, ReportAction, ReportActionKind, ReportNotesEstimate, ReportNumbers, ReportsState, ReportSummary } from '../../src/types/seo.js'
 import { db, must, pagedRows } from '../clients/supabase.js'
 import { currentBaseline } from './baselineService.js'
-import { clientRow } from './clientService.js'
+import { callStructured, countInputTokens } from './aiService.js'
+import { clientDetail, clientRow } from './clientService.js'
 import { googleWindow } from './metricsService.js'
 import { latestToday } from '../utils/dates.js'
 
@@ -319,4 +322,161 @@ export async function previewReport(siteId: string, rawMonth: unknown): Promise<
   const month = parseMonth(rawMonth)
   const b = await baselineFor(c.id, month)
   return monthNumbers(c.id, month, { id: b.id, label: b.label, savedAt: b.savedAt, snapshots: b.snapshots })
+}
+
+// ---- Notes for the report (2f step 3): Claude drafts, Angel edits + approves -----------------------------------
+// CLAUDE.md: Claude output is saved as "Ready to review" (notes_draft) until Angel approves; only approved text goes
+// in `notes`. Claude never changes numbers or invents facts: it gets the report's frozen numbers and is told to use
+// only those; the numbers check (src/lib/notesCheck.ts) flags anything else. Every call is logged (seo_ai_log, task
+// "report_notes"). The prompt holds the business name, city, service / area names, the numbers, the next actions and
+// last month's approved notes: never the private address or account details.
+
+const NOTES_TASK = 'report_notes' as const
+const NOTES_MAX = 6000
+
+const NotesOut = z.object({
+  notes: z.string().describe('The notes, plain text, three short parts with the headings "What moved", "Likely why", "Next 30 days".'),
+})
+
+const NOTES_SYSTEM = `You write the "Notes for the report" part of a monthly local SEO report for a small business, for the agency's team to review before it goes to the client.
+
+Write three short parts, each starting with its heading on its own line: "What moved", "Likely why", "Next 30 days". Plain text, no markdown symbols, no emoji. Keep the whole thing under about 1,200 characters: short sentences a business owner understands.
+
+Rules:
+- Use only the numbers given in the data. Copy them as written (or rounded the same way). Never calculate new totals, never estimate, never invent a number, a date or a fact.
+- A number missing for this month is unknown: say it wasn't available, never treat it as zero or as a drop.
+- "Same" means it hasn't moved since the baseline; say so plainly, don't dress it up.
+- "Likely why" gives possible reasons as possibilities ("likely", "may"), only from what the data shows (the dates, the next actions, last month's notes). Don't claim work was done unless the data says so.
+- "Next 30 days" follows the next actions listed, in the same order; if there are none, suggest at most three concrete steps that fit the numbers.
+- No promises about rankings or traffic.`
+
+type NoteKind = 'count' | 'pct' | 'pos' | 'secs'
+
+const fmtN = (kind: NoteKind, v: number | null | undefined) => {
+  if (v === null || v === undefined || !Number.isFinite(v)) return 'not available'
+  if (kind === 'pct') return `${(v * 100).toFixed(2)}%`
+  if (kind === 'pos') return v.toFixed(1)
+  if (kind === 'secs') return `${Math.floor(v / 60)}:${String(Math.round(v % 60)).padStart(2, '0')}`
+  return Math.round(v).toLocaleString('en-US')
+}
+
+const NOTE_ROWS: { source: BaselineSource; metric: string; label: string; kind: NoteKind; lower?: boolean }[] = [
+  { source: 'gsc', metric: 'impressions', label: 'Search impressions', kind: 'count' },
+  { source: 'gsc', metric: 'clicks', label: 'Search clicks', kind: 'count' },
+  { source: 'gsc', metric: 'ctr', label: 'Search CTR', kind: 'pct' },
+  { source: 'gsc', metric: 'position', label: 'Search avg position (lower is better)', kind: 'pos', lower: true },
+  { source: 'ga4', metric: 'sessions', label: 'Organic sessions', kind: 'count' },
+  { source: 'ga4', metric: 'key_events', label: 'Key events (leads)', kind: 'count' },
+  { source: 'semrush', metric: 'top3', label: 'Keywords in top 3', kind: 'count' },
+  { source: 'semrush', metric: 'top10', label: 'Keywords in top 10', kind: 'count' },
+  { source: 'semrush', metric: 'avg_position', label: 'Avg ranking position (lower is better)', kind: 'pos', lower: true },
+  { source: 'whitespark', metric: 'avg_rank', label: 'Map grid avg rank (lower is better)', kind: 'pos', lower: true },
+  { source: 'whitespark', metric: 'top3', label: 'Map grid points in top 3', kind: 'count' },
+  { source: 'gbp', metric: 'views', label: 'GBP profile views', kind: 'count' },
+  { source: 'gbp', metric: 'calls', label: 'GBP calls', kind: 'count' },
+  { source: 'gbp', metric: 'website_clicks', label: 'GBP website clicks', kind: 'count' },
+  { source: 'gbp', metric: 'directions', label: 'GBP direction requests', kind: 'count' },
+  { source: 'gbp', metric: 'reviews', label: 'Reviews (total)', kind: 'count' },
+]
+
+type ClientRowT = NonNullable<Awaited<ReturnType<typeof clientRow>>>
+
+/** The user message: client basics (no address), the numbers with dates + change, missing, actions, last notes. */
+async function notesPrompt(c: ClientRowT, r: ReportRow): Promise<string> {
+  const d = await clientDetail(c)
+  const actions = must(await db().from('seo_report_actions').select('kind, body, owner, due, done, sort').eq('report_id', r.id).order('sort'), 'Loading next actions') as { kind: string; body: string; owner: string | null; due: string | null; done: boolean }[]
+  const prev = must(await db().from('seo_reports').select('month, notes').eq('client_id', c.id).lt('month', r.month).not('notes', 'is', null).order('month', { ascending: false }).limit(1), 'Loading last month') as { month: string; notes: string }[]
+  const n = r.numbers
+  const services = d.categories.filter((k) => k.name.trim()).map((k) => `${k.name}${k.services.length ? ` (${k.services.map((s) => s.name).join(', ')})` : ''}`)
+  const areas = d.areas.filter((a) => a.status === 'active' && a.name).map((a) => a.name)
+  const lines: string[] = []
+  lines.push(`Business: ${d.name}${d.city ? `, ${d.city}${d.state ? `, ${d.state}` : ''}` : ''}`)
+  if (services.length) lines.push(`Services: ${services.join('; ')}`)
+  if (areas.length) lines.push(`Areas served: ${areas.join(', ')}`)
+  lines.push('', `Report: ${titleOf(r.month)}. Compared with the baseline "${n.baseline.label ?? 'Baseline'}" saved ${n.baseline.savedAt.slice(0, 10)}.`)
+  lines.push('', 'Numbers (metric | baseline [dates] | this month [dates] | change):')
+  for (const x of NOTE_ROWS) {
+    if (!n.sources.includes(x.source)) continue
+    const b = n.baseline.snapshots.find((s) => s.source === x.source)
+    const m = n.snapshots.find((s) => s.source === x.source)
+    const bv = b?.values[x.metric]
+    const mv = m?.values[x.metric]
+    if ((bv === null || bv === undefined) && (mv === null || mv === undefined)) continue
+    let change = 'unknown'
+    if (bv !== null && bv !== undefined && mv !== null && mv !== undefined) {
+      const diff = mv - bv
+      const same = x.kind === 'count' ? Math.round(diff) === 0 : x.kind === 'pct' ? Math.abs(diff * 100) < 0.005 : Math.abs(diff) < 0.05
+      if (same) change = 'Same'
+      else {
+        const better = x.lower ? diff < 0 : diff > 0
+        const amount = x.kind === 'pct' ? `${(diff * 100).toFixed(2)} pts` : x.kind === 'pos' ? diff.toFixed(1) : `${Math.round(diff)}${bv ? ` (${Math.round((diff / bv) * 100)}%)` : ''}`
+        change = `${diff > 0 ? '+' : ''}${amount}, ${better ? 'better' : 'worse'}`
+      }
+    }
+    lines.push(`- ${x.label} | ${fmtN(x.kind, bv)} [${b ? `${b.from} to ${b.to}` : 'not in baseline'}] | ${fmtN(x.kind, mv)} [${m ? `${m.from} to ${m.to}` : 'none this month'}] | ${change}`)
+  }
+  if (n.missing.length) lines.push('', 'Not available this month:', ...n.missing.map((m) => `- ${m.reason}`))
+  lines.push('', 'Next actions:', ...(actions.length ? actions.map((a, i) => `${i + 1}. [${a.kind}] ${a.body}${a.owner ? ` (owner: ${a.owner})` : ''}${a.due ? ` (due ${a.due})` : ''}${a.done ? ' (done)' : ''}`) : ['none yet']))
+  if (prev[0]) lines.push('', `Last approved notes (${titleOf(prev[0].month)}):`, prev[0].notes)
+  return lines.join('\n')
+}
+
+/** Notes can change only while the report is a draft. */
+async function draftable(siteId: string, id: unknown) {
+  const c = await client(siteId)
+  const r = await loadReport(c.id, id)
+  if (r.status === 'sent') throw new ReportInputError('This report was sent: reopen it as a draft to change its notes.')
+  return { c, r }
+}
+
+/** Before the call: input tokens (free count) + a generous output guess, priced on the task's model. */
+export async function estimateReportNotes(siteId: string, id: unknown): Promise<ReportNotesEstimate> {
+  const { c, r } = await draftable(siteId, id)
+  const t = AI_TASKS[NOTES_TASK]
+  const inputTokens = (await countInputTokens(t.model, NOTES_SYSTEM, await notesPrompt(c, r))) + 200 // + the output schema
+  const outputTokens = t.outBase
+  return { model: AI_MODELS[t.model].label, inputTokens, outputTokens, costUsd: costUsd(t.model, inputTokens, outputTokens) }
+}
+
+/** Read-only: exactly what a draft would send. For checks; never calls Claude. */
+export async function reportNotesPrompt(siteId: string, id: unknown): Promise<{ system: string; user: string }> {
+  const c = await client(siteId)
+  return { system: NOTES_SYSTEM, user: await notesPrompt(c, await loadReport(c.id, id)) }
+}
+
+/** Claude drafts the notes → saved as notes_draft ("Ready to review"). The approved notes are not touched. */
+export async function draftReportNotes(siteId: string, raw: unknown): Promise<Report> {
+  const { c, r } = await draftable(siteId, (raw as { id?: unknown } | null)?.id)
+  const { data, logId } = await callStructured({
+    task: NOTES_TASK,
+    clientId: c.id,
+    model: AI_TASKS[NOTES_TASK].model,
+    system: NOTES_SYSTEM,
+    user: await notesPrompt(c, r),
+    schema: NotesOut,
+    maxTokens: 8000,
+    effort: 'medium',
+  })
+  const text = data.notes.trim().slice(0, NOTES_MAX)
+  if (!text) throw new ReportInputError('Claude returned empty notes. Nothing was saved; try again.')
+  const row = must(await db().from('seo_reports').update({ notes_draft: text, notes_draft_at: new Date().toISOString(), notes_draft_log_id: logId }).eq('id', r.id).select(REPORT_COLS).single(), 'Saving the draft') as ReportRow
+  return toReport(row)
+}
+
+/** Angel's (edited) text becomes the report's notes; the draft is cleared. */
+export async function approveReportNotes(siteId: string, raw: unknown): Promise<Report> {
+  const b = (raw ?? {}) as { id?: unknown; text?: unknown }
+  const { r } = await draftable(siteId, b.id)
+  const text = typeof b.text === 'string' ? b.text.replace(/\r\n/g, '\n').trim() : ''
+  if (!text) throw new ReportInputError('The notes are empty.')
+  if (text.length > NOTES_MAX) throw new ReportInputError(`Notes can be up to ${NOTES_MAX.toLocaleString('en-US')} characters.`)
+  const row = must(await db().from('seo_reports').update({ notes: text, notes_approved_at: new Date().toISOString(), notes_draft: null, notes_draft_at: null }).eq('id', r.id).select(REPORT_COLS).single(), 'Saving the notes') as ReportRow
+  return toReport(row)
+}
+
+/** Throws away Claude's draft (the approved notes stay). */
+export async function discardReportNotes(siteId: string, raw: unknown): Promise<Report> {
+  const { r } = await draftable(siteId, (raw as { id?: unknown } | null)?.id)
+  const row = must(await db().from('seo_reports').update({ notes_draft: null, notes_draft_at: null }).eq('id', r.id).select(REPORT_COLS).single(), 'Saving the report') as ReportRow
+  return toReport(row)
 }

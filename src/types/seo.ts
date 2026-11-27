@@ -1009,3 +1009,11 @@ export interface ReportsState {
   clicksByMonth: { month: string; clicks: number | null; partial: boolean }[]
   hasBaseline: boolean
 }
+
+/** Before "Draft with Claude": what the call will likely cost (count_tokens for the input, a generous output guess). */
+export interface ReportNotesEstimate {
+  model: string
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
+}

@@ -87,7 +87,18 @@ export default function ResultsPage() {
           {latest?.notes ? (
             <p className="m-0 whitespace-pre-wrap text-[14px] leading-relaxed">{latest.notes}</p>
           ) : (
-            <p className="m-0 text-[13px] leading-relaxed text-vv-body">Claude drafts this from the month’s numbers (what moved, likely why, the next 30 days). You edit and approve it before it goes in the report. Comes in the next step.</p>
+            <p className="m-0 text-[13px] leading-relaxed text-vv-body">
+              {latest ? (latest.notesDraft ? 'Claude’s draft is waiting for review. ' : 'No approved notes yet. ') : ''}
+              Claude drafts these from a report’s numbers (what moved, likely why, the next 30 days); you edit and approve before they go in.
+              {latest && openId !== latest.id && (
+                <>
+                  {' '}
+                  <button type="button" className="border-0 bg-transparent p-0 font-body text-[13px] font-semibold text-vv-purple-deep" onClick={() => open(latest.id)}>
+                    Open the {latest.title} ›
+                  </button>
+                </>
+              )}
+            </p>
           )}
         </Panel>
         <ReportsList s={s} pending={q.isPending} openId={openId} onOpen={open} />

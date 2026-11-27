@@ -107,6 +107,11 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
 - **2f step 2 built (Nov 28):** Results page: Create report (month + preview of dates / missing), wins (code, latest
   report vs its baseline), every number vs baseline (last 3 reports), clicks per month, reports list, report view
   (?report=id) with Refresh / Mark as sent / Reopen and up to 3 next actions.
+- **2f step 3 built (Nov 28):** report notes. "Draft with Claude" (task `report_notes`, Sonnet 5.5, effort medium,
+  estimate first, logged in seo_ai_log) gets the frozen numbers + dates, missing, next actions, last approved notes,
+  business name / city / services / areas (no address). Saved as "Ready to review" (notes_draft); Angel edits and
+  approves (only approved text = notes). Numbers check (src/lib/notesCheck.ts) flags any number not in the report
+  (never removes). Sent reports lock their notes. Actions: `report-notes-estimate`, `-draft`, `-approve`, `-discard`.
 
 ## Build steps (each: plan OK → build → Angel tests → commit; stop at the end of phase 2)
 

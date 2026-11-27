@@ -18,7 +18,7 @@ import { metricsOverview, syncAll, syncClient } from '../../server/services/metr
 import { rankingsOverview, RankInputError } from '../../server/services/rankService.js'
 import { deleteGbp, deleteMapGrid, localState, LocalInputError, saveGbp, saveMapGrid } from '../../server/services/localService.js'
 import { baselineById, BaselineInputError, baselineState, saveBaseline } from '../../server/services/baselineService.js'
-import { createReport, previewReport, refreshReport, reportById, ReportInputError, reportsState, saveReportActions, setReportStatus } from '../../server/services/reportService.js'
+import { approveReportNotes, createReport, discardReportNotes, draftReportNotes, estimateReportNotes, previewReport, refreshReport, reportById, ReportInputError, reportsState, saveReportActions, setReportStatus } from '../../server/services/reportService.js'
 import { requireSession } from '../../server/utils/auth.js'
 import { timingSafeEqual } from 'node:crypto'
 import type { MetricRange } from '../../src/types/seo.js'
@@ -81,6 +81,15 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     // Phase 2f · Monthly reports: list (+ months, clicks per month), one report, create, refresh, status, next actions
     if (method === 'GET' && action === 'reports') return Response.json(await reportsState(params.get('site') ?? ''))
     if (method === 'GET' && action === 'report-preview') return Response.json(await previewReport(params.get('site') ?? '', params.get('month')))
+    // 2f step 3 · notes: estimate (count only), Claude draft (saved as "Ready to review"), approve (Angel's text), discard
+    if (method === 'GET' && action === 'report-notes-estimate') return Response.json(await estimateReportNotes(params.get('site') ?? '', params.get('id')))
+    if (method === 'POST' && ['report-notes-draft', 'report-notes-approve', 'report-notes-discard'].includes(action)) {
+      const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
+      const site = String(body.siteId ?? '')
+      if (action === 'report-notes-draft') return Response.json(await draftReportNotes(site, body))
+      if (action === 'report-notes-approve') return Response.json(await approveReportNotes(site, body))
+      return Response.json(await discardReportNotes(site, body))
+    }
     if (method === 'GET' && action === 'report') return Response.json(await reportById(params.get('site') ?? '', params.get('id')))
     if (method === 'POST' && ['report-create', 'report-refresh', 'report-status', 'report-actions'].includes(action)) {
       const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }

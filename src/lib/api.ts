@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNumbers, ReportsState } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -451,4 +451,24 @@ export function setReportStatus(siteId: string, id: string, status: 'draft' | 's
 /** Replaces the next actions (up to 3, in order). */
 export function saveReportActions(siteId: string, id: string, actions: Omit<ReportAction, 'id'>[]): Promise<Report> {
   return call('/api/metrics/report-actions', json({ siteId, id, actions }))
+}
+
+// ---- 2f step 3 · Report notes (Claude drafts, Angel approves) ---------------------------------------------------
+
+export function estimateReportNotes(siteId: string, id: string): Promise<ReportNotesEstimate> {
+  return call('/api/metrics/report-notes-estimate?site=' + encodeURIComponent(siteId) + '&id=' + encodeURIComponent(id))
+}
+
+/** Claude drafts the notes; saved as "Ready to review" (the approved notes stay until you approve a new text). */
+export function draftReportNotes(siteId: string, id: string): Promise<Report> {
+  return call('/api/metrics/report-notes-draft', json({ siteId, id }))
+}
+
+/** Your (edited) text becomes the report's notes. */
+export function approveReportNotes(siteId: string, id: string, text: string): Promise<Report> {
+  return call('/api/metrics/report-notes-approve', json({ siteId, id, text }))
+}
+
+export function discardReportNotes(siteId: string, id: string): Promise<Report> {
+  return call('/api/metrics/report-notes-discard', json({ siteId, id }))
 }
