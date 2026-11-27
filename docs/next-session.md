@@ -7,7 +7,7 @@ waiting on Angel. Updated after every step.
 - **Phase 2 is finished and live in Production**: `main` = merge `6dbd2e4` (Nov 28: 2g PDF + GBP screenshot + fixes), after `324d0f3` (2a–2f).
 - **Skipped for now:** Whitespark (map grid from a screenshot / CSV): no Whitespark account yet. The map grid stays
   optional and typed in by hand.
-- **Phase 3 · Pages** on branch **`phase-3`** (plan `docs/phase-3-plan.md`, approved Nov 28: ClickUp later, structure per client default service first, page codes P1… auto). Step 1 done: **migration 0021 run by Angel and checked**. Next: step 2 (backfill + Sitemap + hotspots screen).
+- **Phase 3 · Pages** on branch **`phase-3`** (plan `docs/phase-3-plan.md`, approved Nov 28: ClickUp later, structure per client default service first, page codes P1… auto). Step 1 done: migration 0021 run and checked. **Step 2 done (`c0b4097`): Sitemap + hotspots screen**, waiting for Angel to test. Next: step 3 Site plan (tree + redirects queue).
 - Test client: **Visual Vibe Design** (`5c939f2631d6b31bdf4523e5d2f79a2c`): "Day 3" baseline (Nov 28) + the
   November 2026 report (Sent).
 - 12 Vercel functions (Hobby cap). Migrations 0001–0020 run and checked.
@@ -76,6 +76,21 @@ Angel already tested all of these; this is for an independent check. Don't chang
 3. ~~Run migration 0021~~ done.
 4. Later: Whitespark account (map grid from a screenshot / CSV); GBP API (not applied for yet).
 5. `ANTHROPIC_API_KEY` set in Vercel Production env (Claude notes + GBP screenshots in Production).
+
+## Phase 3 commits (branch , pushed)
+| Commit | What |
+|---|---|
+|  | Phase 3 plan |
+|  | Migration 0021 (pages fields, site structure, redirects, BrandScript, page briefs, Claude kinds); run by Angel |
+|  |  (with Phase 2g) merged into  |
+|  | **Step 2 · Sitemap + hotspots** (Strategy Builder › Day 5): structure picker; "fill codes" banner with a dry run (only empty fields: P1… in page order, Home → home, S1–S3 → service, FAQ → supporting, live → Keep, planned → New); page list P1… with Keep / Improve / New; hotspot editor with live counters (title 50–60, meta 150–160), checks (meta ends with a CTA, primary keyword near the start, full state name in the title, abbreviation in the URL, no [brackets]), Google preview, "Google may show /x instead" flag; saving a new URL on a live page queues a redirect (shown in step 3); + Add page. Claude draft, page brief, push to site, ClickUp shown as later. API in  (still 12). Tested by Claude: real 9 pages, dry run, refusals, screen light / phone dark |
+
+## How to test step 2 (localhost, Visual Vibe › Strategy Builder › Day 5 · Sitemap + hotspots)
+1. Banner "9 pages have no code…" › See what would change › list P1–P9 (Home keep, 4 hubs keep, 5 city pages new) › Fill 9 pages.
+2. Pick a page › type a title: the counter turns green at 50–60; meta warns without a call to action; Google preview updates.
+3. Change a live page's URL (e.g. P2 to /web-design-northwest-ar/) › the orange "Saving queues a redirect" line › Save › reload: kept. (The redirect shows on Site plan in step 3; set the URL back to undo it.)
+4. Change structure (service first / location first / flat) › reload: kept.
+5. + Add page › name + category › new page with the next code, marked New.
 
 ## Rules to keep
 - Works for any client; never hard-code a client. No fake numbers: empty = "—" / unknown, never 0.
