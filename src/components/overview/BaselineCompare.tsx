@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import { useBaseline } from '../../hooks/useBaseline'
+import { agencyDate } from '../../lib/agencyTime'
 import { CHANGE_TONE as TONE, changeOf, COMPARE_ROWS, fmtMetric, shortDates, SOURCE_NAME } from '../../lib/baseline'
 import { clientPath } from '../../lib/clientSetup'
 import { PILL } from '../../lib/ui'
@@ -11,7 +12,8 @@ import { LilacTable, Panel } from './OverviewParts'
 // positions and map grid rank, lower is better). Missing on either side = "—", never 0.
 
 const SHORT_SOURCE = { ...SOURCE_NAME, semrush: 'Semrush CSV', gbp: 'GBP (typed in)', whitespark: 'Whitespark' }
-const savedOn = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+/** Saved-at dates in the agency's time zone (Asia/Manila). */
+const savedOn = agencyDate
 
 export default function BaselineCompare({ siteId }: { siteId: string }) {
   const q = useBaseline(siteId)

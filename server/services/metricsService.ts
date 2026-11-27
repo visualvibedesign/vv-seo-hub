@@ -8,6 +8,7 @@ import { google, GoogleApiError, GoogleConfigError } from '../clients/google.js'
 import { db, must, pagedRows } from '../clients/supabase.js'
 import { clientRow } from './clientService.js'
 import { GoogleInputError } from './googleService.js'
+import { agencyDay } from '../../src/lib/agencyTime.js'
 
 const DAY = 86_400_000
 const FIRST_PULL_DAYS = 480
@@ -40,7 +41,7 @@ async function baselineDay(clientId: string): Promise<string | null> {
   const b = must(await db().from('seo_baselines').select('id, saved_at').eq('client_id', clientId).eq('is_current', true).maybeSingle(), 'Loading the baseline') as { id: string; saved_at: string } | null
   if (!b) return null
   const v = must(await db().from('seo_baseline_values').select('date_to').eq('baseline_id', b.id).eq('source', 'gsc').not('date_to', 'is', null).order('date_to', { ascending: false }).limit(1), 'Loading the baseline') as { date_to: string }[]
-  return v[0]?.date_to ?? b.saved_at.slice(0, 10)
+  return v[0]?.date_to ?? agencyDay(b.saved_at)
 }
 
 /** The first day pulled (the start of the history SEO Hub has). */

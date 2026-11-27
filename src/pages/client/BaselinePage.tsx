@@ -7,6 +7,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog'
 import { Bone, Spinner } from '../../components/ui/Loading'
 import Modal from '../../components/ui/Modal'
 import { useBaseline, useBaselineById, useSaveBaseline } from '../../hooks/useBaseline'
+import { agencyDate } from '../../lib/agencyTime'
 import { ApiError } from '../../lib/api'
 import { fmtMetric, snapshotDates, snapshotExtra, SOURCE_METRICS, SOURCE_NAME } from '../../lib/baseline'
 import { clientPath } from '../../lib/clientSetup'
@@ -29,7 +30,8 @@ const CARDS: { i: string; source: BaselineSource | 'site'; how: string; tone: To
 ]
 
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError && e.detail ? e.detail : fallback)
-const savedOn = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+/** Saved-at dates in the agency's time zone (Asia/Manila). */
+const savedOn = agencyDate
 const nameOf = (b: BaselineSummary) => b.label ?? 'Baseline'
 
 export default function BaselinePage() {

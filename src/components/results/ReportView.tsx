@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useReport, useRefreshReport, useReportActions, useReportStatus } from '../../hooks/useReports'
+import { agencyDate } from '../../lib/agencyTime'
 import { ApiError } from '../../lib/api'
 import { CHANGE_TONE, changeOf, fmtMetric, REPORT_ROWS, shortDates, SOURCE_NAME } from '../../lib/baseline'
 import { BTN_GHOST, BTN_LIME, BTN_LINK, CARD, FIELD, PILL } from '../../lib/ui'
@@ -14,7 +15,8 @@ import ReportNotes from './ReportNotes'
 // (draft only), up to 3 next actions, and the notes (Claude drafts, Angel approves: ReportNotes).
 
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError && e.detail ? e.detail : fallback)
-const savedOn = (iso: string) => new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+/** Saved-at dates in the agency's time zone (Asia/Manila). */
+const savedOn = agencyDate
 const todayIso = () => {
   const t = new Date()
   return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`

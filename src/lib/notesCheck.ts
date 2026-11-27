@@ -2,8 +2,9 @@
 // Every number written in the notes must come from the report: a value (baseline or this month, as written or
 // rounded), a change between them (difference or %), a date in the report, or a small count (1–10, "30 days").
 // Anything else is FLAGGED for Angel, never removed. Shared by the server (when Claude drafts) and the Results page
-// (live while Angel edits). No imports besides types, so both sides can use it.
+// (live while Angel edits). Only types + agencyTime (no imports of its own), so both sides can use it.
 import type { ReportAction, ReportNumbers } from '../types/seo.js'
+import { agencyDay } from './agencyTime.js'
 
 /** Every number the notes may mention. */
 export function allowedNumbers(n: ReportNumbers, actions: Pick<ReportAction, 'due' | 'body'>[] = []): number[] {
@@ -50,7 +51,7 @@ export function allowedNumbers(n: ReportNumbers, actions: Pick<ReportAction, 'du
     }
   }
   dates(n.month)
-  dates(n.baseline.savedAt.slice(0, 10))
+  dates(agencyDay(n.baseline.savedAt))
   // The next actions are given to Claude too: their due dates and any number written in them ("480/mo", "4 → 7").
   for (const a of actions) {
     dates(a.due)

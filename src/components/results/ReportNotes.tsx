@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useApproveNotes, useDiscardNotes, useDraftNotes, useReportNotesEstimate } from '../../hooks/useReports'
 import { formatUsd } from '../../lib/aiModels'
+import { agencyDateTime } from '../../lib/agencyTime'
 import { ApiError } from '../../lib/api'
 import { allowedNumbers, unmatchedNumbers } from '../../lib/notesCheck'
 import { BTN_GHOST, BTN_LIME, BTN_LINK, FIELD, PILL } from '../../lib/ui'
@@ -14,7 +15,8 @@ import Modal from '../ui/Modal'
 // check flags any number that isn't in the report (it never removes anything). A sent report's notes are locked.
 
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError && e.detail ? e.detail : fallback)
-const when = (iso: string) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+/** Drafted / approved times in the agency's time zone (Asia/Manila). */
+const when = agencyDateTime
 
 export default function ReportNotes({ siteId, r }: { siteId: string; r: Report }) {
   const draft = useDraftNotes(siteId)

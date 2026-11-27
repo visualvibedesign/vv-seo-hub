@@ -19,6 +19,7 @@ import { callStructured, countInputTokens } from './aiService.js'
 import { clientDetail, clientRow } from './clientService.js'
 import { googleWindow } from './metricsService.js'
 import { latestToday } from '../utils/dates.js'
+import { agencyDay } from '../../src/lib/agencyTime.js'
 
 /** A problem the person can fix (400). */
 export class ReportInputError extends Error {}
@@ -73,7 +74,7 @@ function parseMonth(v: unknown): string {
  */
 function firstReportMonth(b: { savedAt: string; snapshots: BaselineSnapshot[] }): string {
   const ends = b.snapshots.map((s) => s.to).filter((d): d is string => !!d)
-  const end = ends.length ? ends.sort()[ends.length - 1] : b.savedAt.slice(0, 10)
+  const end = ends.length ? ends.sort()[ends.length - 1] : agencyDay(b.savedAt)
   return `${end.slice(0, 7)}-01`
 }
 
@@ -332,6 +333,8 @@ export async function previewReport(siteId: string, rawMonth: unknown): Promise<
 // last month's approved notes: never the private address or account details.
 
 const NOTES_TASK = 'report_notes' as const
+/** Saved-at dates in the prompt are the agency's calendar day (Asia/Manila), never the UTC day. */
+const AGENCY_TZ_NOTE = 'agency time, Asia/Manila'
 const NOTES_MAX = 6000
 
 const NotesOut = z.object({
@@ -393,7 +396,7 @@ async function notesPrompt(c: ClientRowT, r: ReportRow): Promise<string> {
   lines.push(`Business: ${d.name}${d.city ? `, ${d.city}${d.state ? `, ${d.state}` : ''}` : ''}`)
   if (services.length) lines.push(`Services: ${services.join('; ')}`)
   if (areas.length) lines.push(`Areas served: ${areas.join(', ')}`)
-  lines.push('', `Report: ${titleOf(r.month)}. Compared with the baseline "${n.baseline.label ?? 'Baseline'}" saved ${n.baseline.savedAt.slice(0, 10)}.`)
+  lines.push('', `Report: ${titleOf(r.month)}. Compared with the baseline "${n.baseline.label ?? 'Baseline'}" saved ${agencyDay(n.baseline.savedAt)} (${AGENCY_TZ_NOTE}).`)
   lines.push('', 'Numbers (metric | baseline [dates] | this month [dates] | change):')
   for (const x of NOTE_ROWS) {
     if (!n.sources.includes(x.source)) continue

@@ -8,6 +8,7 @@ import ReportView from '../../components/results/ReportView'
 import Icon from '../../components/ui/Icon'
 import { Bone } from '../../components/ui/Loading'
 import { useReportList, useReports } from '../../hooks/useReports'
+import { agencyDate } from '../../lib/agencyTime'
 import { ApiError } from '../../lib/api'
 import { CHANGE_TONE, changeOf, creatableMonths, fmtMetric, REPORT_ROWS, SOURCE_NAME, winsOf } from '../../lib/baseline'
 import { clientPath } from '../../lib/clientSetup'
@@ -20,7 +21,8 @@ import type { Report, ReportsState } from '../../types/seo'
 
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError && e.detail ? e.detail : fallback)
 const mon = (m: string) => new Date(`${m}T12:00:00`).toLocaleDateString('en-US', { month: 'short' })
-const savedOn = (iso: string) => new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+/** Saved-at dates in the agency's time zone (Asia/Manila). */
+const savedOn = agencyDate
 
 export default function ResultsPage() {
   const c = useClientContext()
