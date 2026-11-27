@@ -77,13 +77,13 @@ Angel already tested all of these; this is for an independent check. Don't chang
 4. Later: Whitespark account (map grid from a screenshot / CSV); GBP API (not applied for yet).
 5. `ANTHROPIC_API_KEY` set in Vercel Production env (Claude notes + GBP screenshots in Production).
 
-## Phase 3 commits (branch , pushed)
+## Phase 3 commits (branch `phase-3`, pushed)
 | Commit | What |
 |---|---|
-|  | Phase 3 plan |
-|  | Migration 0021 (pages fields, site structure, redirects, BrandScript, page briefs, Claude kinds); run by Angel |
-|  |  (with Phase 2g) merged into  |
-|  | **Step 2 · Sitemap + hotspots** (Strategy Builder › Day 5): structure picker; "fill codes" banner with a dry run (only empty fields: P1… in page order, Home → home, S1–S3 → service, FAQ → supporting, live → Keep, planned → New); page list P1… with Keep / Improve / New; hotspot editor with live counters (title 50–60, meta 150–160), checks (meta ends with a CTA, primary keyword near the start, full state name in the title, abbreviation in the URL, no [brackets]), Google preview, "Google may show /x instead" flag; saving a new URL on a live page queues a redirect (shown in step 3); + Add page. Claude draft, page brief, push to site, ClickUp shown as later. API in  (still 12). Tested by Claude: real 9 pages, dry run, refusals, screen light / phone dark |
+| `6f82cfc` | Phase 3 plan |
+| `7b9b49a` | Migration 0021 (pages fields, site structure, redirects, BrandScript, page briefs, Claude kinds); run by Angel |
+| `f1e8420` | `main` (with Phase 2g) merged into `phase-3` |
+| `c0b4097` | **Step 2 · Sitemap + hotspots** (Strategy Builder › Day 5): structure picker; "fill codes" banner with a dry run (only empty fields: P1… in page order, Home → home, S1–S3 → service, FAQ → supporting, live → Keep, planned → New); page list P1… with Keep / Improve / New; hotspot editor with live counters (title 50–60, meta 150–160), checks (meta ends with a CTA, primary keyword near the start, full state name in the title, abbreviation in the URL, no [brackets]), Google preview, "Google may show /x instead" flag; saving a new URL on a live page queues a redirect (shown in step 3); + Add page. Claude draft, page brief, push to site, ClickUp shown as later. API in `api/clusters` (still 12). Tested by Claude: real 9 pages, dry run, refusals, screen light / phone dark |
 
 ## How to test step 2 (localhost, Visual Vibe › Strategy Builder › Day 5 · Sitemap + hotspots)
 1. Banner "9 pages have no code…" › See what would change › list P1–P9 (Home keep, 4 hubs keep, 5 city pages new) › Fill 9 pages.
