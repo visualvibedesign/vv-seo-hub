@@ -219,12 +219,16 @@ type Window<T> = { from: string; to: string; totals: T } | null
  * The last `n` days each Google source has (ending on its own last pulled day), with the same totals the Overview
  * shows. Used by Baseline (the frozen copy) and "Baseline vs now". null = not linked or nothing pulled yet.
  */
-export async function googleWindow(clientId: string, n = 28): Promise<{ gsc: Window<GscTotals>; ga4: Window<Ga4Totals> }> {
+export async function googleWindow(clientId: string, n = 28, within?: { from: string; to: string }): Promise<{ gsc: Window<GscTotals>; ga4: Window<Ga4Totals> }> {
   const link = must(await db().from('seo_google_links').select('gsc_property, ga4_property').eq('client_id', clientId).maybeSingle(), 'Loading the Google link') as { gsc_property: string | null; ga4_property: string | null } | null
   const one = async <T>(source: 'gsc' | 'ga4', linked: boolean, totals: (m: Map<string, Record<string, number>>, from: string, to: string) => T): Promise<Window<T>> => {
     if (!linked) return null
-    const to = await lastDay(clientId, source)
-    if (!to) return null
+    // `within` (a month): the window ends on the month's last pulled day = the month's end, or the source's last pulled
+    // day if that comes first. Google leaves out days with nothing in them, so "last row in the month" isn't it.
+    const pulledTo = await lastDay(clientId, source)
+    if (!pulledTo) return null
+    const to = within ? (pulledTo < within.to ? pulledTo : within.to) : pulledTo
+    if (within && to < within.from) return null
     const from = addDays(to, -(n - 1))
     const byDay = new Map<string, Record<string, number>>()
     for await (const r of pagedRows<{ metric: string; day: string; value: string | number }>(

@@ -942,3 +942,68 @@ export interface BaselineState {
   /** Every baseline for the client, newest first (the current one included) */
   history: BaselineSummary[]
 }
+
+// ---- Phase 2f · Monthly reports (seo_reports + seo_report_actions, migrations 0016 + 0019) ----------------------
+
+/**
+ * Frozen when the report is made (and on "Refresh numbers" while it's a draft). Month values per source:
+ * Search Console + GA4 = the 28 days ending on the month's last pulled day (same length as the baseline);
+ * Semrush = the latest CSV dated inside the month; GBP = the period typed for the month; map grid = the latest scan
+ * inside the month. A source with nothing for the month is in `missing` with the reason, never 0 or an older number.
+ */
+export interface ReportNumbers {
+  month: string
+  baseline: { id: string; label: string | null; savedAt: string; snapshots: BaselineSnapshot[] }
+  snapshots: BaselineSnapshot[]
+  missing: { source: BaselineSource; reason: string }[]
+  /** Sources the client uses (the map grid only once it has a scan) */
+  sources: BaselineSource[]
+  frozenAt: string
+}
+
+export type ReportActionKind = 'page' | 'gbp' | 'links' | 'tracking' | 'other'
+
+export interface ReportAction {
+  id: string
+  kind: ReportActionKind
+  body: string
+  owner: string | null
+  due: string | null
+  done: boolean
+}
+
+export interface ReportSummary {
+  id: string
+  /** First day of the month, YYYY-MM-01 */
+  month: string
+  /** "November 2026 report" */
+  title: string
+  status: 'draft' | 'sent'
+  sentOn: string | null
+  /** The Search Console window under the title, e.g. "Nov 1 – Nov 28, 2026 · 28 days" (null = no Search Console) */
+  dates: string | null
+  hasNotes: boolean
+  hasDraft: boolean
+  updatedAt: string
+}
+
+export interface Report extends ReportSummary {
+  baselineId: string | null
+  numbers: ReportNumbers
+  /** Approved text only */
+  notes: string | null
+  /** Claude's draft, waiting for review */
+  notesDraft: string | null
+  notesDraftAt: string | null
+  notesApprovedAt: string | null
+  actions: ReportAction[]
+}
+
+export interface ReportsState {
+  reports: ReportSummary[]
+  /** The last 6 months (newest first) and whether each has a report: what "Create report" can offer */
+  months: { month: string; title: string; exists: boolean; current: boolean }[]
+  /** Search Console clicks per calendar month, last 6 (oldest first); partial = the month isn't fully pulled */
+  clicksByMonth: { month: string; clicks: number | null; partial: boolean }[]
+  hasBaseline: boolean
+}

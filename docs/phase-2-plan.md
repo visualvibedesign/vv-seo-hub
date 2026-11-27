@@ -95,6 +95,13 @@ no address anywhere (map grid centre = a town / area name); Claude drafts are re
   approves; only the approved text is saved in the report. Logged in `seo_ai_log` like every call.
 - **Up to 3 next actions** (`seo_report_actions`: type, text, owner, due date, done).
 - **PDF:** later (2g); the report page prints cleanly first.
+- **Decided Nov 28:** a report's Search Console + GA4 numbers = the 28 days ending on the month's last pulled day
+  (the month's end, or the last pulled day if earlier), same length as the baseline. Titled "November 2026 report"
+  with the exact dates under it. Semrush = latest CSV dated in the month; GBP = the month's typed period; map grid =
+  latest scan in the month. Nothing for the month = "missing" with the reason (never 0 or an older month).
+- **2f step 1 built (Nov 28):** `server/services/reportService.ts` + migration 0019. Actions in `api/metrics`:
+  `reports` (list + last 6 months + clicks per month), `report`, `report-preview` (read only), `report-create`,
+  `report-refresh` (draft only), `report-status` (draft / sent + sent date), `report-actions` (up to 3). Still 12.
 
 ## Build steps (each: plan OK → build → Angel tests → commit; stop at the end of phase 2)
 

@@ -18,6 +18,7 @@ import { metricsOverview, syncAll, syncClient } from '../../server/services/metr
 import { rankingsOverview, RankInputError } from '../../server/services/rankService.js'
 import { deleteGbp, deleteMapGrid, localState, LocalInputError, saveGbp, saveMapGrid } from '../../server/services/localService.js'
 import { baselineById, BaselineInputError, baselineState, saveBaseline } from '../../server/services/baselineService.js'
+import { createReport, previewReport, refreshReport, reportById, ReportInputError, reportsState, saveReportActions, setReportStatus } from '../../server/services/reportService.js'
 import { requireSession } from '../../server/utils/auth.js'
 import { timingSafeEqual } from 'node:crypto'
 import type { MetricRange } from '../../src/types/seo.js'
@@ -77,6 +78,18 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
       return Response.json(await saveBaseline(String(body.siteId ?? ''), body))
     }
+    // Phase 2f · Monthly reports: list (+ months, clicks per month), one report, create, refresh, status, next actions
+    if (method === 'GET' && action === 'reports') return Response.json(await reportsState(params.get('site') ?? ''))
+    if (method === 'GET' && action === 'report-preview') return Response.json(await previewReport(params.get('site') ?? '', params.get('month')))
+    if (method === 'GET' && action === 'report') return Response.json(await reportById(params.get('site') ?? '', params.get('id')))
+    if (method === 'POST' && ['report-create', 'report-refresh', 'report-status', 'report-actions'].includes(action)) {
+      const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
+      const site = String(body.siteId ?? '')
+      if (action === 'report-create') return Response.json(await createReport(site, body))
+      if (action === 'report-refresh') return Response.json(await refreshReport(site, body))
+      if (action === 'report-status') return Response.json(await setReportStatus(site, body))
+      return Response.json(await saveReportActions(site, body))
+    }
     if (method === 'POST' && action === 'sync') {
       const body = (await request.json().catch(() => ({}))) as { siteId?: unknown }
       return Response.json(await syncClient(String(body.siteId ?? '')))
@@ -87,7 +100,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
-    if (err instanceof GoogleInputError || err instanceof GoogleConfigError || err instanceof RankInputError || err instanceof LocalInputError || err instanceof BaselineInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
+    if (err instanceof GoogleInputError || err instanceof GoogleConfigError || err instanceof RankInputError || err instanceof LocalInputError || err instanceof BaselineInputError || err instanceof ReportInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof DatabaseError) return Response.json({ error: 'database', detail: err.message }, { status: 500 })
     throw err
   }

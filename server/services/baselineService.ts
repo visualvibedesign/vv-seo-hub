@@ -167,6 +167,15 @@ export async function saveBaseline(siteId: string, raw: unknown): Promise<Baseli
   return baselineState(siteId)
 }
 
+/** The current baseline with its frozen numbers (no live numbers), or null. Used by monthly reports. */
+export async function currentBaseline(clientId: string): Promise<(BaselineSummary & { snapshots: BaselineSnapshot[] }) | null> {
+  const b = must(await db().from('seo_baselines').select('id, label, note, is_current, saved_at').eq('client_id', clientId).eq('is_current', true).maybeSingle(), 'Loading the baseline') as BaselineRow | null
+  if (!b) return null
+  const rows = must(await db().from('seo_baseline_values').select('baseline_id, source, metric, value, value_text, date_from, date_to').eq('baseline_id', b.id), 'Loading baseline numbers') as ValueRow[]
+  const snapshots = toSnapshots(rows)
+  return { ...summary(b, snapshots.map((s) => s.source)), snapshots }
+}
+
 /** For the Day 3 auto-tick: every required source is in the current baseline. */
 export async function baselineComplete(clientId: string): Promise<boolean> {
   const cur = must(await db().from('seo_baselines').select('id').eq('client_id', clientId).eq('is_current', true).maybeSingle(), 'Loading the baseline') as { id: string } | null
