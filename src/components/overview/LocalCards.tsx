@@ -30,9 +30,17 @@ const ACTIONS = [
   { key: 'directions', label: 'Directions', bar: 'bg-vv-gbp-dir' },
 ] as const
 
-/** Calls + website clicks + directions per 100 profile views. Unknown unless all four are typed (and views > 0). */
-const per100 = (s: GbpSnapshot | undefined) =>
-  s && s.views && s.calls !== null && s.websiteClicks !== null && s.directions !== null ? ((s.calls + s.websiteClicks + s.directions) / s.views) * 100 : null
+/**
+ * Typed actions (calls, website clicks, directions) per 100 profile views. Uses the actions that ARE typed: a
+ * service-area business never has directions. Unknown only when views are missing / 0 or no action is typed.
+ * `used` = which actions went in, so two months are only compared when they used the same ones.
+ */
+const per100 = (s: GbpSnapshot | undefined): { value: number; used: string; missing: string[] } | null => {
+  if (!s || !s.views) return null
+  const typed = ACTIONS.filter((a) => s[a.key] !== null)
+  if (!typed.length) return null
+  return { value: (typed.reduce((t, a) => t + (s[a.key] ?? 0), 0) / s.views) * 100, used: typed.map((a) => a.key).join(','), missing: ACTIONS.filter((a) => s[a.key] === null).map((a) => a.label.toLowerCase()) }
+}
 
 /** Axis label: "Oct" for a calendar month, else the start date. */
 const tick = (s: GbpSnapshot) => {
@@ -233,11 +241,12 @@ function GbpForm({ siteId, start, onDone }: { siteId: string; start: GbpInput; o
 function Per100({ now, prev, prevLabel }: { now: GbpSnapshot | undefined; prev: GbpSnapshot | undefined; prevLabel: string }) {
   const a = per100(now)
   const b = per100(prev)
-  const d = a !== null && b !== null ? Math.round((a - b) * 10) / 10 : null
+  const d = a && b && a.used === b.used ? Math.round((a.value - b.value) * 10) / 10 : null
   return (
-    <div className="flex min-w-0 flex-col gap-0.5 rounded-[14px] bg-vv-lavender-50 p-3" title="Calls + website clicks + directions, per 100 profile views">
-      <div className="text-[22px] font-bold">{a === null ? <Dash /> : a.toFixed(1)}</div>
+    <div className="flex min-w-0 flex-col gap-0.5 rounded-[14px] bg-vv-lavender-50 p-3" title="Typed actions (calls + website clicks + directions) per 100 profile views">
+      <div className="text-[22px] font-bold">{a === null ? <Dash /> : a.value.toFixed(1)}</div>
       <div className="text-[12px] text-vv-body">Actions per 100 views</div>
+      {a && a.missing.length > 0 && <span className="text-[11px] text-vv-muted">{a.missing.join(', ')} not tracked</span>}
       {d !== null &&
         (d === 0 ? (
           <span className="text-[11px] text-vv-body">same as {prevLabel}</span>
