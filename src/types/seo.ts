@@ -1052,3 +1052,52 @@ export interface ReportNotesEstimate {
   outputTokens: number
   costUsd: number
 }
+
+// ---- Phase 3 · Pages: sitemap + hotspots, site plan (migration 0021) --------------------------------------------
+
+export type PageType = 'home' | 'service' | 'location' | 'supporting'
+export type PageAction = 'keep' | 'improve' | 'new'
+export type SiteStructure = 'service_first' | 'location_first' | 'flat'
+
+/** A page of the ideal sitemap: the Clusters page + its code, type, parent, keep / improve / new and hotspots. */
+export interface SitePage extends ClusterPage {
+  /** "P1", "P2"… (null until set) */
+  code: string | null
+  type: PageType | null
+  parentId: string | null
+  action: PageAction | null
+  seoTitle: string | null
+  metaDescription: string | null
+  h1: string | null
+  /** The target permalink (where the page should live); `url` stays the current live URL */
+  urlTarget: string | null
+  hotspotsAt: string | null
+  /** Google ranks another URL for this page's keyword (latest Position Tracking CSV), or null */
+  swappedUrl: string | null
+}
+
+export interface PagesState {
+  structure: SiteStructure
+  siteUrl: string
+  /** The client's state abbreviation (for the "full state name in the title / abbreviation in the URL" checks) */
+  state: string | null
+  pages: SitePage[]
+  /** Pages missing a code, type or keep / improve / new (the backfill can fill them) */
+  needsBackfill: number
+}
+
+export interface PagesBackfillPlan {
+  changes: { pageId: string; name: string; code: string | null; type: PageType | null; action: PageAction | null }[]
+  applied: boolean
+}
+
+export interface HotspotsInput {
+  pageId: string
+  code: string | null
+  type: PageType | null
+  action: PageAction | null
+  seoTitle: string | null
+  metaDescription: string | null
+  h1: string | null
+  urlTarget: string | null
+}
