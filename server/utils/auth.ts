@@ -123,6 +123,27 @@ function domainAttr(domain: string | null) {
   return domain ? `; Domain=${domain}` : ''
 }
 
+/**
+ * Sign-in handoff from HQ (2026-11-27; HQ's server/utils/handoff.ts makes the pass). The apps are on
+ * different addresses, so HQ sends a 60-second pass in the link:
+ * "<expires ms>.<remember 0|1>.<password version>.<signature>", signature = HMAC(SESSION_SECRET,
+ * "handoff.<expires>.<remember>.<version>"). Valid -> { remember } (then set this app's cookie), else null.
+ * The "handoff." prefix means a pass can never be used as a cookie, and a cookie never as a pass.
+ */
+export async function checkHandoffPass(pass: string | null): Promise<{ remember: boolean } | null> {
+  const [expires, remember, version, signature, extra] = (pass ?? '').split('.')
+  if (!expires || !remember || !version || !signature || extra !== undefined) return null
+  const { hash, secret } = await config()
+  const want = Buffer.from(sign(`handoff.${expires}.${remember}.${version}`, secret))
+  const got = Buffer.from(signature)
+  if (got.length !== want.length || !timingSafeEqual(got, want)) return null
+  const left = Number(expires) - Date.now()
+  if (!(left > 0 && left <= HANDOFF_MAX_MS) || version !== passwordVersion(hash)) return null
+  return { remember: remember === '1' }
+}
+
+const HANDOFF_MAX_MS = 120_000 // HQ makes 60-second passes; a little slack for clock drift
+
 /** True if the request carries a valid, unexpired session cookie (from SEO Hub or HQ). */
 export async function isSignedIn(request: Request): Promise<boolean> {
   const values = readCookies(request, COOKIE)

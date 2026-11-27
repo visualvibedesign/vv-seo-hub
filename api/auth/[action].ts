@@ -3,8 +3,14 @@
 //   POST /api/auth/logout                          -> signs this browser out
 //   GET  /api/auth/me                              -> { signedIn: true | false }
 //   GET  /api/auth/health                          -> setup check (signed-in only; /api/health rewrites here)
+//   GET  /api/auth/handoff?t=<pass>&next=<page>     -> signed in from HQ (2026-11-27): sets the cookie, opens the page
 // No change/forgot password here: the team password is managed in HQ only (SEO Hub reads it).
-import { AuthConfigError, checkPassword, clearSessionCookies, isSignedIn, requireSession, sessionCookies, withCookies } from '../../server/utils/auth.js'
+import { AuthConfigError, checkHandoffPass, checkPassword, clearSessionCookies, isSignedIn, requireSession, sessionCookies, withCookies } from '../../server/utils/auth.js'
+
+/** A page of this site ("/clients/…"), else "/" (same rule as safeNext in src/lib/api.ts). */
+function safeNext(next: string | null): string {
+  return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/\\') ? next : '/'
+}
 import { healthCheck } from '../../server/services/healthService.js'
 
 const WRONG_PASSWORD_DELAY_MS = 800 // slows down guessing
@@ -28,6 +34,22 @@ async function handle(request: Request, method: 'GET' | 'POST') {
 
     if (action === 'me' && method === 'GET') {
       return Response.json({ signedIn: await isSignedIn(request) })
+    }
+
+    // Signed in at HQ: HQ's link carries a 60-second pass (checkHandoffPass). Good pass -> this app's
+    // cookie and on to the page. Bad or old pass -> this app's own Sign in page (never a loop).
+    if (action === 'handoff' && method === 'GET') {
+      const url = new URL(request.url)
+      const next = safeNext(url.searchParams.get('next'))
+      const ok = await checkHandoffPass(url.searchParams.get('t'))
+      if (!ok) {
+        const login = new URL(`/login?handoff=failed${next === '/' ? '' : `&next=${encodeURIComponent(next)}`}`, url)
+        return new Response(null, { status: 302, headers: { Location: login.href, 'Cache-Control': 'no-store' } })
+      }
+      const headers = withCookies(await sessionCookies(request, ok.remember))
+      headers.set('Location', new URL(next, url).href)
+      headers.set('Cache-Control', 'no-store')
+      return new Response(null, { status: 302, headers })
     }
 
     if (action === 'login' && method === 'POST') {

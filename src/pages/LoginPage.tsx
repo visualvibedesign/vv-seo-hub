@@ -6,7 +6,8 @@ import { getSession, login, logout, safeNext } from '../lib/api'
 
 // "Sign in" screen, copied from HQ's LoginPage (same layout, sizes and copy style), worded for SEO Hub.
 // Same shared team password as HQ. The password is changed in HQ only (Settings), never here.
-// Later, with custom domains, HQ_LOGIN_URL will send people to HQ's sign-in instead (CONTEXT.md §3).
+// Since 2026-11-27 signed-out pages go to HQ's sign-in first (RequireSession + /api/auth/handoff);
+// this page is the fallback (localhost, or when the HQ sign-in couldn't be carried over).
 
 const STAR = 'M12 0C13 7 17 11 24 12C17 13 13 17 12 24C11 17 7 13 0 12C7 11 11 7 12 0Z'
 const VIBE = 'Business doesn’t have to be boring.'
@@ -16,6 +17,7 @@ const ERRORS = {
   wrong_password: "That's not the team password. Try again, or ask Alexia.",
   not_configured: "Sign-in isn't set up yet: the team password hasn't been added to the server.",
   network_error: "Couldn't reach the server. Check your connection and try again.",
+  handoff_failed: "Couldn't bring your HQ sign-in over. Sign in here with the team password.",
 } as const
 
 type Step = 'checking' | 'form' | 'welcome'
@@ -29,7 +31,8 @@ export default function LoginPage() {
   const [pw, setPw] = useState('')
   const [show, setShow] = useState(false)
   const [remember, setRemember] = useState(true)
-  const [err, setErr] = useState('')
+  // Came back from HQ but the sign-in couldn't be carried over (/api/auth/handoff): sign in here.
+  const [err, setErr] = useState(params.get('handoff') === 'failed' ? ERRORS.handoff_failed : '')
   const [busy, setBusy] = useState(false)
   const [forgotNote, setForgotNote] = useState(false)
 
