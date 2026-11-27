@@ -17,12 +17,13 @@ Shareable status note: what changed, commit ids, what's pushed, what's waiting o
 | `be239db` | **2g step 1, report PDF**: print view `/clients/{site}/results/{report}/print` (team login required, no sidebar, A4, Vibe look, footer "Prepared by Visual Vibe Design · date" + "Page X of Y", approved notes only, never address / accounts / drafts / costs); "Download PDF" on the report. No new function. Tested by Angel ✓ |
 | `63604bc` | 0020 SQL draft + migrations log + this note |
 | `e7eda04` | **2g step 3, GBP screenshot server** (0020 run by Angel): estimate / read / approve / discard actions in `api/metrics` (still 12); image checked (type + first bytes, ≤ 3 MB), used for one Claude call, never stored or logged; only the period + 8 numbers come back; unclear = empty (never 0); period empty unless clearly shown with its year ("pick it"); saved as Ready to review in `seo_autofill` (Day 2 auto-fill never lists them); approve = normal GBP save. Tested by Claude with 2 synthetic screenshots (`test-data/gbp-screenshots/`): 8 numbers exact, directions empty, no-year period empty, supersede / discard / refusals OK, no fake address / phone saved, ~$0.006 per read |
+| `a6bc5b0` | Next-session note after step 3 |
+| `9dce8df` | **2g step 4, GBP review screen**: GBP card › "Read a screenshot" (pick PNG / JPG / WebP → browser shrinks to max 1600 px JPEG, kept in memory only → cost shown → "Read it"); "Ready to review" banner on the card (nothing counts yet); Review = screenshot beside the GBP form pre-filled, unread fields marked orange, unread period empty ("Pick the period yourself"); if the month was typed before, reviews / rating / newest review / note kept from what is saved; Approve numbers = normal GBP save; Discard (confirm); Later. Tested by Claude: review with and without a period, October merge keeps reviews 23 / rating 5, shrink makes a valid JPEG, text file / broken PNG refused |
 
-Pushed: `phase-2` up to `e7eda04` + this note. Not on `main` yet.
+Pushed: `phase-2` up to `9dce8df` + this note. Not on `main` yet.
 
 ## Waiting on Angel
-1. **Check the GBP screenshot server** (`e7eda04`, see "What to check" in the chat / below) and say go for the review
-   screen. There's no screen yet: the read is tested from the server side.
+1. **Test the GBP screenshot flow on localhost** with a real GBP › Performance screenshot (steps in the chat, also below), then say go or what to fix. Map grid from a screenshot is the only 2g step left and waits for the Whitespark sample.
 2. Fix the November report notes date yourself (old approved text says "2026-11-27"): Reopen → redraft / edit →
    Approve → Mark as sent.
 3. Whitespark map grid **sample screenshot / CSV** (map grid from a screenshot waits for it).
@@ -33,10 +34,17 @@ Pushed: `phase-2` up to `e7eda04` + this note. Not on `main` yet.
 1. ~~Report PDF (print view)~~ done (`be239db`).
 2. ~~Migration 0020~~ run by Angel, checked.
 3. ~~GBP screenshot server~~ done (`e7eda04`), waiting for Angel's check.
-4. **Next: GBP review screen** (in `src/components/overview/LocalCards.tsx`): "Read a screenshot" on the GBP card;
-   the browser shrinks the image (max 1600 px, JPEG) and keeps it in memory only; estimate first, then read; pre-filled GBP form + screenshot beside it (browser memory only), unread fields marked,
-   Approve (normal GBP save) / Discard.
+4. ~~GBP review screen~~ done (`9dce8df`), waiting for Angel's test.
 5. Map grid from a screenshot: after Angel's sample.
+
+## How to test the GBP screenshot flow (localhost, Visual Vibe › Overview › GBP card)
+1. "Read a screenshot" › pick a real GBP › Performance screenshot › cost shows › "Read it" (up to ~20 s).
+2. Review opens: screenshot beside the form; numbers match the screenshot; anything unclear is orange and empty.
+3. If the month wasn't readable: From / To are empty and marked; pick them.
+4. If that month was typed before: reviews / rating / newest review are already filled from what's saved.
+5. Approve numbers › the GBP card updates (views, actions, donut); Baseline "Ready to save" numbers follow.
+6. Try Later (banner stays), Discard (banner goes, nothing changes), and a non-GBP image (refused, nothing saved).
+7. Settings › Claude usage shows "GBP screenshot" calls.
 
 ## Rules to keep
 - Works for any client; never hard-code a client. No fake numbers: empty = "—" / unknown, never 0.
