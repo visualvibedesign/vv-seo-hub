@@ -22,6 +22,8 @@ type Row = {
   decided_at: string | null
 }
 const COLS = 'id, step, kind, source, status, summary, payload, applied_count, created_at, decided_at'
+/** Screenshot reads (2g, migration 0020) share seo_autofill but aren't keyword suggestions: never listed or retired here. */
+const NOT_KEYWORDS = '(gbp_screenshot,map_screenshot)'
 
 const toRow = (r: Row): AutofillRow => ({
   id: r.id,
@@ -52,7 +54,7 @@ async function liveKeywordIds(clientId: string): Promise<Set<string>> {
 
 /** Open (ready) suggestions of a client and how many of their keywords no longer exist (e.g. removed with a deleted import). */
 async function openWithGone(clientId: string): Promise<{ row: Row; gone: number }[]> {
-  const rows = (must(await db().from('seo_autofill').select(COLS).eq('client_id', clientId).eq('status', 'ready'), 'Loading auto-fill') as Row[]).filter((r) => !r.kind.startsWith('setup_'))
+  const rows = (must(await db().from('seo_autofill').select(COLS).eq('client_id', clientId).eq('status', 'ready').not('kind', 'in', NOT_KEYWORDS), 'Loading auto-fill') as Row[]).filter((r) => !r.kind.startsWith('setup_'))
   if (!rows.length) return []
   const live = await liveKeywordIds(clientId)
   return rows.map((row) => {
@@ -68,7 +70,7 @@ async function openWithGone(clientId: string): Promise<{ row: Row; gone: number 
 export async function listAutofill(siteId: string): Promise<AutofillRow[]> {
   const c = await client(siteId)
   const rows = must(
-    await db().from('seo_autofill').select(COLS).eq('client_id', c.id).neq('status', 'superseded').order('created_at', { ascending: false }).limit(100), // latest per kind is all the screen needs
+    await db().from('seo_autofill').select(COLS).eq('client_id', c.id).neq('status', 'superseded').not('kind', 'in', NOT_KEYWORDS).order('created_at', { ascending: false }).limit(100), // latest per kind is all the screen needs
     'Loading auto-fill',
   ) as Row[]
   const latest = new Map<AutofillKind, Row>()

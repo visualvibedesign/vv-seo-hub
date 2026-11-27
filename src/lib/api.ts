@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -471,4 +471,27 @@ export function approveReportNotes(siteId: string, id: string, text: string): Pr
 
 export function discardReportNotes(siteId: string, id: string): Promise<Report> {
   return call('/api/metrics/report-notes-discard', json({ siteId, id }))
+}
+
+// ---- 2g · GBP numbers from a screenshot (Claude reads, Angel approves) -------------------------------------------
+
+/** The image as base64 (already shrunk in the browser). Sent for one call; never stored. */
+export type ScreenshotImage = { mediaType: 'image/jpeg' | 'image/png' | 'image/webp'; data: string }
+
+export function estimateGbpShot(siteId: string, image: ScreenshotImage): Promise<ScreenshotEstimate> {
+  return call('/api/metrics/shot-estimate', json({ siteId, image }))
+}
+
+/** Claude reads the screenshot; saved as "Ready to review". */
+export function readGbpShot(siteId: string, image: ScreenshotImage): Promise<{ read: GbpScreenshotRead }> {
+  return call('/api/metrics/shot-read', json({ siteId, image }))
+}
+
+/** The checked numbers (GBP form) are saved the normal way; the read is marked approved. */
+export function approveGbpShot(siteId: string, id: string, input: GbpInput): Promise<{ snapshot: GbpSnapshot }> {
+  return call('/api/metrics/shot-approve', json({ siteId, id, input }))
+}
+
+export function discardGbpShot(siteId: string, id: string): Promise<{ ok: true }> {
+  return call('/api/metrics/shot-discard', json({ siteId, id }))
 }

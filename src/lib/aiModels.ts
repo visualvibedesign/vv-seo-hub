@@ -22,6 +22,8 @@ export const AI_TASKS = {
   day1: { model: 'sonnet', label: 'Day 1 from notes', outPerItem: 0, outBase: 6000 },
   // Results › a monthly report's notes (what moved, likely why, next 30 days), drafted from the frozen numbers. Effort medium.
   report_notes: { model: 'sonnet', label: 'Report notes', outPerItem: 0, outBase: 2500 },
+  // 2g · numbers read from a GBP Performance screenshot (saved as Ready to review). Effort low.
+  gbp_screenshot: { model: 'sonnet', label: 'GBP screenshot', outPerItem: 0, outBase: 1200 },
 } as const satisfies Record<string, { model: AiModelKey; label: string; outPerItem: number; outBase: number }>
 export type AiTask = keyof typeof AI_TASKS
 
