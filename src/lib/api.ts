@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus, HotspotDraft, HotspotsEstimate, BrandKey, BrandScript, BriefVersion, PageBrief, SectionKey, SectionStatus, WorksheetKey, GbpCheckState, GbpFactorKey, GbpFactorStatus, GbpProfile, MapCompetitorInput, MapSearch, MapServiceCode, MapShotApproveRow, GbpCareState } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus, HotspotDraft, HotspotsEstimate, BrandKey, BrandScript, BriefVersion, PageBrief, SectionKey, SectionStatus, WorksheetKey, GbpCheckState, GbpFactorKey, GbpFactorStatus, GbpProfile, MapCompetitorInput, MapSearch, MapServiceCode, MapShotApproveRow, GbpCareState, CareEstimate } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -648,6 +648,13 @@ export function getGbpCare(siteId: string): Promise<GbpCareState> {
 }
 
 /** Every GBP care write: action name + its fields. Each returns the whole state. */
-export function gbpCareWrite(siteId: string, action: 'gbp-care-save' | 'gbp-product-save' | 'gbp-product-delete' | 'review-request-save' | 'review-request-delete' | 'gbp-post-save' | 'gbp-post-clear', input: object): Promise<GbpCareState> {
+export function gbpCareWrite(siteId: string, action: 'gbp-care-save' | 'gbp-product-save' | 'gbp-product-delete' | 'review-request-save' | 'review-request-delete' | 'gbp-post-save' | 'gbp-post-clear' | 'gbp-products-approve' | 'gbp-posts-approve' | 'gbp-draft-skip', input: object): Promise<GbpCareState> {
   return call('/api/metrics/' + action, json({ siteId, ...input }))
+}
+
+/** 4b step 4 · Claude drafts for GBP care: estimate (count only) and draft (one call, Ready to review). */
+export function gbpCareClaude(siteId: string, action: 'gbp-products-estimate' | 'gbp-posts-estimate', input?: object): Promise<CareEstimate>
+export function gbpCareClaude(siteId: string, action: 'gbp-products-draft' | 'gbp-posts-draft', input?: object): Promise<GbpCareState>
+export function gbpCareClaude(siteId: string, action: string, input: object = {}): Promise<unknown> {
+  return call('/api/autofill/' + action, json({ siteId, ...input }))
 }

@@ -38,7 +38,7 @@ SEO Hub phases 1–4 are built first. The site-connection parts (Connect site, c
 | 1 | Clients, keywords, templates, guide, uploads + auto-fill | SEO Hub | 1–2 | **Built** (redesign + Overview / Strategy Builder split, Settings); merged to `main` locally Nov 26; checklist `docs/phase-1-checklist.md` |
 | 2 | Baseline, reports, Day 10 review (**without** the site connection) | SEO Hub | 3, 10 | **Built** (2a–2g, Nov 26–28): 2a–2f live on `main`; 2g (PDF, GBP screenshot) on `phase-2`. Whitespark screenshot / CSV skipped (no account yet). `docs/phase-2-plan.md`, migrations 0016–0020 |
 | 3 | Pages: sitemap, hotspots, site plan, page briefs | SEO Hub | 5–6 | **Built + live** (Nov 29, merge `39009e7`): sitemap + hotspots, site plan + redirects queue, Claude drafts (hotspots, BrandScript, page copy V1 / V2), page briefs. ClickUp sync later. `docs/phase-3-plan.md`, migration 0021 |
-| 4 | GBP check, GBP care, links | SEO Hub | 4, 7, 8–9 | **Building** on branch `phase-4` (plan approved Nov 29): **4a GBP check built + tested** (0022 run); 4b GBP care next, then 4c Links |
+| 4 | GBP check, GBP care, links | SEO Hub | 4, 7, 8–9 | **Building** on branch `phase-4` (plan approved Nov 29): **4a GBP check + 4b GBP care built + tested** (0022, 0023 run); 4c Links next |
 | P0 | Set up the Vibe SEO repo from 1.2.0 | Vibe SEO | — | After phase 4 |
 | P1 + 2c | **Vibe SEO 1.3.0** + SEO Hub **Connect site / receive check-ins** (the connection items from phase 2) | Both | — | Built and tested together |
 | 2b | One-time import of Alexia's hub data | SEO Hub | — | If Alexia OKs |

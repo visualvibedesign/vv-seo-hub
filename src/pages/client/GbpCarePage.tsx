@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useClientContext } from '../../components/layout/ClientLayout'
 import HeaderTools from '../../components/layout/HeaderTools'
 import { PostDialog, ProductDialog, RequestDialog } from '../../components/gbp/CareDialogs'
+import { DraftRunDialog, PostsDraftReview, ProductDraftReview } from '../../components/gbp/CareDrafts'
 import { Bone, Spinner } from '../../components/ui/Loading'
 import { useGbpCare, useGbpCareWrite } from '../../hooks/useGbpCare'
 import { agencyDate, agencyDay } from '../../lib/agencyTime'
@@ -13,7 +14,7 @@ import type { CarePage, GbpCareState, GbpPost, GbpProduct, PostStatus, ReviewReq
 // Strategy Builder › Day 7 · GBP care (/clients/{site id}/strategy/gbp-care). Design: docs/design/GBPCare.png.
 // Products (one per service page, linking to it, not Home), reviews (target per round, the review email from the
 // client's template, a tracker that keeps only ref / date / channel / result), a 13-week post calendar and the care
-// routine. Claude drafts (product descriptions + 13 weeks) come in the next step.
+// routine. Claude drafts product descriptions and the 13 weeks (CareDrafts.tsx): cost first, then "Ready to review".
 
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError && e.detail ? e.detail : fallback)
 const day = (d: string | null) => (d ? agencyDate(d) : '—')
@@ -37,6 +38,8 @@ export default function GbpCarePage() {
   const c = useClientContext()
   const q = useGbpCare(c.siteId)
   const s = q.data
+  const [running, setRunning] = useState<'products' | 'posts' | null>(null)
+  const [reviewing, setReviewing] = useState<'products' | 'posts' | null>(null)
   return (
     <>
       <header className="flex flex-wrap items-end justify-between gap-5">
@@ -47,18 +50,21 @@ export default function GbpCarePage() {
           <p className="m-0 text-[17px] leading-normal text-vv-body">Day 7 · products, reviews, a quarter of posts · from the GBP templates</p>
         </div>
         <HeaderTools>
-          <span className={`${BTN_LIME} pointer-events-none opacity-60`} title="Claude drafts the 13 weeks in the next build step">
-            Draft 13 weeks <span className={`${PILL} !py-0 !text-[11px] bg-vv-surface text-vv-body`}>Next</span>
-          </span>
+          <button type="button" className={BTN_LIME} disabled={!s?.care.postsStartOn || !!s?.postsDraft} onClick={() => setRunning('posts')} title={s?.care.postsStartOn ? 'Claude plans the quarter (Ready to review)' : 'Pick week 1’s date in the Post calendar first'}>
+            Draft 13 weeks
+          </button>
         </HeaderTools>
       </header>
 
       {q.isPending && <Bone className="h-[420px] w-full rounded-[22px]" />}
       {q.isError && <p role="alert" className="m-0 text-[15px] font-semibold text-vv-red">{errText(q.error, 'Couldn’t load GBP care. Try again in a moment.')}</p>}
 
+      {s?.productDraft && <DraftBanner text={`Claude drafted ${s.productDraft.items.length} product descriptions`} onOpen={() => setReviewing('products')} />}
+      {s?.postsDraft && <DraftBanner text={`Claude planned ${s.postsDraft.weeks.length} weeks (${s.postsDraft.weeks.filter((w) => w.body).length} written)`} onOpen={() => setReviewing('posts')} />}
+
       {s && (
         <>
-          <Products s={s} siteId={c.siteId} />
+          <Products s={s} siteId={c.siteId} onDraft={() => setRunning('products')} />
           <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] items-start gap-5 [@media(max-width:1100px)]:grid-cols-1">
             <div className="flex min-w-0 flex-col gap-5">
               <Reviews s={s} siteId={c.siteId} />
@@ -68,7 +74,35 @@ export default function GbpCarePage() {
           </div>
         </>
       )}
+
+      {running && (
+        <DraftRunDialog
+          siteId={c.siteId}
+          kind={running}
+          onClose={() => setRunning(null)}
+          onDone={() => {
+            setReviewing(running)
+            setRunning(null)
+          }}
+        />
+      )}
+      {reviewing === 'products' && s?.productDraft && <ProductDraftReview key={s.productDraft.id} siteId={c.siteId} draft={s.productDraft} s={s} onClose={() => setReviewing(null)} />}
+      {reviewing === 'posts' && s?.postsDraft && <PostsDraftReview key={s.postsDraft.id} siteId={c.siteId} draft={s.postsDraft} s={s} onClose={() => setReviewing(null)} />}
     </>
+  )
+}
+
+function DraftBanner({ text, onOpen }: { text: string; onOpen: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-solid border-vv-lavender bg-vv-lavender-50 px-5 py-3.5">
+      <p className="m-0 text-[15px] text-vv-ink">
+        <span className={`${PILL} mr-2 bg-vv-st-review text-vv-st-review-ink`}>Ready to review</span>
+        {text}
+      </p>
+      <button type="button" className={`${BTN_LIME} !min-h-10`} onClick={onOpen}>
+        Check it
+      </button>
+    </div>
   )
 }
 
@@ -80,7 +114,7 @@ function useCareSave(siteId: string, s: GbpCareState) {
 
 // ---- Products --------------------------------------------------------------------------------------------------
 
-function Products({ s, siteId }: { s: GbpCareState; siteId: string }) {
+function Products({ s, siteId, onDraft }: { s: GbpCareState; siteId: string; onDraft: () => void }) {
   const [open, setOpen] = useState<{ page: CarePage | null; product: GbpProduct | null } | null>(null)
   const loose = s.products.filter((p) => !p.pageId || !s.servicePages.some((x) => x.id === p.pageId))
   const cards = [...s.servicePages.map((page) => ({ page, product: s.products.find((p) => p.pageId === page.id) ?? null })), ...loose.map((product) => ({ page: s.pages.find((x) => x.id === product.pageId) ?? null, product }))]
@@ -88,7 +122,14 @@ function Products({ s, siteId }: { s: GbpCareState; siteId: string }) {
     <section className={CARD} aria-label="Products">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className={CARD_TITLE}>Products</h2>
-        <span className="text-[14px] text-vv-body">One per service page · image 720×720 · links to the page, not Home</span>
+        <span className="flex flex-wrap items-center gap-3 text-[14px] text-vv-body">
+          One per service page · image 720×720 · links to the page, not Home
+          {s.servicePages.length > 0 && (
+            <button type="button" className={`${BTN_GHOST} !min-h-9 !px-4 !text-[13px]`} onClick={onDraft} disabled={!!s.productDraft}>
+              Draft descriptions
+            </button>
+          )}
+        </span>
       </div>
       {cards.length === 0 ? (
         <p className="m-0 rounded-2xl border border-dashed border-vv-line px-4 py-6 text-center text-[14px] text-vv-body">No service pages yet. Add them in Sitemap + hotspots (Day 5), then each gets a product card here.</p>

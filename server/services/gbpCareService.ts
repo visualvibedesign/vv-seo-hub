@@ -6,7 +6,7 @@
 //   result and one follow-up date. Refs with an email or a phone number are refused (the database refuses them too).
 // - Posts: 13 weeks from a start date; the link is the page URL + UTM (worked out here, never typed). A post can't
 //   be Scheduled / Live without text, or link to a page that isn't live.
-import type { CarePage, GbpCareSettings, GbpCareState, GbpPost, GbpProduct, PageStatus, PageType, PostStatus, ReviewChannel, ReviewRequest, ReviewResult } from '../../src/types/seo.js'
+import type { CarePage, GbpCareSettings, GbpCareState, GbpPost, GbpProduct, PageStatus, PageType, PostsDraft, PostStatus, ProductDraft, ReviewChannel, ReviewRequest, ReviewResult } from '../../src/types/seo.js'
 import { CARE_ROUTINE, DEFAULT_REVIEW_TARGET, POST_BODY_MAX, POST_WEEKS, refProblem, utmLink, weekDate } from '../../src/lib/gbpCare.js'
 import { looksLikeAddress } from '../../src/lib/importRules.js'
 import { db, must } from '../clients/supabase.js'
@@ -107,19 +107,27 @@ function fillEmail(items: TItem[], vals: { brand: string; city: string | null; s
   return { subject, body: lines.join('\n\n'), missing: [...missing] }
 }
 
+/** Claude's open ("Ready to review") draft of one kind, or null. */
+export async function openCareDraft(clientId: string, kind: 'gbp_products' | 'gbp_posts'): Promise<{ id: string; created_at: string; payload: Record<string, unknown> } | null> {
+  const r = must(await db().from('seo_autofill').select('id, payload, created_at').eq('client_id', clientId).eq('kind', kind).eq('status', 'ready').order('created_at', { ascending: false }).limit(1), 'Loading the draft') as { id: string; created_at: string; payload: Record<string, unknown> }[]
+  return r[0] ?? null
+}
+
 // ---- Read -----------------------------------------------------------------------------------------------------
 
 export async function gbpCareState(siteId: string): Promise<GbpCareState> {
   const c = await client(siteId)
   const careR = must(await db().from('seo_gbp_care').select('*').eq('client_id', c.id).maybeSingle(), 'Loading GBP care') as CareRow | null
   const care = careOut(careR)
-  const [pagesR, productsR, requestsR, postsR, profileR, tmpl] = await Promise.all([
+  const [pagesR, productsR, requestsR, postsR, profileR, tmpl, pDraft, wDraft] = await Promise.all([
     db().from('seo_pages').select('id, page_code, name, page_type, status, url, url_target, sort').eq('client_id', c.id),
     db().from('seo_gbp_products').select('id, page_id, name, description, image_ready, status').eq('client_id', c.id).order('sort'),
     db().from('seo_review_requests').select('id, customer_ref, asked_on, channel, result, follow_up_on').eq('client_id', c.id).order('asked_on', { ascending: false }).order('created_at', { ascending: false }).limit(200),
     care.postsStartOn ? db().from('seo_gbp_posts').select('*').eq('client_id', c.id).eq('quarter_start', care.postsStartOn) : Promise.resolve({ data: [], error: null }),
     db().from('seo_gbp_profile').select('review_url').eq('client_id', c.id).maybeSingle(),
     reviewTemplate(c.id, c.industry ?? null),
+    openCareDraft(c.id, 'gbp_products'),
+    openCareDraft(c.id, 'gbp_posts'),
   ])
   const code = (p: PageRow) => Number((p.page_code ?? '').replace(/\D/g, '')) || 999
   const pageRows = (must(pagesR, 'Loading the pages') as PageRow[]).sort((a, b) => code(a) - code(b) || a.sort - b.sort)
@@ -136,6 +144,9 @@ export async function gbpCareState(siteId: string): Promise<GbpCareState> {
     products: (must(productsR, 'Loading products') as ProductRow[]).map((p) => ({ id: p.id, pageId: p.page_id, name: p.name, description: p.description, imageReady: p.image_ready, status: p.status })),
     requests,
     reviewed: requests.filter((r) => r.result === 'reviewed' && (!care.roundStartedOn || r.askedOn >= care.roundStartedOn)).length,
+    productDraft: pDraft ? ({ id: pDraft.id, createdAt: pDraft.created_at, ...pDraft.payload } as ProductDraft) : null,
+    // A posts draft only shows for the quarter it was made for
+    postsDraft: wDraft && wDraft.payload.quarterStart === care.postsStartOn ? ({ id: wDraft.id, createdAt: wDraft.created_at, ...wDraft.payload } as PostsDraft) : null,
     reviewEmail: { templateName: tmpl.name, ...fillEmail(tmpl.items, { brand: c.name, city: c.city, state: c.state, reviewUrl: profile?.review_url ?? null }) },
     posts: care.postsStartOn
       ? Array.from({ length: POST_WEEKS }, (_, i): GbpPost => {

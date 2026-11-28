@@ -1372,4 +1372,32 @@ export interface GbpCareState {
   reviewEmail: { templateName: string; subject: string; body: string; missing: string[] }
   /** 13 slots for the quarter that starts on care.postsStartOn (empty when no start date) */
   posts: GbpPost[]
+  /** Claude's open product descriptions draft (Ready to review), or null */
+  productDraft: ProductDraft | null
+  /** Claude's open 13-week posts draft (Ready to review), or null */
+  postsDraft: PostsDraft | null
+}
+
+/** 4b step 4 · Claude's product descriptions draft (one per service page) */
+export interface ProductDraft {
+  id: string
+  createdAt: string
+  items: { pageId: string; code: string | null; name: string; description: string }[]
+  notes: string | null
+}
+
+/** 4b step 4 · Claude's 13-week post plan (text for the first weeks, or all) */
+export interface PostsDraft {
+  id: string
+  createdAt: string
+  quarterStart: string
+  weeks: { week: number; topic: string; takeaway: string | null; body: string | null; pageId: string | null; imageNeed: string | null }[]
+  notes: string | null
+}
+
+export interface CareEstimate {
+  model: string
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
 }
