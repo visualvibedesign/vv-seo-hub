@@ -13,6 +13,9 @@
 //        { siteId, ... } -> GbpCheckState
 //   POST /api/metrics/map-shot-estimate { siteId, image } -> ScreenshotEstimate
 //   POST /api/metrics/map-shot-read | map-shot-approve | map-shot-discard { siteId, ... } -> GbpCheckState (Claude, Ready to review)
+//   GET  /api/metrics/gbp-care?site=<site id>           -> GbpCareState (4b: products, reviews, 13-week posts)
+//   POST /api/metrics/gbp-care-save | gbp-product-save | gbp-product-delete | review-request-save | review-request-delete |
+//        gbp-post-save | gbp-post-clear { siteId, ... } -> GbpCareState
 //   GET  /api/metrics/cron                              -> daily pull for every linked client. Vercel Cron only:
 //        Authorization: Bearer <CRON_SECRET> (no login cookie); without CRON_SECRET set it always refuses.
 // (One file for every phase 2 action: the app stays within Vercel Hobby's 12 server functions.)
@@ -27,6 +30,7 @@ import { approveReportNotes, createReport, discardReportNotes, draftReportNotes,
 import { approveGbpShot, discardGbpShot, estimateGbpShot, gbpReadFor, readGbpShot, ScreenshotInputError } from '../../server/services/screenshotService.js'
 import { deleteMapCompetitor, GbpCheckInputError, gbpCheckState, saveGbpFactor, saveGbpProfile, saveMapCompetitor, saveMapSearch } from '../../server/services/gbpCheckService.js'
 import { approveMapShot, discardMapShot, estimateMapShot, readMapShot } from '../../server/services/mapShotService.js'
+import { clearPost, deleteProduct, deleteRequest, GbpCareInputError, gbpCareState, saveCare, savePost, saveProduct, saveRequest } from '../../server/services/gbpCareService.js'
 import { requireSession } from '../../server/utils/auth.js'
 import { timingSafeEqual } from 'node:crypto'
 import type { MetricRange } from '../../src/types/seo.js'
@@ -113,6 +117,19 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       if (action === 'map-shot-approve') return Response.json(await approveMapShot(site, body))
       return Response.json(await discardMapShot(site, body))
     }
+    // Phase 4b · GBP care (Day 7): products, review tracker + email, 13-week posts, care settings
+    if (method === 'GET' && action === 'gbp-care') return Response.json(await gbpCareState(params.get('site') ?? ''))
+    if (method === 'POST' && ['gbp-care-save', 'gbp-product-save', 'gbp-product-delete', 'review-request-save', 'review-request-delete', 'gbp-post-save', 'gbp-post-clear'].includes(action)) {
+      const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
+      const site = String(body.siteId ?? '')
+      if (action === 'gbp-care-save') return Response.json(await saveCare(site, body))
+      if (action === 'gbp-product-save') return Response.json(await saveProduct(site, body))
+      if (action === 'gbp-product-delete') return Response.json(await deleteProduct(site, body))
+      if (action === 'review-request-save') return Response.json(await saveRequest(site, body))
+      if (action === 'review-request-delete') return Response.json(await deleteRequest(site, body))
+      if (action === 'gbp-post-clear') return Response.json(await clearPost(site, body))
+      return Response.json(await savePost(site, body))
+    }
     // Phase 2e · Baseline: state (current + live + history), one past baseline, save (new / fill missing)
     if (method === 'GET' && action === 'baseline') return Response.json(await baselineState(params.get('site') ?? ''))
     if (method === 'GET' && action === 'baseline-history') return Response.json(await baselineById(params.get('site') ?? '', params.get('id')))
@@ -151,7 +168,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
-    if (err instanceof GoogleInputError || err instanceof GoogleConfigError || err instanceof RankInputError || err instanceof LocalInputError || err instanceof BaselineInputError || err instanceof ReportInputError || err instanceof ScreenshotInputError || err instanceof GbpCheckInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
+    if (err instanceof GoogleInputError || err instanceof GoogleConfigError || err instanceof RankInputError || err instanceof LocalInputError || err instanceof BaselineInputError || err instanceof ReportInputError || err instanceof ScreenshotInputError || err instanceof GbpCheckInputError || err instanceof GbpCareInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof DatabaseError) return Response.json({ error: 'database', detail: err.message }, { status: 500 })
     throw err
   }

@@ -1295,3 +1295,81 @@ export interface MapShotRead {
 
 /** Approving: the rows Angel kept (edited), saved through the normal competitor rules. */
 export type MapShotApproveRow = Omit<MapShotRow, 'looksLikeClient'> & { isClient: boolean }
+
+// ---- Phase 4b · GBP care (Sam Day 7): products, reviews, 13-week posts (migration 0023) ----
+
+export type ProductStatus = 'not_added' | 'added'
+export type ReviewChannel = 'email' | 'text' | 'in_person' | 'other'
+export type ReviewResult = 'waiting' | 'reviewed' | 'no_reply' | 'declined'
+export type PostStatus = 'not_drafted' | 'drafted' | 'approved' | 'scheduled' | 'live'
+
+/** A sitemap page a product or post can link to (never Home for products) */
+export interface CarePage {
+  id: string
+  code: string | null
+  name: string
+  type: PageType | null
+  status: PageStatus
+  /** Live URL, or the target permalink, or null */
+  url: string | null
+}
+
+export interface GbpProduct {
+  id: string
+  pageId: string | null
+  name: string
+  description: string | null
+  imageReady: boolean
+  status: ProductStatus
+}
+
+export interface ReviewRequest {
+  id: string
+  /** Short ref only: never a name, email or phone */
+  customerRef: string
+  askedOn: string
+  channel: ReviewChannel
+  result: ReviewResult
+  followUpOn: string | null
+}
+
+export interface GbpPost {
+  week: number
+  /** null = this week has no saved row yet */
+  id: string | null
+  postOn: string | null
+  topic: string | null
+  takeaway: string | null
+  body: string | null
+  cta: string
+  pageId: string | null
+  /** The page URL + UTM (worked out by the server) */
+  linkUrl: string | null
+  imageNeed: string | null
+  status: PostStatus
+}
+
+export interface GbpCareSettings {
+  reviewTarget: number
+  roundStartedOn: string | null
+  postsStartOn: string | null
+  nextPostBatchOn: string | null
+  careChecks: Record<string, boolean>
+}
+
+export interface GbpCareState {
+  clientName: string
+  city: string | null
+  care: GbpCareSettings
+  /** Service pages (products are one per service page) */
+  servicePages: CarePage[]
+  /** Every page a post can link to (live first) */
+  pages: CarePage[]
+  products: GbpProduct[]
+  requests: ReviewRequest[]
+  /** Reviews this round: results "reviewed" asked on / after the round start (all if no start) */
+  reviewed: number
+  reviewEmail: { templateName: string; subject: string; body: string; missing: string[] }
+  /** 13 slots for the quarter that starts on care.postsStartOn (empty when no start date) */
+  posts: GbpPost[]
+}
