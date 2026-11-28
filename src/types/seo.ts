@@ -1158,3 +1158,32 @@ export interface BrandScript {
   /** Claude's open draft (Ready to review) or null */
   draft: { answers: Partial<Record<BrandKey, string>>; notes: string | null; createdAt: string } | null
 }
+
+// ---- Phase 3 step 6 · Page brief (Day 5 worksheet + StoryBrand copy V1 / V2; seo_page_briefs, migration 0021) ----
+
+export type BriefVersion = 'v1' | 'v2'
+export type SectionStatus = 'to_write' | 'drafted' | 'done'
+/** "1".."11" */
+export type SectionKey = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | '11'
+export type WorksheetKey = 'opportunity' | 'whyFirst' | 'customerNeed' | 'buyingQuestions' | 'proof' | 'desiredAction' | 'linksFrom' | 'linksTo' | 'missingInputs'
+
+export interface PageBriefDraft {
+  sections: Partial<Record<SectionKey, string>>
+  worksheet: Partial<Record<WorksheetKey, string>>
+  notes: string | null
+  version: BriefVersion
+  createdAt: string
+}
+
+export interface PageBrief {
+  page: { id: string; code: string | null; name: string; type: PageType | null; seoTitle: string | null; metaDescription: string | null; h1: string | null; url: string | null; primary: string | null }
+  version: BriefVersion
+  worksheet: Partial<Record<WorksheetKey, string>>
+  sections: Partial<Record<SectionKey, { text: string; status: SectionStatus }>>
+  updatedAt: string | null
+  /** Claude's open draft for this page (Ready to review) */
+  draft: PageBriefDraft | null
+  /** BrandScript answers filled (of 16) and whether confirmed: Claude writes from it */
+  brandFilled: number
+  brandConfirmed: boolean
+}

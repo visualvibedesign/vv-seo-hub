@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router'
+import PageCopyCard from '../../components/pages/PageCopyCard'
+import { usePages } from '../../hooks/usePages'
 import { useClientContext } from '../../components/layout/ClientLayout'
 import { Bone, Spinner } from '../../components/ui/Loading'
 import Modal from '../../components/ui/Modal'
@@ -14,7 +17,7 @@ import type { BrandKey, BrandScript } from '../../types/seo'
 // Left: the BrandScript (StoryBrand A–P), written once per client and reused on every page, GBP post and social
 // caption. Claude can draft it from Day 1 setup (estimate first, "Ready to review", unknown facts = [bracketed
 // questions]); saving approves the draft; "Read aloud and confirmed" once the owner agrees (a changed answer clears it).
-// Right: page copy V1 / V2 per page comes in the next step.
+// Right: page copy per page (PageCopyCard): V1 / V2 StoryBrand sections + the Day 5 brief, Claude draft, Copy for Elementor.
 
 const errText = (e: unknown, fallback: string) => (e instanceof ApiError && e.detail ? e.detail : fallback)
 type Answers = Partial<Record<BrandKey, string>>
@@ -22,6 +25,15 @@ type Answers = Partial<Record<BrandKey, string>>
 export default function BriefsPage() {
   const c = useClientContext()
   const q = useBrandScript(c.siteId)
+  const pq = usePages(c.siteId)
+  const [params, setParams] = useSearchParams()
+  const pages = pq.data?.pages ?? []
+  const pageId = params.get('page') ?? pages[0]?.id ?? null
+  const pick = (id: string) => {
+    const next = new URLSearchParams(params)
+    next.set('page', id)
+    setParams(next, { replace: true })
+  }
   return (
     <>
       <header className="flex flex-wrap items-end justify-between gap-5">
@@ -38,13 +50,7 @@ export default function BriefsPage() {
       {q.data && (
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] items-start gap-5 [@media(max-width:1100px)]:grid-cols-1">
           <BrandScriptCard key={`${q.data.updatedAt ?? ''}-${q.data.draft?.createdAt ?? ''}`} siteId={c.siteId} b={q.data} clientName={c.name} />
-          <section className={`${CARD} !gap-3`} aria-label="Page copy">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="m-0 font-display text-[24px] font-semibold">Page copy</h2>
-              <span className={`${PILL} bg-vv-st-todo text-vv-st-todo-ink`}>Next step</span>
-            </div>
-            <p className="m-0 text-[14px] text-vv-body">Per page: V1 = hotspots + header and footer (can lift a page to pages 3–5), V2 = the 11 StoryBrand sections. Claude drafts them from this BrandScript, the page’s keywords and hotspots; “Copy for Elementor” copies clean text.</p>
-          </section>
+          <PageCopyCard siteId={c.siteId} pages={pages} pageId={pageId} onPick={pick} />
         </div>
       )}
     </>

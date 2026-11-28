@@ -12,11 +12,15 @@
 //   POST /api/clusters/brandscript-save {siteId, answers}   -> BrandScript (a changed answer clears "confirmed")
 //   POST /api/clusters/brandscript-confirm {siteId, confirmed} -> BrandScript
 //   POST /api/clusters/brandscript-skip {siteId}            -> BrandScript (drops Claude's draft)
+//   GET  /api/clusters/brief?site=<site id>&page=<page id>  -> PageBrief (worksheet + copy + Claude's draft)
+//   POST /api/clusters/brief-save {siteId, pageId, version, worksheet, sections} -> PageBrief (approves the draft)
+//   POST /api/clusters/brief-skip {siteId, pageId}          -> PageBrief (drops Claude's draft)
 // (Importing a Sheet Clusters CSV is a script for now: scripts/import-clusters.ts.)
 import { DatabaseError } from '../../server/clients/supabase.js'
 import { ClusterInputError, listClusters } from '../../server/services/clusterService.js'
 import { addPage, backfillPages, pagesState, PagesInputError, saveHotspots, setParent, setRedirectStatus, setStructure, skipHotspotDraft } from '../../server/services/pagesService.js'
 import { brandScript, BrandScriptInputError, confirmBrandScript, saveBrandScript, skipBrandDraft } from '../../server/services/brandscriptService.js'
+import { pageBrief, PageBriefInputError, savePageBrief, skipBriefDraft } from '../../server/services/pageBriefService.js'
 import { requireSession } from '../../server/utils/auth.js'
 
 export async function GET(request: Request) {
@@ -36,6 +40,12 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     if (method === 'GET' && action === 'list') return Response.json({ pages: await listClusters(url.searchParams.get('site') ?? '') })
     if (method === 'GET' && action === 'pages') return Response.json(await pagesState(url.searchParams.get('site') ?? ''))
     if (method === 'GET' && action === 'brandscript') return Response.json(await brandScript(url.searchParams.get('site') ?? ''))
+    if (method === 'GET' && action === 'brief') return Response.json(await pageBrief(url.searchParams.get('site') ?? '', { pageId: url.searchParams.get('page') }))
+    if (method === 'POST' && (action === 'brief-save' || action === 'brief-skip')) {
+      const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
+      const site = String(body.siteId ?? '')
+      return Response.json(action === 'brief-save' ? await savePageBrief(site, body) : await skipBriefDraft(site, body))
+    }
     if (method === 'POST' && ['brandscript-save', 'brandscript-confirm', 'brandscript-skip'].includes(action ?? '')) {
       const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
       const site = String(body.siteId ?? '')
@@ -56,7 +66,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
-    if (err instanceof ClusterInputError || err instanceof PagesInputError || err instanceof BrandScriptInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
+    if (err instanceof ClusterInputError || err instanceof PagesInputError || err instanceof BrandScriptInputError || err instanceof PageBriefInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof DatabaseError) return Response.json({ error: 'database', detail: err.message }, { status: 500 })
     throw err
   }

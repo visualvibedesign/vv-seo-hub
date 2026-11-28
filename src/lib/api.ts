@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus, HotspotDraft, HotspotsEstimate, BrandKey, BrandScript } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus, HotspotDraft, HotspotsEstimate, BrandKey, BrandScript, BriefVersion, PageBrief, SectionKey, SectionStatus, WorksheetKey } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -571,4 +571,30 @@ export function estimateBrandScript(siteId: string): Promise<{ model: string; in
 /** One Claude call; the draft is "Ready to review". */
 export function draftBrandScript(siteId: string): Promise<BrandScript> {
   return call('/api/autofill/brandscript-draft', json({ siteId }))
+}
+
+// ---- Phase 3 step 6 · Page brief -------------------------------------------------------------------------------
+
+export function getPageBrief(siteId: string, pageId: string): Promise<PageBrief> {
+  return call('/api/clusters/brief?site=' + encodeURIComponent(siteId) + '&page=' + encodeURIComponent(pageId))
+}
+
+export type BriefInput = { pageId: string; version: BriefVersion; worksheet: Partial<Record<WorksheetKey, string>>; sections: Partial<Record<SectionKey, { text: string; status: SectionStatus }>> }
+
+/** Saves the brief; also approves Claude's open draft for the page. */
+export function savePageBrief(siteId: string, input: BriefInput): Promise<PageBrief> {
+  return call('/api/clusters/brief-save', json({ siteId, ...input }))
+}
+
+export function skipBriefDraft(siteId: string, pageId: string): Promise<PageBrief> {
+  return call('/api/clusters/brief-skip', json({ siteId, pageId }))
+}
+
+export function estimatePageCopy(siteId: string, pageId: string, version: BriefVersion): Promise<{ model: string; inputTokens: number; outputTokens: number; costUsd: number }> {
+  return call('/api/autofill/brief-estimate', json({ siteId, pageId, version }))
+}
+
+/** One Claude call: page copy (V1 / V2) + brief; "Ready to review". */
+export function draftPageCopy(siteId: string, pageId: string, version: BriefVersion): Promise<PageBrief> {
+  return call('/api/autofill/brief-draft', json({ siteId, pageId, version }))
 }

@@ -321,9 +321,9 @@ function HotspotEditor({ siteId, state, page, onDraft }: { siteId: string; state
         <button type="button" className={BTN_GHOST} onClick={onDraft} disabled={save.isPending}>
           {draft ? 'Draft again with Claude' : 'Draft with Claude'}
         </button>
-        <span className={`${BTN_GHOST} pointer-events-none opacity-60`} title="Page briefs come in step 6">
+        <Link to={`/clients/${siteId}/strategy/briefs?page=${page.id}`} className={`${BTN_GHOST} no-underline`}>
           Open page brief ›
-        </span>
+        </Link>
         <span className={`${BTN_GHOST} pointer-events-none opacity-60`} title="Sending to the site needs the Vibe SEO plugin (phase 5)">
           Push to site (P5)
         </span>

@@ -28,6 +28,8 @@ export const AI_TASKS = {
   hotspots: { model: 'sonnet', label: 'Hotspots', outPerItem: 450, outBase: 2500 },
   // Phase 3 · BrandScript A–P from Day 1 setup (unknown = [bracketed question]). Effort medium.
   brandscript: { model: 'sonnet', label: 'BrandScript', outPerItem: 0, outBase: 3000 },
+  // Phase 3 · page copy (StoryBrand sections V1 / V2) + the page brief. Per section asked for. Effort medium.
+  page_copy: { model: 'sonnet', label: 'Page copy', outPerItem: 450, outBase: 2000 },
 } as const satisfies Record<string, { model: AiModelKey; label: string; outPerItem: number; outBase: number }>
 export type AiTask = keyof typeof AI_TASKS
 
