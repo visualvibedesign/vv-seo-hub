@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus, HotspotDraft, HotspotsEstimate, BrandKey, BrandScript, BriefVersion, PageBrief, SectionKey, SectionStatus, WorksheetKey, GbpCheckState, GbpFactorKey, GbpFactorStatus, GbpProfile, MapCompetitorInput, MapSearch, MapServiceCode, MapShotApproveRow } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus, HotspotDraft, HotspotsEstimate, BrandKey, BrandScript, BriefVersion, PageBrief, SectionKey, SectionStatus, WorksheetKey, GbpCheckState, GbpFactorKey, GbpFactorStatus, GbpProfile, MapCompetitorInput, MapSearch, MapServiceCode, MapShotApproveRow, GbpCareState } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -639,4 +639,15 @@ export function approveMapShot(siteId: string, id: string, rows: MapShotApproveR
 
 export function discardMapShot(siteId: string, id: string): Promise<GbpCheckState> {
   return call('/api/metrics/map-shot-discard', json({ siteId, id }))
+}
+
+// ---- Phase 4b · GBP care (products, review tracker + email, 13-week posts, care settings) ------------------------
+
+export function getGbpCare(siteId: string): Promise<GbpCareState> {
+  return call('/api/metrics/gbp-care?site=' + encodeURIComponent(siteId))
+}
+
+/** Every GBP care write: action name + its fields. Each returns the whole state. */
+export function gbpCareWrite(siteId: string, action: 'gbp-care-save' | 'gbp-product-save' | 'gbp-product-delete' | 'review-request-save' | 'review-request-delete' | 'gbp-post-save' | 'gbp-post-clear', input: object): Promise<GbpCareState> {
+  return call('/api/metrics/' + action, json({ siteId, ...input }))
 }
