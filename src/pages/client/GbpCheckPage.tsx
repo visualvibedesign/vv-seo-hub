@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useClientContext } from '../../components/layout/ClientLayout'
 import HeaderTools from '../../components/layout/HeaderTools'
 import CompetitorDialog, { type CompetitorDraft } from '../../components/gbp/CompetitorDialog'
+import MapShotDialog from '../../components/gbp/MapShotDialog'
+import MapShotReview from '../../components/gbp/MapShotReview'
 import ProfileDialog from '../../components/gbp/ProfileDialog'
 import { Bone, Spinner } from '../../components/ui/Loading'
 import { useGbpCheck, useSaveGbpFactor, useSaveGbpProfile, useSaveMapSearch } from '../../hooks/useGbpCheck'
@@ -34,6 +36,14 @@ export default function GbpCheckPage() {
   const [tab, setTab] = useState<MapServiceCode>('S1')
   const [draft, setDraft] = useState<CompetitorDraft | null>(null)
   const [editingProfile, setEditingProfile] = useState(false)
+  const [shotOpen, setShotOpen] = useState(false)
+  const [reviewing, setReviewing] = useState(false)
+  const [preview, setPreview] = useState<string | null>(null)
+  const closeReview = () => {
+    if (preview) URL.revokeObjectURL(preview)
+    setPreview(null)
+    setReviewing(false)
+  }
   const s = q.data
   const serviceLabel = (k: MapServiceCode) => `${k} ${s?.services[k] ?? ''}`.trim()
   const compCount = s ? s.competitors.filter((x) => x.category === tab && !x.isClient).length : 0
@@ -47,6 +57,9 @@ export default function GbpCheckPage() {
           <p className="m-0 text-[17px] leading-normal text-vv-body">Day 4 · Google Maps search per service · categories with Pleper · reviews counted by hand</p>
         </div>
         <HeaderTools>
+          <button type="button" className={BTN_GHOST} disabled={!s} onClick={() => setShotOpen(true)} title="Claude reads a Google Maps / PlePer screenshot into rows you check first">
+            Read a screenshot
+          </button>
           <button type="button" className={BTN_LIME} disabled={!s || compCount >= MAX_COMPETITORS} onClick={() => setDraft({ category: tab, isClient: false, rank: nextRank(s!, tab) })} title={compCount >= MAX_COMPETITORS ? `${MAX_COMPETITORS} competitors already` : undefined}>
             + Add competitor
           </button>
@@ -55,6 +68,25 @@ export default function GbpCheckPage() {
 
       {q.isPending && <Bone className="h-[420px] w-full rounded-[22px]" />}
       {q.isError && <p role="alert" className="m-0 text-[15px] font-semibold text-vv-red">{errText(q.error, 'Couldn’t load the GBP check. Try again in a moment.')}</p>}
+
+      {s?.mapRead && !reviewing && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-solid border-vv-lavender bg-vv-lavender-50 px-5 py-3.5">
+          <p className="m-0 text-[15px] text-vv-ink">
+            <span className={`${PILL} mr-2 bg-vv-st-review text-vv-st-review-ink`}>Ready to review</span>
+            {s.mapRead.summary}
+          </p>
+          <button
+            type="button"
+            className={`${BTN_LIME} !min-h-10`}
+            onClick={() => {
+              setTab(s.mapRead!.category)
+              setReviewing(true)
+            }}
+          >
+            Check the rows
+          </button>
+        </div>
+      )}
 
       {s && (
         <>
@@ -68,6 +100,22 @@ export default function GbpCheckPage() {
       )}
 
       {draft && s && <CompetitorDialog siteId={c.siteId} draft={draft} serviceLabel={serviceLabel(draft.category)} clientName={s.clientName} onClose={() => setDraft(null)} />}
+      {shotOpen && s && (
+        <MapShotDialog
+          siteId={c.siteId}
+          category={tab}
+          serviceLabel={serviceLabel(tab)}
+          onClose={() => setShotOpen(false)}
+          onRead={(url) => {
+            setShotOpen(false)
+            setPreview(url)
+            setReviewing(true)
+          }}
+        />
+      )}
+      {reviewing && s?.mapRead && (
+        <MapShotReview key={s.mapRead.id} siteId={c.siteId} read={s.mapRead} serviceLabel={serviceLabel(s.mapRead.category)} existing={s.competitors.filter((x) => x.category === s.mapRead!.category)} previewUrl={preview} onClose={closeReview} />
+      )}
       {editingProfile && s && <ProfileDialog siteId={c.siteId} profile={s.profile} onClose={() => setEditingProfile(false)} />}
     </>
   )

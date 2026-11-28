@@ -4,7 +4,7 @@
 // - Whitespark top map factors: To check / OK / Needs work / N/A + note.
 // - Business details: PUBLIC fields only. There is no address field anywhere: "address shown?" is yes / no.
 //   Any text that looks like a street address (house number + street word) is refused.
-import type { GbpCheckState, GbpFactor, GbpFactorKey, GbpFactorStatus, GbpProfile, MapCompetitor, MapSearch, MapServiceCode, ProfileCheckKey } from '../../src/types/seo.js'
+import type { GbpCheckState, GbpFactor, GbpFactorKey, GbpFactorStatus, GbpProfile, MapCompetitor, MapSearch, MapServiceCode, MapShotRead, ProfileCheckKey } from '../../src/types/seo.js'
 import { DESCRIPTION_MAX, GBP_FACTORS, MAP_SERVICES, MAX_COMPETITORS, PROFILE_CHECKS } from '../../src/lib/gbpCheck.js'
 import { looksLikeAddress } from '../../src/lib/importRules.js'
 import { db, must } from '../clients/supabase.js'
@@ -112,17 +112,24 @@ const profileOut = (r: ProfileRow | null): GbpProfile =>
       }
     : { ...EMPTY_PROFILE }
 
+/** The open ("Ready to review") Maps screenshot read (seo_autofill kind map_competitors), or null. */
+export async function openMapRead(clientId: string): Promise<MapShotRead | null> {
+  const r = (must(await db().from('seo_autofill').select('id, summary, payload, created_at').eq('client_id', clientId).eq('kind', 'map_competitors').eq('status', 'ready').order('created_at', { ascending: false }).limit(1), 'Loading the screenshot read') as { id: string; summary: string; payload: Omit<MapShotRead, 'id' | 'createdAt' | 'summary'>; created_at: string }[])[0]
+  return r ? { id: r.id, createdAt: r.created_at, summary: r.summary, ...r.payload } : null
+}
+
 // ---- Read -----------------------------------------------------------------------------------------------------
 
 export async function gbpCheckState(siteId: string): Promise<GbpCheckState> {
   const c = await client(siteId)
-  const [cats, searches, comps, factors, profile, gbp] = await Promise.all([
+  const [cats, searches, comps, factors, profile, gbp, mapRead] = await Promise.all([
     db().from('seo_client_categories').select('code, name').eq('client_id', c.id).in('code', MAP_SERVICES),
     db().from('seo_map_searches').select('category_code, search, checked_on, results_counted').eq('client_id', c.id),
     db().from('seo_map_competitors').select('*').eq('client_id', c.id).order('category_code').order('is_client').order('rank', { nullsFirst: false }).order('sort'),
     db().from('seo_gbp_factors').select('factor_key, status, note').eq('client_id', c.id),
     db().from('seo_gbp_profile').select('*').eq('client_id', c.id).maybeSingle(),
     db().from('seo_gbp_snapshots').select('reviews, rating, newest_review_on, period_to').eq('client_id', c.id).not('reviews', 'is', null).order('period_to', { ascending: false }).limit(1),
+    openMapRead(c.id),
   ])
   const catRows = must(cats, 'Loading the services') as { code: MapServiceCode; name: string | null }[]
   const searchRows = must(searches, 'Loading the Maps searches') as SearchRow[]
@@ -141,6 +148,7 @@ export async function gbpCheckState(siteId: string): Promise<GbpCheckState> {
       return { key: f.key, status: r?.status ?? 'to_check', note: r?.note ?? null }
     }),
     profile: profileOut(must(profile, 'Loading the business details') as ProfileRow | null),
+    mapRead,
     fromGbp: g ? { reviews: g.reviews, rating: g.rating === null ? null : Number(g.rating), newestReviewOn: g.newest_review_on, periodTo: g.period_to } : null,
   }
 }
@@ -162,22 +170,16 @@ export async function saveMapSearch(siteId: string, raw: unknown): Promise<GbpCh
   return gbpCheckState(siteId)
 }
 
-/** Adds or edits one map-pack row. The client's own row: at most one per service, name defaults to the client. */
-export async function saveMapCompetitor(siteId: string, raw: unknown): Promise<GbpCheckState> {
-  const c = await client(siteId)
+/** One map-pack row, checked (shared by typing it in and approving a screenshot read). No client_id / id. */
+export function competitorRow(clientName: string, raw: unknown) {
   const b = (raw ?? {}) as Record<string, unknown>
-  const id = b.id === null || b.id === undefined || b.id === '' ? null : String(b.id)
-  if (id && !UUID.test(id)) throw new GbpCheckInputError('Pick a row to edit.')
-  const category = service(b.category)
   const isClient = b.isClient === true
-  const name = text(b.name, 'Business name', 120) ?? (isClient ? c.name.slice(0, 120) : null)
+  const name = text(b.name, 'Business name', 120) ?? (isClient ? clientName.slice(0, 120) : null)
   if (!name) throw new GbpCheckInputError('Type the business name.')
-  const rank = whole(b.rank, 'Rank', 1, 20) // the client's row: where it showed up, or empty ("—") if not in the pack
-  const row = {
-    client_id: c.id,
-    category_code: category,
+  return {
+    category_code: service(b.category),
     is_client: isClient,
-    rank,
+    rank: whole(b.rank, 'Rank', 1, 20), // the client's row: where it showed up, or empty ("—") if not in the pack
     name,
     primary_category: text(b.primaryCategory, 'Primary category', 120),
     additional_categories: list(b.additionalCategories, 'Additional categories', 12, 120),
@@ -186,15 +188,36 @@ export async function saveMapCompetitor(siteId: string, raw: unknown): Promise<G
     newest_review_on: day(b.newestReviewOn, 'Newest review'),
     note: text(b.note, 'Note', 300),
   }
-  const existing = must(await db().from('seo_map_competitors').select('id, is_client, rank, name').eq('client_id', c.id).eq('category_code', category), 'Loading the map competitors') as { id: string; is_client: boolean; rank: number | null; name: string }[]
+}
+type CompetitorRow = ReturnType<typeof competitorRow>
+export type ExistingRow = { id: string; is_client: boolean; rank: number | null; name: string }
+
+/** The per-service rules: one client row, up to 10 competitors, unique rank and name. `others` = the rest of the list. */
+export function checkCompetitor(row: CompetitorRow, others: ExistingRow[]) {
+  const k = row.category_code
+  if (row.is_client && others.some((r) => r.is_client)) throw new GbpCheckInputError(`${k} already has the client’s own row. Edit that one.`)
+  if (!row.is_client && others.filter((r) => !r.is_client).length >= MAX_COMPETITORS) throw new GbpCheckInputError(`${k} has ${MAX_COMPETITORS} competitors already (Sam counts up to 10 unpaid results).`)
+  if (!row.is_client && row.rank !== null && others.some((r) => !r.is_client && r.rank === row.rank)) throw new GbpCheckInputError(`Rank ${row.rank} is already used in ${k}.`)
+  if (others.some((r) => r.is_client === row.is_client && r.name.toLowerCase() === row.name.toLowerCase())) throw new GbpCheckInputError(`“${row.name}” is already in ${k}.`)
+}
+
+export async function existingRows(clientId: string, category: MapServiceCode): Promise<ExistingRow[]> {
+  return must(await db().from('seo_map_competitors').select('id, is_client, rank, name').eq('client_id', clientId).eq('category_code', category), 'Loading the map competitors') as ExistingRow[]
+}
+
+/** Adds or edits one map-pack row. The client's own row: at most one per service, name defaults to the client. */
+export async function saveMapCompetitor(siteId: string, raw: unknown): Promise<GbpCheckState> {
+  const c = await client(siteId)
+  const b = (raw ?? {}) as Record<string, unknown>
+  const id = b.id === null || b.id === undefined || b.id === '' ? null : String(b.id)
+  if (id && !UUID.test(id)) throw new GbpCheckInputError('Pick a row to edit.')
+  const row = competitorRow(c.name, raw)
+  const existing = await existingRows(c.id, row.category_code)
   const others = existing.filter((r) => r.id !== id)
   if (id && others.length === existing.length) throw new GbpCheckInputError('That row is gone. Reload the page.')
-  if (isClient && others.some((r) => r.is_client)) throw new GbpCheckInputError(`${category} already has the client’s own row. Edit that one.`)
-  if (!isClient && others.filter((r) => !r.is_client).length >= MAX_COMPETITORS) throw new GbpCheckInputError(`${category} has ${MAX_COMPETITORS} competitors already (Sam counts up to 10 unpaid results).`)
-  if (!isClient && rank !== null && others.some((r) => !r.is_client && r.rank === rank)) throw new GbpCheckInputError(`Rank ${rank} is already used in ${category}.`)
-  if (others.some((r) => r.is_client === isClient && r.name.toLowerCase() === name.toLowerCase())) throw new GbpCheckInputError(`“${name}” is already in ${category}.`)
+  checkCompetitor(row, others)
   if (id) must(await db().from('seo_map_competitors').update(row).eq('client_id', c.id).eq('id', id), 'Saving the competitor')
-  else must(await db().from('seo_map_competitors').insert({ ...row, sort: existing.length }), 'Adding the competitor')
+  else must(await db().from('seo_map_competitors').insert({ ...row, client_id: c.id, sort: existing.length }), 'Adding the competitor')
   return gbpCheckState(siteId)
 }
 

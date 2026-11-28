@@ -1262,6 +1262,36 @@ export interface GbpCheckState {
   /** All 8 factors (missing rows come back as "to_check") */
   factors: GbpFactor[]
   profile: GbpProfile
+  /** 4a · the open ("Ready to review") Maps / Pleper screenshot read, or null. Nothing is in the list until approved. */
+  mapRead: MapShotRead | null
   /** The client's own reviews from the newest typed GBP period with reviews (for the pinned row when not typed here) */
   fromGbp: { reviews: number | null; rating: number | null; newestReviewOn: string | null; periodTo: string } | null
 }
+
+/** 4a · one row Claude read from a Maps / Pleper screenshot. Unclear = null (never 0, never a guess). */
+export interface MapShotRow {
+  rank: number | null
+  name: string
+  primaryCategory: string | null
+  additionalCategories: string[]
+  reviews: number | null
+  rating: number | null
+  newestReviewOn: string | null
+  /** The name looks like the client's own business (saved as the client row if kept) */
+  looksLikeClient: boolean
+}
+
+export interface MapShotRead {
+  id: string
+  createdAt: string
+  summary: string
+  category: MapServiceCode
+  /** The search text shown in the Maps search box, if readable */
+  searchShown: string | null
+  rows: MapShotRow[]
+  /** What Claude couldn't read clearly / skipped (ads, cut-off rows) */
+  notes: string[]
+}
+
+/** Approving: the rows Angel kept (edited), saved through the normal competitor rules. */
+export type MapShotApproveRow = Omit<MapShotRow, 'looksLikeClient'> & { isClient: boolean }

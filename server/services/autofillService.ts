@@ -23,7 +23,7 @@ type Row = {
 }
 const COLS = 'id, step, kind, source, status, summary, payload, applied_count, created_at, decided_at'
 /** Screenshot reads (2g) and Phase 3 drafts (hotspots, BrandScript, page copy) share seo_autofill but aren't keyword suggestions: never listed or retired here. */
-const NOT_KEYWORDS = '(gbp_screenshot,map_screenshot,hotspots,brandscript,page_copy)'
+const NOT_KEYWORDS = '(gbp_screenshot,map_screenshot,hotspots,brandscript,page_copy,map_competitors)'
 
 const toRow = (r: Row): AutofillRow => ({
   id: r.id,

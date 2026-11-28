@@ -11,6 +11,8 @@
 //   GET  /api/metrics/gbp-check?site=<site id>          -> GbpCheckState (4a: map pack S1–S3, factors, business details)
 //   POST /api/metrics/gbp-search-save | gbp-competitor-save | gbp-competitor-delete | gbp-factor-save | gbp-profile-save
 //        { siteId, ... } -> GbpCheckState
+//   POST /api/metrics/map-shot-estimate { siteId, image } -> ScreenshotEstimate
+//   POST /api/metrics/map-shot-read | map-shot-approve | map-shot-discard { siteId, ... } -> GbpCheckState (Claude, Ready to review)
 //   GET  /api/metrics/cron                              -> daily pull for every linked client. Vercel Cron only:
 //        Authorization: Bearer <CRON_SECRET> (no login cookie); without CRON_SECRET set it always refuses.
 // (One file for every phase 2 action: the app stays within Vercel Hobby's 12 server functions.)
@@ -24,6 +26,7 @@ import { baselineById, BaselineInputError, baselineState, saveBaseline } from '.
 import { approveReportNotes, createReport, discardReportNotes, draftReportNotes, estimateReportNotes, previewReport, refreshReport, reportById, ReportInputError, reportsState, saveReportActions, setReportStatus } from '../../server/services/reportService.js'
 import { approveGbpShot, discardGbpShot, estimateGbpShot, gbpReadFor, readGbpShot, ScreenshotInputError } from '../../server/services/screenshotService.js'
 import { deleteMapCompetitor, GbpCheckInputError, gbpCheckState, saveGbpFactor, saveGbpProfile, saveMapCompetitor, saveMapSearch } from '../../server/services/gbpCheckService.js'
+import { approveMapShot, discardMapShot, estimateMapShot, readMapShot } from '../../server/services/mapShotService.js'
 import { requireSession } from '../../server/utils/auth.js'
 import { timingSafeEqual } from 'node:crypto'
 import type { MetricRange } from '../../src/types/seo.js'
@@ -100,6 +103,15 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       if (action === 'gbp-competitor-delete') return Response.json(await deleteMapCompetitor(site, body))
       if (action === 'gbp-factor-save') return Response.json(await saveGbpFactor(site, body))
       return Response.json(await saveGbpProfile(site, body))
+    }
+    // 4a step 4 · Maps / Pleper screenshot → competitor rows. The image is in the request body only: never stored or logged.
+    if (method === 'POST' && ['map-shot-estimate', 'map-shot-read', 'map-shot-approve', 'map-shot-discard'].includes(action)) {
+      const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
+      const site = String(body.siteId ?? '')
+      if (action === 'map-shot-estimate') return Response.json(await estimateMapShot(site, body))
+      if (action === 'map-shot-read') return Response.json(await readMapShot(site, body))
+      if (action === 'map-shot-approve') return Response.json(await approveMapShot(site, body))
+      return Response.json(await discardMapShot(site, body))
     }
     // Phase 2e · Baseline: state (current + live + history), one past baseline, save (new / fill missing)
     if (method === 'GET' && action === 'baseline') return Response.json(await baselineState(params.get('site') ?? ''))

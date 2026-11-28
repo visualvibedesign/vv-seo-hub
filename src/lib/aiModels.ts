@@ -30,6 +30,8 @@ export const AI_TASKS = {
   brandscript: { model: 'sonnet', label: 'BrandScript', outPerItem: 0, outBase: 3000 },
   // Phase 3 · page copy (StoryBrand sections V1 / V2) + the page brief. Per section asked for. Effort medium.
   page_copy: { model: 'sonnet', label: 'Page copy', outPerItem: 450, outBase: 2000 },
+  // Phase 4a · map-pack rows read from a Google Maps / Pleper screenshot (saved as Ready to review). Effort low.
+  map_competitors: { model: 'sonnet', label: 'Maps screenshot', outPerItem: 0, outBase: 2500 },
 } as const satisfies Record<string, { model: AiModelKey; label: string; outPerItem: number; outBase: number }>
 export type AiTask = keyof typeof AI_TASKS
 
