@@ -1,10 +1,10 @@
-# Next session (updated Nov 29, 2026)
+# Next session (updated Nov 29, 2026, end of day)
 
 Shareable status note for the reviewer Claude: what was built, commit ids, what's pushed, what to test, what's
 waiting on Angel. Updated after every step.
 
 ## Where we are
-- **Production (`main`) = merge `39009e7` (Phase 3 · Pages, pushed by Angel's OK).** Before it: `6dbd2e4` (Phase 2g + fixes), `324d0f3` (2a–2f).
+- **Production (`main`) = the merge of `phase-4` on Nov 29 (Angel: "push it in main"): 4a GBP check + 4b GBP care finished, 4c Links server only (no screen yet; the sidebar's Links item is still a P4 placeholder).** Before it: `39009e7` (Phase 3 · Pages). Before it: `6dbd2e4` (Phase 2g + fixes), `324d0f3` (2a–2f).
 - **Phase 2 is finished and live.**
 - **Skipped for now:** Whitespark (map grid from a screenshot / CSV): no Whitespark account yet. The map grid stays
   optional and typed in by hand.
@@ -44,7 +44,8 @@ waiting on Angel. Updated after every step.
   - Citations: pasted lines (tab or comma; header skipped) → domain, DA (one number = DA; two = export row # then DA), verification word, name; numbered after the last row; wave = by row; duplicates + address-like lines skipped and listed. Backlink Gap: pasted WITH the header; columns by name (Domain / Authority Score / Matches); domain-named columns = the compared sites (the client's own left out, the rest C1–C4 in order; > 0 = has it); "matches of" = number of compared sites; re-paste updates, never doubles; each row flagged onWave / onList. Opportunities: domain from the exact page; refused if the domain is on the citation waves or the page is already listed; Live needs the checked date (DB enforces it too); ticks separate. Typed lists refuse street addresses.
   - **CSV samples still wanted** (BrightLocal list + Semrush Backlink Gap export): the paste readers are built from Sam's description and a typical layout; a real file may need a small column tweak.
   - **Tested by Claude: 30 / 30 pass** on Visual Vibe (9-row list → waves 1/4/7, 2/5/8, 3/6/9; dry run saves nothing; YP network ×3; gap paste: C1–C4 mapping, dup / bad lines skipped, AS 2 kept for the screen to hide, wave duplicate refused, gap → opportunity; Live rule; address refusals; settings), then put back: every Links table empty.
-- **Next: 4c step 3 · Links screen** (`strategy/links`, design Links.png: tabs Citations · 3 waves / Backlink Gap / Local + premier, + Opportunities, pace + authority).
+- **Production checks for the reviewer** (Visual Vibe on the live site): Day 4 · GBP check and Day 7 · GBP care open and save; "Read a screenshot" and the Claude drafts need `ANTHROPIC_API_KEY` in Vercel Production (Angel to confirm it is set). Migrations 0022–0024 are already run on the shared database.
+- **Where to pick up next session: 4c step 3 · Links screen** (`strategy/links`, design Links.png: tabs Citations · 3 waves / Backlink Gap / Local + premier, + Opportunities, pace + authority).
 - Test client: **Visual Vibe Design** (`5c939f2631d6b31bdf4523e5d2f79a2c`): "Day 3" baseline (Nov 28) + the
   November 2026 report (Sent).
 - 12 Vercel functions (Hobby cap). Migrations 0001–0024 run and checked.
