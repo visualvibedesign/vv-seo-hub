@@ -1,16 +1,18 @@
-# Next session (updated Nov 28, 2026)
+# Next session (updated Nov 29, 2026)
 
 Shareable status note for the reviewer Claude: what was built, commit ids, what's pushed, what to test, what's
 waiting on Angel. Updated after every step.
 
 ## Where we are
-- **Phase 2 is finished and live in Production**: `main` = merge `6dbd2e4` (Nov 28: 2g PDF + GBP screenshot + fixes), after `324d0f3` (2a–2f).
+- **Production (`main`) = merge `39009e7` (Phase 3 · Pages, pushed by Angel's OK).** Before it: `6dbd2e4` (Phase 2g + fixes), `324d0f3` (2a–2f).
+- **Phase 2 is finished and live.**
 - **Skipped for now:** Whitespark (map grid from a screenshot / CSV): no Whitespark account yet. The map grid stays
   optional and typed in by hand.
-- **Phase 3 · Pages** on branch **`phase-3`** (plan `docs/phase-3-plan.md`, approved Nov 28: ClickUp later, structure per client default service first, page codes P1… auto). Step 1 done: migration 0021 run and checked. Step 2 done (`c0b4097`, Sitemap + hotspots) and step 3 done (`b376d6e`, Site plan); step 4 done (`49336fb`, Claude hotspot drafts); step 5 done (`4daa2cd`, BrandScript); **step 6 done (`b5ca921`, page brief + page copy)**. All tested by Claude. Phase 3 build steps are finished (ClickUp later); next: Angel / the reviewer tests Phase 3, then merge `phase-3` into `main` when Angel says.
+- **Phase 3 · Pages is finished and live in Production** (merge `39009e7`): migration 0021, Sitemap + hotspots (`c0b4097`), Site plan (`b376d6e`), Claude hotspot drafts (`49336fb`), BrandScript (`4daa2cd`), page brief + page copy (`b5ca921`). All tested by Claude; the reviewer can still run the checklists below on Production. ClickUp sync is "later". Work continues on branch `phase-3` (same as `main` now) until Phase 4 gets its own branch.
+- **Next: Phase 4 · GBP check, GBP care, links** (Sam Days 4, 7, 8–9): plan first, no code.
 - Test client: **Visual Vibe Design** (`5c939f2631d6b31bdf4523e5d2f79a2c`): "Day 3" baseline (Nov 28) + the
   November 2026 report (Sent).
-- 12 Vercel functions (Hobby cap). Migrations 0001–0020 run and checked.
+- 12 Vercel functions (Hobby cap). Migrations 0001–0021 run and checked.
 
 ## Everything built in this session, in order (for the reviewer Claude to check)
 
