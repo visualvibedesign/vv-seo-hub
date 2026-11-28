@@ -7,7 +7,7 @@ waiting on Angel. Updated after every step.
 - **Phase 2 is finished and live in Production**: `main` = merge `6dbd2e4` (Nov 28: 2g PDF + GBP screenshot + fixes), after `324d0f3` (2a–2f).
 - **Skipped for now:** Whitespark (map grid from a screenshot / CSV): no Whitespark account yet. The map grid stays
   optional and typed in by hand.
-- **Phase 3 · Pages** on branch **`phase-3`** (plan `docs/phase-3-plan.md`, approved Nov 28: ClickUp later, structure per client default service first, page codes P1… auto). Step 1 done: migration 0021 run and checked. Step 2 done (`c0b4097`, Sitemap + hotspots) and step 3 done (`b376d6e`, Site plan); step 4 done (`49336fb`, Claude hotspot drafts); **step 5 done (`4daa2cd`, BrandScript)**. All tested by Claude. Next: step 6, page brief (worksheet + V1 / V2 copy sections, Claude draft, Copy for Elementor).
+- **Phase 3 · Pages** on branch **`phase-3`** (plan `docs/phase-3-plan.md`, approved Nov 28: ClickUp later, structure per client default service first, page codes P1… auto). Step 1 done: migration 0021 run and checked. Step 2 done (`c0b4097`, Sitemap + hotspots) and step 3 done (`b376d6e`, Site plan); step 4 done (`49336fb`, Claude hotspot drafts); step 5 done (`4daa2cd`, BrandScript); **step 6 done (`b5ca921`, page brief + page copy)**. All tested by Claude. Phase 3 build steps are finished (ClickUp later); next: Angel / the reviewer tests Phase 3, then merge `phase-3` into `main` when Angel says.
 - Test client: **Visual Vibe Design** (`5c939f2631d6b31bdf4523e5d2f79a2c`): "Day 3" baseline (Nov 28) + the
   November 2026 report (Sent).
 - 12 Vercel functions (Hobby cap). Migrations 0001–0020 run and checked.
@@ -119,6 +119,22 @@ confirm; same answers keep "confirmed", a change clears it; 601-character answer
 **Left for Angel: one Claude BrandScript draft open as "Ready to review"** on Page briefs (the BrandScript itself
 is empty). Its notes point out that Visual Vibe's Day 1 kickoff answers (ideal client, what makes you different,
 12-month success) are empty: filling them in Client setup and drafting again gives a much better BrandScript.
+
+| `b5ca921` | **Step 6 · Page brief** (Day 6 · Page briefs, right card): page picker, **V1** (header + footer) / **V2** (all 11 StoryBrand sections, V2-only ones dimmed in V1), the 9 Day 5 brief fields (opportunity, why first, customer need, buying questions, proof, desired action, links from / to, missing inputs), hotspots summary, section status To write / Drafted / Done, "Draft with Claude" (cost first; V1 ~$0.03, V2 ~$0.07) from the BrandScript + the page's keywords / hotspots + other pages, Claude's version under each field with "Use" / "Use all" / "Skip draft", Save brief (approves the draft), **Copy for Elementor**. "Open page brief ›" on Sitemap + hotspots now works. Never a street address (city + areas served only). API: brief* in `api/clusters`, brief-estimate / -draft in `api/autofill` (still 12) |
+
+**Step 6 tested by Claude on Visual Vibe (P2 Web Design hub): 12 / 12 passed** (empty start; bad page refused;
+save keeps known fields / ignores junk / sets statuses; 3001-character section refused; emptied again; V2 estimate >
+V1; real V1 draft ~19 s with only sections 1 + 11, all 9 brief fields, no invented numbers, [placeholders], notes end
+with the rough-draft question). **Fix found while testing:** the footer asked for a "[Street address]": the prompt
+now forbids any street address (city + areas served only) and the redraft has none. **Left for Angel: P2's V1 page
+copy draft open as "Ready to review"** (plus the BrandScript draft from step 5).
+
+## How to test step 6 (localhost, Visual Vibe › Strategy Builder › Day 6 · Page briefs)
+1. Right card: P2 is picked with Claude's V1 draft waiting (banner + Claude's version under the header, footer and brief fields).
+2. "Use all" (or "Use" per field) › edit › set a section to Done › Save brief › the draft banner goes.
+3. Switch to V2 › the 9 extra sections open › "Draft with Claude" (cost first, ~$0.07) for the full copy.
+4. "Copy for Elementor" › paste somewhere: the sections in order with their names.
+5. Sitemap + hotspots › a page › "Open page brief ›" opens that page here.
 
 ## How to test step 5 (localhost, Visual Vibe › Strategy Builder › Day 6 · Page briefs)
 1. Claude's draft is waiting: banner + Claude's version under each field (A–P) + Claude's notes / questions.
