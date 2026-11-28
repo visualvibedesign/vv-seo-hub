@@ -9,7 +9,7 @@ waiting on Angel. Updated after every step.
 - **Skipped for now:** Whitespark (map grid from a screenshot / CSV): no Whitespark account yet. The map grid stays
   optional and typed in by hand.
 - **Phase 3 · Pages is finished and live in Production** (merge `39009e7`): migration 0021, Sitemap + hotspots (`c0b4097`), Site plan (`b376d6e`), Claude hotspot drafts (`49336fb`), BrandScript (`4daa2cd`), page brief + page copy (`b5ca921`). All tested by Claude; the reviewer can still run the checklists below on Production. ClickUp sync is "later". Work continues on branch `phase-3` (same as `main` now) until Phase 4 gets its own branch.
-- **Next: Phase 4 · GBP check, GBP care, links** (Sam Days 4, 7, 8–9): plan first, no code.
+- **Next: Phase 4 · GBP check, GBP care, links** (Sam Days 4, 7, 8–9). **Plan written** (`docs/phase-4-plan.md`, branch **`phase-4`**): three parts 4a GBP check → 4b GBP care → 4c Links, one migration each (0022–0024, none written yet). **Waiting for Angel** to approve it and answer 4 decisions (order, CSV samples for BrightLocal + Backlink Gap, Maps screenshot reading in 4a, review target 5). No Phase 4 code yet.
 - Test client: **Visual Vibe Design** (`5c939f2631d6b31bdf4523e5d2f79a2c`): "Day 3" baseline (Nov 28) + the
   November 2026 report (Sent).
 - 12 Vercel functions (Hobby cap). Migrations 0001–0021 run and checked.
