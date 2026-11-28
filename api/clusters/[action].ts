@@ -7,10 +7,11 @@
 //   POST /api/clusters/structure {siteId, structure}        -> PagesState
 //   POST /api/clusters/page-parent {siteId, pageId, parentId|null} -> PagesState (Site plan)
 //   POST /api/clusters/redirect-status {siteId, id, status}  -> PagesState (Queued / Sent to site / Live)
+//   POST /api/clusters/hotspots-skip {siteId, pageId}       -> PagesState (drops Claude's draft for one page)
 // (Importing a Sheet Clusters CSV is a script for now: scripts/import-clusters.ts.)
 import { DatabaseError } from '../../server/clients/supabase.js'
 import { ClusterInputError, listClusters } from '../../server/services/clusterService.js'
-import { addPage, backfillPages, pagesState, PagesInputError, saveHotspots, setParent, setRedirectStatus, setStructure } from '../../server/services/pagesService.js'
+import { addPage, backfillPages, pagesState, PagesInputError, saveHotspots, setParent, setRedirectStatus, setStructure, skipHotspotDraft } from '../../server/services/pagesService.js'
 import { requireSession } from '../../server/utils/auth.js'
 
 export async function GET(request: Request) {
@@ -29,7 +30,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
   try {
     if (method === 'GET' && action === 'list') return Response.json({ pages: await listClusters(url.searchParams.get('site') ?? '') })
     if (method === 'GET' && action === 'pages') return Response.json(await pagesState(url.searchParams.get('site') ?? ''))
-    if (method === 'POST' && ['pages-backfill', 'hotspots-save', 'page-add', 'structure', 'page-parent', 'redirect-status'].includes(action ?? '')) {
+    if (method === 'POST' && ['pages-backfill', 'hotspots-save', 'page-add', 'structure', 'page-parent', 'redirect-status', 'hotspots-skip'].includes(action ?? '')) {
       const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown; apply?: unknown }
       const site = String(body.siteId ?? '')
       if (action === 'pages-backfill') return Response.json(await backfillPages(site, body.apply === true))
@@ -37,6 +38,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       if (action === 'page-add') return Response.json(await addPage(site, body))
       if (action === 'page-parent') return Response.json(await setParent(site, body))
       if (action === 'redirect-status') return Response.json(await setRedirectStatus(site, body))
+      if (action === 'hotspots-skip') return Response.json(await skipHotspotDraft(site, body))
       return Response.json(await setStructure(site, body))
     }
     return Response.json({ error: 'Not found' }, { status: 404 })

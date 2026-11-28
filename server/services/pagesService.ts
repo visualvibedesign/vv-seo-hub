@@ -11,7 +11,7 @@
 // - setStructure(): service first / location first / flat.
 // - setParent(): a page under another one (Site plan tree); never itself, never a loop.
 // - setRedirectStatus(): Queued → Sent to site → Live, moved by hand (sending to the site comes with phase 5).
-import type { CategoryCode, HotspotsInput, PageAction, PagesBackfillPlan, PagesState, PageType, RedirectStatus, SitePage, SiteRedirect, SiteStructure } from '../../src/types/seo.js'
+import type { CategoryCode, HotspotDraft, HotspotsInput, PageAction, PagesBackfillPlan, PagesState, PageType, RedirectStatus, SitePage, SiteRedirect, SiteStructure } from '../../src/types/seo.js'
 import { db, must } from '../clients/supabase.js'
 import { listClusters } from './clusterService.js'
 import { clientRow } from './clientService.js'
@@ -53,6 +53,7 @@ export async function pagesState(siteId: string): Promise<PagesState> {
     rankingsOverview(siteId).catch(() => null), // no CSV yet = no swapped flags
     db().from('seo_redirects').select('id, page_id, old_url, new_url, why, status, updated_at').eq('client_id', c.id).order('created_at', { ascending: false }),
   ])
+  const draftsRow = await openHotspotsRow(c.id)
   const extra = new Map((must(extraRes, 'Loading pages') as ExtraRow[]).map((r) => [r.id, r]))
   // Swapped: Google ranks a different URL for a keyword owned by this page (rankService decides ownership).
   const swapped = new Map<string, string>()
@@ -91,6 +92,8 @@ export async function pagesState(siteId: string): Promise<PagesState> {
       const pg = out.find((p) => p.id === r.page_id)
       return { id: r.id, pageId: r.page_id, pageCode: pg?.code ?? null, pageName: pg?.name ?? null, oldUrl: r.old_url, newUrl: r.new_url, why: r.why, status: r.status, updatedAt: r.updated_at }
     }),
+    drafts: (draftsRow?.payload.drafts ?? []).filter((d) => out.some((p) => p.id === d.pageId)),
+    draftsAt: draftsRow?.created_at ?? null,
   }
 }
 
@@ -180,6 +183,8 @@ export async function saveHotspots(siteId: string, raw: unknown): Promise<PagesS
   // "Hotspots saved" only when there's something in them (clearing every field = no hotspots).
   if (patch.seo_title || patch.meta_description || patch.h1 || (urlTarget && pathOf(urlTarget) !== pathOf(page.url))) patch.hotspots_at = new Date().toISOString()
   must(await db().from('seo_pages').update(patch).eq('id', page.id).eq('client_id', c.id), 'Saving the hotspots')
+  // Saving a page's hotspots approves Claude's open draft for that page (if any): Angel reviewed and saved it.
+  await closeDraft(c.id, page.id, 'saved')
 
   // A live page moving to a new URL needs a redirect (old → new), sent to the site later (phase 5).
   const oldPath = pathOf(page.url)
@@ -266,5 +271,40 @@ export async function setRedirectStatus(siteId: string, raw: unknown): Promise<P
   if (!['queued', 'sent', 'live'].includes(String(b.status))) throw new PagesInputError('Pick Queued, Sent to site or Live.')
   const r = must(await db().from('seo_redirects').update({ status: b.status }).eq('id', b.id).eq('client_id', c.id).select('id'), 'Saving the redirect') as { id: string }[]
   if (!r.length) throw new PagesInputError('That redirect doesn’t exist.')
+  return pagesState(siteId)
+}
+
+// ---- Claude's hotspot drafts (step 4): the open "Ready to review" row, one draft per page ----------------------------
+
+type DraftsRow = { id: string; payload: { drafts: HotspotDraft[]; saved?: number }; created_at: string }
+
+/** The open drafts row of a client (or null). */
+export async function openHotspotsRow(clientId: string): Promise<DraftsRow | null> {
+  const r = must(await db().from('seo_autofill').select('id, payload, created_at').eq('client_id', clientId).eq('kind', 'hotspots').eq('status', 'ready').order('created_at', { ascending: false }).limit(1), 'Loading drafts') as DraftsRow[]
+  return r[0] ?? null
+}
+
+/**
+ * Takes one page's draft off the open row (its hotspots were saved, or it was skipped). When no draft is left the row
+ * is closed: approved if at least one page was saved from it, else rejected.
+ */
+export async function closeDraft(clientId: string, pageId: string, how: 'saved' | 'skipped'): Promise<void> {
+  const open = await openHotspotsRow(clientId)
+  if (!open || !open.payload.drafts.some((d) => d.pageId === pageId)) return
+  const left = open.payload.drafts.filter((d) => d.pageId !== pageId)
+  const saved = (open.payload.saved ?? 0) + (how === 'saved' ? 1 : 0)
+  if (left.length) {
+    must(await db().from('seo_autofill').update({ payload: { drafts: left, saved }, item_count: left.length, summary: `Hotspots for ${left.length} page${left.length === 1 ? '' : 's'} · Ready to review` }).eq('id', open.id).eq('status', 'ready'), 'Saving drafts')
+  } else {
+    must(await db().from('seo_autofill').update({ payload: { drafts: [], saved }, status: saved ? 'approved' : 'rejected', decided_at: new Date().toISOString(), applied_count: saved }).eq('id', open.id).eq('status', 'ready'), 'Saving drafts')
+  }
+}
+
+/** "Skip" on one page's draft: nothing on the page changes. */
+export async function skipHotspotDraft(siteId: string, raw: unknown): Promise<PagesState> {
+  const c = await client(siteId)
+  const pageId = (raw as { pageId?: unknown } | null)?.pageId
+  if (typeof pageId !== 'string' || !UUID.test(pageId)) throw new PagesInputError('That page doesn’t exist.')
+  await closeDraft(c.id, pageId, 'skipped')
   return pagesState(siteId)
 }

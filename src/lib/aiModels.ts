@@ -24,6 +24,8 @@ export const AI_TASKS = {
   report_notes: { model: 'sonnet', label: 'Report notes', outPerItem: 0, outBase: 2500 },
   // 2g · numbers read from a GBP Performance screenshot (saved as Ready to review). Effort low.
   gbp_screenshot: { model: 'sonnet', label: 'GBP screenshot', outPerItem: 0, outBase: 1200 },
+  // Phase 3 · SEO hotspots per page (title, meta, H1, URL, opening / closing line). Effort medium.
+  hotspots: { model: 'sonnet', label: 'Hotspots', outPerItem: 450, outBase: 2500 },
 } as const satisfies Record<string, { model: AiModelKey; label: string; outPerItem: number; outBase: number }>
 export type AiTask = keyof typeof AI_TASKS
 

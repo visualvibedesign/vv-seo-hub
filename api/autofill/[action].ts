@@ -5,10 +5,13 @@
 //   POST /api/autofill/estimate { siteId, task }                  -> { estimate } (count_tokens: free, nothing saved)
 //   POST /api/autofill/run-ai { siteId, task }                    -> { rows }  (one Claude call, logged; Ready to review)
 //   GET  /api/autofill/usage                                       -> { usage: AiUsage } (Settings › Claude usage, read only)
+//   POST /api/autofill/hotspots-estimate { siteId, pageIds }       -> HotspotsEstimate (Phase 3; count_tokens, nothing saved)
+//   POST /api/autofill/hotspots-draft { siteId, pageIds }          -> { drafts } (one Claude call, logged; Ready to review)
 import { DatabaseError } from '../../server/clients/supabase.js'
 import { AutofillInputError, decide, listAutofill, retireStale, runDay2Rules } from '../../server/services/autofillService.js'
 import { estimate, run } from '../../server/services/aiAutofillService.js'
 import { aiUsage } from '../../server/services/aiUsageService.js'
+import { draftHotspots, estimateHotspots, HotspotsInputError } from '../../server/services/hotspotsAiService.js'
 import { AiCallError } from '../../server/services/aiService.js'
 import { AiConfigError } from '../../server/clients/anthropic.js'
 import { AI_TASKS, type AiTask } from '../../src/lib/aiModels.js'
@@ -44,6 +47,12 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       return Response.json({ rows: await listAutofill(String(body.siteId ?? '')) })
     }
     if (method === 'POST' && action === 'decide') return Response.json({ rows: await decide(await request.json().catch(() => null)) })
+    // Phase 3 · Claude hotspot drafts for the picked pages (Ready to review until the page's hotspots are saved).
+    if (method === 'POST' && (action === 'hotspots-estimate' || action === 'hotspots-draft')) {
+      const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
+      const site = String(body.siteId ?? '')
+      return Response.json(action === 'hotspots-estimate' ? await estimateHotspots(site, body) : await draftHotspots(site, body))
+    }
     // Claude tasks: estimate first (shown to Angel), then run only on Angel's click.
     if (method === 'POST' && (action === 'estimate' || action === 'run-ai')) {
       const body = (await request.json().catch(() => ({}))) as { siteId?: unknown; task?: unknown; input?: unknown }
@@ -56,7 +65,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
-    if (err instanceof AutofillInputError || err instanceof AiConfigError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
+    if (err instanceof AutofillInputError || err instanceof AiConfigError || err instanceof HotspotsInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof AiCallError) return Response.json({ error: 'ai', detail: err.message }, { status: 502 })
     if (err instanceof DatabaseError) return Response.json({ error: 'database', detail: err.message }, { status: 500 })
     throw err

@@ -4,13 +4,14 @@ import { useClientContext } from '../../components/layout/ClientLayout'
 import HeaderTools from '../../components/layout/HeaderTools'
 import { Bone, Spinner } from '../../components/ui/Loading'
 import Modal from '../../components/ui/Modal'
-import { useBackfillPages, usePages, useSaveHotspots, useSiteStructure } from '../../hooks/usePages'
+import { useBackfillPages, usePages, useSaveHotspots, useSiteStructure, useSkipHotspotDraft } from '../../hooks/usePages'
 import { ApiError } from '../../lib/api'
 import { hotspotChecks, inRange, META_RANGE, slugPath, TITLE_RANGE } from '../../lib/hotspots'
 import { ACTION_LABEL, ACTION_TONE, STRUCTURE_LABEL, TYPE_LABEL } from '../../lib/pages'
 import { BTN_GHOST, BTN_LIME, BTN_LINK, CARD, FIELD, LABEL, PILL, siteLabel } from '../../lib/ui'
 import AddPageDialog from '../../components/pages/AddPageDialog'
-import type { PageAction, PagesState, PageType, SitePage, SiteStructure } from '../../types/seo'
+import HotspotsDraftDialog from '../../components/pages/HotspotsDraftDialog'
+import type { HotspotDraft, PageAction, PagesState, PageType, SitePage, SiteStructure } from '../../types/seo'
 
 // Strategy Builder › Day 5 · Sitemap + hotspots (/clients/{site id}/strategy/pages). Design: docs/design/Pages.png.
 // One page per keyword cluster (the Clusters pages), each with a code (P1…), keep / improve / new and its SEO hotspots:
@@ -27,6 +28,8 @@ export default function SitemapPage() {
   const [params, setParams] = useSearchParams()
   const [adding, setAdding] = useState(false)
   const [filling, setFilling] = useState(false)
+  // Pages to start the Claude dialog with (null = closed)
+  const [drafting, setDrafting] = useState<string[] | null>(null)
   const s = q.data
   const selectedId = params.get('page') ?? s?.pages[0]?.id ?? null
   const selected = s?.pages.find((p) => p.id === selectedId) ?? s?.pages[0]
@@ -51,6 +54,9 @@ export default function SitemapPage() {
           <span className={`${BTN_GHOST} pointer-events-none opacity-60`} title="Sending hotspots to ClickUp Web Page tasks comes later">
             Send to ClickUp <span className={`${PILL} !py-0 !text-[11px] bg-vv-st-todo text-vv-st-todo-ink`}>Later</span>
           </span>
+          <button type="button" className={BTN_GHOST} onClick={() => s && setDrafting(s.pages.filter((x) => !x.hotspotsAt && !s.drafts.some((d) => d.pageId === x.id)).map((x) => x.id))} disabled={!s || !s.pages.length}>
+            Draft with Claude
+          </button>
           <button type="button" className={BTN_LIME} onClick={() => setAdding(true)} disabled={!s}>
             + Add page
           </button>
@@ -69,6 +75,14 @@ export default function SitemapPage() {
         </section>
       )}
 
+      {s && s.drafts.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-vv-lavender-100 px-4 py-3 text-[14px] text-vv-purple-ink">
+          <span>
+            <strong>Claude’s hotspots for {s.drafts.length} page{s.drafts.length === 1 ? '' : 's'} are ready to review.</strong> Open a page marked “Draft ready”, use or edit the draft, then save. Saving approves it; nothing changes until you do.
+          </span>
+        </div>
+      )}
+
       {s && s.needsBackfill > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-[18px] bg-vv-orange-100 px-4 py-3 text-[14px] text-vv-orange-ink">
           <span>
@@ -82,13 +96,14 @@ export default function SitemapPage() {
 
       {s && s.pages.length > 0 && selected && (
         <div className="grid grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)] items-start gap-5 [@media(max-width:1100px)]:grid-cols-1">
-          <PageList pages={s.pages} selectedId={selected.id} onSelect={select} />
-          <HotspotEditor key={`${selected.id}-${selected.hotspotsAt ?? ''}`} siteId={c.siteId} state={s} page={selected} />
+          <PageList pages={s.pages} drafts={s.drafts} selectedId={selected.id} onSelect={select} />
+          <HotspotEditor key={`${selected.id}-${selected.hotspotsAt ?? ''}`} siteId={c.siteId} state={s} page={selected} onDraft={() => setDrafting([selected.id])} />
         </div>
       )}
 
       {adding && s && <AddPageDialog siteId={c.siteId} state={s} onClose={() => setAdding(false)} onAdded={(id) => { setAdding(false); if (id) select(id) }} />}
       {filling && <Backfill siteId={c.siteId} onClose={() => setFilling(false)} />}
+      {drafting && s && <HotspotsDraftDialog siteId={c.siteId} state={s} start={drafting} onClose={() => setDrafting(null)} />}
     </>
   )
 }
@@ -117,7 +132,7 @@ function StructurePicker({ siteId, value }: { siteId: string; value: SiteStructu
   )
 }
 
-function PageList({ pages, selectedId, onSelect }: { pages: SitePage[]; selectedId: string; onSelect: (id: string) => void }) {
+function PageList({ pages, drafts, selectedId, onSelect }: { pages: SitePage[]; drafts: HotspotDraft[]; selectedId: string; onSelect: (id: string) => void }) {
   return (
     <section className={`${CARD} !gap-1 !p-3`} aria-label="Pages">
       <ul className="m-0 flex list-none flex-col gap-1 p-0">
@@ -138,7 +153,7 @@ function PageList({ pages, selectedId, onSelect }: { pages: SitePage[]; selected
                 </span>
                 <span className="flex flex-none flex-col items-end gap-1">
                   {p.action && <span className={`${PILL} !py-0.5 ${ACTION_TONE[p.action]}`}>{ACTION_LABEL[p.action]}</span>}
-                  {p.hotspotsAt && <span className="text-[11px] text-vv-muted">hotspots saved</span>}
+                  {drafts.some((d) => d.pageId === p.id) ? <span className="text-[11px] font-semibold text-vv-purple-deep">Draft ready</span> : p.hotspotsAt && <span className="text-[11px] text-vv-muted">hotspots saved</span>}
                 </span>
               </button>
             </li>
@@ -154,8 +169,9 @@ function Counter({ n, range }: { n: number; range: readonly [number, number] }) 
   return <span className={`text-[13px] font-semibold ${inRange(n, range) ? 'text-vv-green-ink' : n ? 'text-vv-orange-ink' : 'text-vv-muted'}`}>{`${n} / ${range[0]}–${range[1]}`}</span>
 }
 
-function HotspotEditor({ siteId, state, page }: { siteId: string; state: PagesState; page: SitePage }) {
+function HotspotEditor({ siteId, state, page, onDraft }: { siteId: string; state: PagesState; page: SitePage; onDraft: () => void }) {
   const save = useSaveHotspots(siteId)
+  const draft = state.drafts.find((d) => d.pageId === page.id) ?? null
   const [v, setV] = useState({
     code: page.code ?? '',
     type: page.type ?? ('' as PageType | ''),
@@ -207,6 +223,16 @@ function HotspotEditor({ siteId, state, page }: { siteId: string; state: PagesSt
         </span>
         {page.swappedUrl && <span className={`${PILL} w-fit bg-vv-orange-100 text-vv-orange-ink`}>Check: Google may show {page.swappedUrl} instead</span>}
       </div>
+
+      {draft && (
+        <DraftPanel
+          siteId={siteId}
+          draft={draft}
+          primary={primary}
+          stateAbbr={state.state}
+          onUse={() => setV({ ...v, title: draft.seoTitle ?? v.title, meta: draft.metaDescription ?? v.meta, h1: draft.h1 ?? v.h1, url: draft.url ?? v.url })}
+        />
+      )}
 
       <div className="grid grid-cols-3 gap-3 phone:grid-cols-1">
         <label className={LABEL}>
@@ -292,9 +318,9 @@ function HotspotEditor({ siteId, state, page }: { siteId: string; state: PagesSt
           {save.isPending && <Spinner />}
           {dirty ? 'Save hotspots' : 'Saved'}
         </button>
-        <span className={`${BTN_GHOST} pointer-events-none opacity-60`} title="Claude drafts the hotspots in the next step">
-          Draft with Claude <span className={`${PILL} !py-0 !text-[11px] bg-vv-st-todo text-vv-st-todo-ink`}>Next step</span>
-        </span>
+        <button type="button" className={BTN_GHOST} onClick={onDraft} disabled={save.isPending}>
+          {draft ? 'Draft again with Claude' : 'Draft with Claude'}
+        </button>
         <span className={`${BTN_GHOST} pointer-events-none opacity-60`} title="Page briefs come in step 6">
           Open page brief ›
         </span>
@@ -350,5 +376,59 @@ function Backfill({ siteId, onClose }: { siteId: string; onClose: () => void }) 
         )}
       </div>
     </Modal>
+  )
+}
+
+/** Claude's draft for this page: shown with its own counters / checks; "Use this draft" fills the form (save approves). */
+function DraftPanel({ siteId, draft, primary, stateAbbr, onUse }: { siteId: string; draft: HotspotDraft; primary: string | null; stateAbbr: string | null; onUse: () => void }) {
+  const skip = useSkipHotspotDraft(siteId)
+  const checks = hotspotChecks({ title: draft.seoTitle ?? '', meta: draft.metaDescription ?? '', h1: draft.h1 ?? '', url: draft.url ?? '', primary, state: stateAbbr })
+  const warn = checks.filter((c) => !c.ok)
+  const row = (label: string, value: string | null, range?: readonly [number, number]) => (
+    <div className="flex flex-col gap-0.5">
+      <span className="flex items-baseline justify-between gap-2 text-[11px] font-bold uppercase tracking-[0.05em] text-vv-body">
+        {label} {range && value ? <Counter n={value.length} range={range} /> : null}
+      </span>
+      <span className="text-[14px] text-vv-ink">{value ?? '—'}</span>
+    </div>
+  )
+  return (
+    <div className="flex flex-col gap-2.5 rounded-[18px] border border-solid border-vv-lavender bg-vv-lavender-50 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className={`${PILL} bg-vv-lavender-100 text-vv-purple-ink`}>Claude’s draft · Ready to review</span>
+        <span className="text-[12px] text-vv-body">{warn.length ? `${warn.length} check${warn.length === 1 ? '' : 's'} to look at` : 'All checks pass'}</span>
+      </div>
+      {row('SEO title', draft.seoTitle, TITLE_RANGE)}
+      {row('Meta description', draft.metaDescription, META_RANGE)}
+      <div className="grid grid-cols-2 gap-3 phone:grid-cols-1">
+        {row('H1', draft.h1)}
+        {row('URL', draft.url)}
+      </div>
+      {(draft.opening || draft.closing) && (
+        <div className="flex flex-col gap-1 text-[13px] text-vv-body">
+          {draft.opening && <span><strong className="text-vv-ink">Opening:</strong> {draft.opening}</span>}
+          {draft.closing && <span><strong className="text-vv-ink">Closing:</strong> {draft.closing}</span>}
+        </div>
+      )}
+      {draft.notes && <span className="text-[13px] text-vv-orange-ink">Claude’s notes: {draft.notes}</span>}
+      {warn.length > 0 && (
+        <ul className="m-0 flex list-none flex-col gap-0.5 p-0 text-[12px] text-vv-orange-ink">
+          {warn.map((w) => (
+            <li key={w.text}>! {w.text}</li>
+          ))}
+        </ul>
+      )}
+      {skip.error && <span className="text-[13px] font-semibold text-vv-red">{errText(skip.error, 'Couldn’t skip it.')}</span>}
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" className={`${BTN_LIME} min-h-10 px-4 text-[13px]`} onClick={onUse}>
+          Use this draft
+        </button>
+        <button type="button" className={`${BTN_LINK} px-2`} onClick={() => skip.mutate(draft.pageId)} disabled={skip.isPending}>
+          {skip.isPending && <Spinner />}
+          Skip draft
+        </button>
+        <span className="text-[12px] text-vv-muted">“Use” fills the fields below; nothing is saved until you click Save hotspots.</span>
+      </div>
+    </div>
   )
 }

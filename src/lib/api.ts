@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus, HotspotDraft, HotspotsEstimate } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -527,4 +527,20 @@ export function setPageParent(siteId: string, pageId: string, parentId: string |
 /** Site plan: Queued → Sent to site → Live. */
 export function setRedirectStatus(siteId: string, id: string, status: RedirectStatus): Promise<PagesState> {
   return call('/api/clusters/redirect-status', json({ siteId, id, status }))
+}
+
+// ---- Phase 3 step 4 · Claude hotspot drafts ---------------------------------------------------------------------
+
+export function estimateHotspots(siteId: string, pageIds: string[]): Promise<HotspotsEstimate> {
+  return call('/api/autofill/hotspots-estimate', json({ siteId, pageIds }))
+}
+
+/** One Claude call for the picked pages; drafts saved as "Ready to review". */
+export function draftHotspots(siteId: string, pageIds: string[]): Promise<{ drafts: HotspotDraft[] }> {
+  return call('/api/autofill/hotspots-draft', json({ siteId, pageIds }))
+}
+
+/** Drops Claude's draft for one page (nothing on the page changes). */
+export function skipHotspotDraft(siteId: string, pageId: string): Promise<PagesState> {
+  return call('/api/clusters/hotspots-skip', json({ siteId, pageId }))
 }

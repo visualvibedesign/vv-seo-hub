@@ -1,6 +1,6 @@
 // Phase 3 · Pages: the ideal sitemap + hotspots of a client (seo_pages, migration 0021).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { addPage, backfillPages, getPages, saveHotspots, setPageParent, setRedirectStatus, setSiteStructure } from '../lib/api'
+import { addPage, backfillPages, draftHotspots, estimateHotspots, getPages, saveHotspots, setPageParent, setRedirectStatus, setSiteStructure, skipHotspotDraft } from '../lib/api'
 import type { CategoryCode, HotspotsInput, PagesState, PageType, RedirectStatus, SiteStructure } from '../types/seo'
 
 export function usePages(siteId: string) {
@@ -33,4 +33,17 @@ export function useBackfillPages(siteId: string) {
       if (r.applied) void qc.invalidateQueries({ queryKey: ['pages', siteId] })
     },
   })
+}
+
+// ---- Step 4 · Claude hotspot drafts ---------------------------------------------------------------------------------
+export const useSkipHotspotDraft = (siteId: string) => usePagesMutation(siteId, (pageId: string) => skipHotspotDraft(siteId, pageId))
+
+/** Estimate for the picked pages (only when asked). */
+export function useHotspotsEstimate(siteId: string, pageIds: string[], asked: boolean) {
+  return useQuery({ queryKey: ['hotspots-estimate', siteId, [...pageIds].sort().join(',')], queryFn: () => estimateHotspots(siteId, pageIds), enabled: asked && pageIds.length > 0, staleTime: 0, gcTime: 0, retry: false })
+}
+
+export function useDraftHotspots(siteId: string) {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (pageIds: string[]) => draftHotspots(siteId, pageIds), onSuccess: () => qc.invalidateQueries({ queryKey: ['pages', siteId] }) })
 }

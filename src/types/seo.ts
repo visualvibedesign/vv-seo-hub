@@ -1086,6 +1086,10 @@ export interface PagesState {
   needsBackfill: number
   /** The redirects queue, newest first */
   redirects: SiteRedirect[]
+  /** Claude's open hotspot drafts (Ready to review), one per page; empty when none */
+  drafts: HotspotDraft[]
+  /** When those drafts were made */
+  draftsAt: string | null
 }
 
 export interface PagesBackfillPlan {
@@ -1117,4 +1121,26 @@ export interface SiteRedirect {
   why: string | null
   status: RedirectStatus
   updatedAt: string
+}
+
+/** Phase 3 step 4 · Claude's hotspots for one page ("Ready to review" until saved or skipped). */
+export interface HotspotDraft {
+  pageId: string
+  seoTitle: string | null
+  metaDescription: string | null
+  h1: string | null
+  url: string | null
+  /** Suggested opening / closing lines for the page copy (used later in the page brief) */
+  opening: string | null
+  closing: string | null
+  /** What Claude flagged (gaps, unknown facts) */
+  notes: string | null
+}
+
+export interface HotspotsEstimate {
+  model: string
+  pages: number
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
 }
