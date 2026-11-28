@@ -7,7 +7,7 @@ waiting on Angel. Updated after every step.
 - **Phase 2 is finished and live in Production**: `main` = merge `6dbd2e4` (Nov 28: 2g PDF + GBP screenshot + fixes), after `324d0f3` (2a–2f).
 - **Skipped for now:** Whitespark (map grid from a screenshot / CSV): no Whitespark account yet. The map grid stays
   optional and typed in by hand.
-- **Phase 3 · Pages** on branch **`phase-3`** (plan `docs/phase-3-plan.md`, approved Nov 28: ClickUp later, structure per client default service first, page codes P1… auto). Step 1 done: migration 0021 run and checked. Step 2 done (`c0b4097`, Sitemap + hotspots) and step 3 done (`b376d6e`, Site plan); **step 4 done (`49336fb`, Claude hotspot drafts)**. All tested by Claude. Next: step 5, BrandScript (A–P form + Claude draft + confirm).
+- **Phase 3 · Pages** on branch **`phase-3`** (plan `docs/phase-3-plan.md`, approved Nov 28: ClickUp later, structure per client default service first, page codes P1… auto). Step 1 done: migration 0021 run and checked. Step 2 done (`c0b4097`, Sitemap + hotspots) and step 3 done (`b376d6e`, Site plan); step 4 done (`49336fb`, Claude hotspot drafts); **step 5 done (`4daa2cd`, BrandScript)**. All tested by Claude. Next: step 6, page brief (worksheet + V1 / V2 copy sections, Claude draft, Copy for Elementor).
 - Test client: **Visual Vibe Design** (`5c939f2631d6b31bdf4523e5d2f79a2c`): "Day 3" baseline (Nov 28) + the
   November 2026 report (Sent).
 - 12 Vercel functions (Hobby cap). Migrations 0001–0020 run and checked.
@@ -110,6 +110,21 @@ URL kept /web-design. P3 (new): "/web-design/bentonville-ar/", notes ask to conf
 numbers, full state name in titles. Saving P2 approved its draft (1 left), skipping P3 closed the item (approved, 1
 page saved from it), P3 unchanged, no redirect; P2 then put back to empty. Fix found: the 12-page limit now counts what
 was asked for. Left in the data: the Claude log row ("Hotspots") and the closed draft item; pages unchanged.
+
+| `4daa2cd` | **Step 5 · BrandScript** (Strategy Builder › Day 6 · Page briefs, sidebar item live): 16 fields A–P once per client ("N of 16 filled", Filled / Empty), Save, "Read aloud and confirmed" (a changed answer clears it), "Draft with Claude" (cost first) from Day 1 setup only; Claude's version shown under each field with "Use", plus "Use all" / "Skip draft"; saving approves the draft. Never the address, accounts or free-form notes; unknown facts = [bracketed questions]. API: brandscript* in `api/clusters`, brandscript-estimate / -draft in `api/autofill` (still 12) |
+
+**Step 5 tested by Claude on Visual Vibe: 15 / 15 passed** (confirm before saving refused; unknown key ignored;
+confirm; same answers keep "confirmed", a change clears it; 601-character answer refused; emptied again; estimate
+~$0.03; real draft ~12 s with all 16 answers, no invented numbers, unknowns as [questions]; skip; second draft).
+**Left for Angel: one Claude BrandScript draft open as "Ready to review"** on Page briefs (the BrandScript itself
+is empty). Its notes point out that Visual Vibe's Day 1 kickoff answers (ideal client, what makes you different,
+12-month success) are empty: filling them in Client setup and drafting again gives a much better BrandScript.
+
+## How to test step 5 (localhost, Visual Vibe › Strategy Builder › Day 6 · Page briefs)
+1. Claude's draft is waiting: banner + Claude's version under each field (A–P) + Claude's notes / questions.
+2. "Use" on a few fields (or "Use all") › edit › Save BrandScript › "N of 16 filled", the draft banner goes.
+3. Tick "Read aloud and confirmed" › change any answer › Save › the tick clears.
+4. Optional: fill the Day 1 kickoff answers in Client setup › "Draft again with Claude" (cost first).
 
 ## How to test step 4 (localhost, Visual Vibe › Strategy Builder › Day 5 · Sitemap + hotspots)
 1. "Draft with Claude" (top right) › pages without hotspots are ticked › "Work out the cost" › "Draft N pages" (~20 s for 2 pages).
