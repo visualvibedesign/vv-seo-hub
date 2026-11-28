@@ -11,6 +11,8 @@
 //   POST /api/autofill/brandscript-draft { siteId }                -> BrandScript (one Claude call, logged; Ready to review)
 //   POST /api/autofill/brief-estimate { siteId, pageId, version }  -> estimate (count_tokens, nothing saved)
 //   POST /api/autofill/brief-draft { siteId, pageId, version }     -> PageBrief (one Claude call, logged; Ready to review)
+//   POST /api/autofill/gbp-products-estimate | gbp-products-draft { siteId }            -> estimate | GbpCareState
+//   POST /api/autofill/gbp-posts-estimate | gbp-posts-draft { siteId, fullWeeks: 3|13 } -> estimate | GbpCareState
 import { DatabaseError } from '../../server/clients/supabase.js'
 import { AutofillInputError, decide, listAutofill, retireStale, runDay2Rules } from '../../server/services/autofillService.js'
 import { estimate, run } from '../../server/services/aiAutofillService.js'
@@ -18,6 +20,8 @@ import { aiUsage } from '../../server/services/aiUsageService.js'
 import { draftHotspots, estimateHotspots, HotspotsInputError } from '../../server/services/hotspotsAiService.js'
 import { BrandScriptInputError, draftBrandScript, estimateBrandScript } from '../../server/services/brandscriptService.js'
 import { draftPageCopy, estimatePageCopy, PageBriefInputError } from '../../server/services/pageBriefService.js'
+import { draftPosts, draftProducts, estimatePosts, estimateProducts } from '../../server/services/gbpCareAiService.js'
+import { GbpCareInputError } from '../../server/services/gbpCareService.js'
 import { AiCallError } from '../../server/services/aiService.js'
 import { AiConfigError } from '../../server/clients/anthropic.js'
 import { AI_TASKS, type AiTask } from '../../src/lib/aiModels.js'
@@ -64,6 +68,15 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       const site = String(body.siteId ?? '')
       return Response.json(action === 'brandscript-estimate' ? await estimateBrandScript(site) : await draftBrandScript(site))
     }
+    // Phase 4b · GBP care drafts: product descriptions, 13-week posts (one Claude call each, logged; Ready to review)
+    if (method === 'POST' && ['gbp-products-estimate', 'gbp-products-draft', 'gbp-posts-estimate', 'gbp-posts-draft'].includes(action ?? '')) {
+      const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
+      const site = String(body.siteId ?? '')
+      if (action === 'gbp-products-estimate') return Response.json(await estimateProducts(site))
+      if (action === 'gbp-products-draft') return Response.json(await draftProducts(site))
+      if (action === 'gbp-posts-estimate') return Response.json(await estimatePosts(site, body))
+      return Response.json(await draftPosts(site, body))
+    }
     if (method === 'POST' && (action === 'brief-estimate' || action === 'brief-draft')) {
       const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
       const site = String(body.siteId ?? '')
@@ -81,7 +94,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
-    if (err instanceof AutofillInputError || err instanceof AiConfigError || err instanceof HotspotsInputError || err instanceof BrandScriptInputError || err instanceof PageBriefInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
+    if (err instanceof AutofillInputError || err instanceof AiConfigError || err instanceof HotspotsInputError || err instanceof BrandScriptInputError || err instanceof PageBriefInputError || err instanceof GbpCareInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof AiCallError) return Response.json({ error: 'ai', detail: err.message }, { status: 502 })
     if (err instanceof DatabaseError) return Response.json({ error: 'database', detail: err.message }, { status: 500 })
     throw err

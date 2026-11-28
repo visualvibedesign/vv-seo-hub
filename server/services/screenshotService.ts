@@ -45,7 +45,7 @@ async function client(siteId: string) {
 }
 
 /** The uploaded image: a JPEG / PNG / WebP under the size limit, checked by its first bytes (not just its name). */
-function imageOf(raw: unknown): AiImage {
+export function imageOf(raw: unknown): AiImage {
   const x = (raw ?? {}) as { mediaType?: unknown; data?: unknown }
   const type = x.mediaType
   if (type !== 'image/jpeg' && type !== 'image/png' && type !== 'image/webp') throw new ScreenshotInputError('Pick a PNG, JPG or WebP screenshot.')
@@ -53,7 +53,7 @@ function imageOf(raw: unknown): AiImage {
   if (!data || !/^[A-Za-z0-9+/]+=*$/.test(data)) throw new ScreenshotInputError('The screenshot couldn’t be read. Pick it again.')
   const bytes = Buffer.from(data, 'base64')
   if (bytes.length < 1000) throw new ScreenshotInputError('That image is too small to read.')
-  if (bytes.length > MAX_BYTES) throw new ScreenshotInputError('That image is too big (over 3 MB). Crop it to the Performance numbers and try again.')
+  if (bytes.length > MAX_BYTES) throw new ScreenshotInputError('That image is too big (over 3 MB). Crop it and try again.')
   const head = bytes.subarray(0, 12)
   const ok =
     type === 'image/jpeg'

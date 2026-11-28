@@ -1187,3 +1187,311 @@ export interface PageBrief {
   brandFilled: number
   brandConfirmed: boolean
 }
+
+// ---- Phase 4a · GBP check (Sam Day 4): map pack per service, Whitespark factors, business details (migration 0022) ----
+
+export type MapServiceCode = 'S1' | 'S2' | 'S3'
+
+/** The Maps search used for one service (Chrome guest profile, ads skipped) */
+export interface MapSearch {
+  category: MapServiceCode
+  search: string | null
+  checkedOn: string | null
+  /** Unpaid results counted (0–20) */
+  resultsCounted: number | null
+}
+
+/** One map-pack row. isClient = the client's own row (pinned at the bottom). Missing = null, never 0. */
+export interface MapCompetitor {
+  id: string
+  category: MapServiceCode
+  isClient: boolean
+  rank: number | null
+  name: string
+  primaryCategory: string | null
+  additionalCategories: string[]
+  reviews: number | null
+  rating: number | null
+  newestReviewOn: string | null
+  note: string | null
+}
+
+export type MapCompetitorInput = Omit<MapCompetitor, 'id'> & { id?: string | null }
+
+export type GbpFactorKey = 'primary_category' | 'name_keywords' | 'open_hours' | 'address_shown' | 'additional_categories' | 'reviews_text' | 'review_recency' | 'website_match'
+export type GbpFactorStatus = 'to_check' | 'ok' | 'needs_work' | 'na'
+
+export interface GbpFactor {
+  key: GbpFactorKey
+  status: GbpFactorStatus
+  note: string | null
+}
+
+export type ProfileCheckKey = 'name_hours' | 'categories' | 'description' | 'attributes' | 'main_services' | 'contact_tested' | 'photos'
+
+/** GBP business details: PUBLIC fields only (must match the website). There is no address field, by design. */
+export interface GbpProfile {
+  businessName: string | null
+  website: string | null
+  phone: string | null
+  email: string | null
+  primaryCategory: string | null
+  additionalCategories: string[]
+  serviceAreas: string | null
+  hours: string | null
+  holidayHours: string | null
+  socials: string[]
+  bookingUrl: string | null
+  reviewUrl: string | null
+  /** Up to 750 characters, no em dashes, ends with a call to action */
+  description: string | null
+  /** Address shown on GBP? yes / no only (null = not checked) */
+  addressShown: boolean | null
+  profileChecks: Partial<Record<ProfileCheckKey, { done: boolean; note: string | null }>>
+  checkedOn: string | null
+  waitingOnGoogle: string | null
+  checkAgainOn: string | null
+}
+
+export interface GbpCheckState {
+  clientName: string
+  /** Service names for the S1–S3 tabs (null = not named yet) */
+  services: Record<MapServiceCode, string | null>
+  searches: MapSearch[]
+  competitors: MapCompetitor[]
+  /** All 8 factors (missing rows come back as "to_check") */
+  factors: GbpFactor[]
+  profile: GbpProfile
+  /** 4a · the open ("Ready to review") Maps / Pleper screenshot read, or null. Nothing is in the list until approved. */
+  mapRead: MapShotRead | null
+  /** The client's own reviews from the newest typed GBP period with reviews (for the pinned row when not typed here) */
+  fromGbp: { reviews: number | null; rating: number | null; newestReviewOn: string | null; periodTo: string } | null
+}
+
+/** 4a · one row Claude read from a Maps / Pleper screenshot. Unclear = null (never 0, never a guess). */
+export interface MapShotRow {
+  rank: number | null
+  name: string
+  primaryCategory: string | null
+  additionalCategories: string[]
+  reviews: number | null
+  rating: number | null
+  newestReviewOn: string | null
+  /** The name looks like the client's own business (saved as the client row if kept) */
+  looksLikeClient: boolean
+}
+
+export interface MapShotRead {
+  id: string
+  createdAt: string
+  summary: string
+  category: MapServiceCode
+  /** The search text shown in the Maps search box, if readable */
+  searchShown: string | null
+  rows: MapShotRow[]
+  /** What Claude couldn't read clearly / skipped (ads, cut-off rows) */
+  notes: string[]
+}
+
+/** Approving: the rows Angel kept (edited), saved through the normal competitor rules. */
+export type MapShotApproveRow = Omit<MapShotRow, 'looksLikeClient'> & { isClient: boolean }
+
+// ---- Phase 4b · GBP care (Sam Day 7): products, reviews, 13-week posts (migration 0023) ----
+
+export type ProductStatus = 'not_added' | 'added'
+export type ReviewChannel = 'email' | 'text' | 'in_person' | 'other'
+export type ReviewResult = 'waiting' | 'reviewed' | 'no_reply' | 'declined'
+export type PostStatus = 'not_drafted' | 'drafted' | 'approved' | 'scheduled' | 'live'
+
+/** A sitemap page a product or post can link to (never Home for products) */
+export interface CarePage {
+  id: string
+  code: string | null
+  name: string
+  type: PageType | null
+  status: PageStatus
+  /** Live URL, or the target permalink, or null */
+  url: string | null
+}
+
+export interface GbpProduct {
+  id: string
+  pageId: string | null
+  name: string
+  description: string | null
+  imageReady: boolean
+  status: ProductStatus
+}
+
+export interface ReviewRequest {
+  id: string
+  /** Short ref only: never a name, email or phone */
+  customerRef: string
+  askedOn: string
+  channel: ReviewChannel
+  result: ReviewResult
+  followUpOn: string | null
+}
+
+export interface GbpPost {
+  week: number
+  /** null = this week has no saved row yet */
+  id: string | null
+  postOn: string | null
+  topic: string | null
+  takeaway: string | null
+  body: string | null
+  cta: string
+  pageId: string | null
+  /** The page URL + UTM (worked out by the server) */
+  linkUrl: string | null
+  imageNeed: string | null
+  status: PostStatus
+}
+
+export interface GbpCareSettings {
+  reviewTarget: number
+  roundStartedOn: string | null
+  postsStartOn: string | null
+  nextPostBatchOn: string | null
+  careChecks: Record<string, boolean>
+}
+
+export interface GbpCareState {
+  clientName: string
+  city: string | null
+  care: GbpCareSettings
+  /** Service pages (products are one per service page) */
+  servicePages: CarePage[]
+  /** Every page a post can link to (live first) */
+  pages: CarePage[]
+  products: GbpProduct[]
+  requests: ReviewRequest[]
+  /** Reviews this round: results "reviewed" asked on / after the round start (all if no start) */
+  reviewed: number
+  reviewEmail: { templateName: string; subject: string; body: string; missing: string[] }
+  /** 13 slots for the quarter that starts on care.postsStartOn (empty when no start date) */
+  posts: GbpPost[]
+  /** Claude's open product descriptions draft (Ready to review), or null */
+  productDraft: ProductDraft | null
+  /** Claude's open 13-week posts draft (Ready to review), or null */
+  postsDraft: PostsDraft | null
+}
+
+/** 4b step 4 · Claude's product descriptions draft (one per service page) */
+export interface ProductDraft {
+  id: string
+  createdAt: string
+  items: { pageId: string; code: string | null; name: string; description: string }[]
+  notes: string | null
+}
+
+/** 4b step 4 · Claude's 13-week post plan (text for the first weeks, or all) */
+export interface PostsDraft {
+  id: string
+  createdAt: string
+  quarterStart: string
+  weeks: { week: number; topic: string; takeaway: string | null; body: string | null; pageId: string | null; imageNeed: string | null }[]
+  notes: string | null
+}
+
+export interface CareEstimate {
+  model: string
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
+}
+
+// ---- Phase 4c · Links (Sam Days 8–9, migration 0024) ----
+
+export type CitationOwner = 'brightlocal' | 'me'
+export type CitationStatus = 'planned' | 'submitted' | 'live'
+export type FoundVia = 'R' | 'S' | 'C' | 'Cit' | 'Sp'
+export type OpportunityHow = 'claim' | 'apply' | 'contact' | 'join' | 'other'
+export type PremierKind = 'chamber' | 'trade_group' | 'certification' | 'referral_partner' | 'vendor' | 'organization' | 'editorial'
+
+export interface LinkSettings {
+  weeklyPace: number | null
+  citationStartWeek: number
+  waveStarted: [string | null, string | null, string | null]
+  sponsorBudget: string | null
+}
+
+export interface Citation {
+  id: string
+  /** List order (null = aggregator row like the YP network, one per wave) */
+  rowNo: number | null
+  wave: 1 | 2 | 3
+  name: string
+  domain: string | null
+  /** As exported (BrightLocal) */
+  domainAuthority: number | null
+  verification: string | null
+  owner: CitationOwner
+  status: CitationStatus
+  liveUrl: string | null
+  note: string | null
+}
+
+export interface GapRow {
+  id: string
+  domain: string
+  authorityScore: number | null
+  matches: number | null
+  matchesOf: number | null
+  competitors: string[]
+  skipped: boolean
+  /** Already on the citation waves (wave number), or null */
+  onWave: number | null
+  /** Already on the opportunity list (row #), or null */
+  onList: number | null
+}
+
+export interface LinkOpportunity {
+  id: string
+  rowNo: number
+  pageUrl: string | null
+  domain: string
+  foundVia: FoundVia[]
+  authorityScore: number | null
+  competitorMatches: number | null
+  why: string | null
+  how: OpportunityHow | null
+  cost: string | null
+  nextAction: string | null
+  nextActionOn: string | null
+  thisWeek: boolean
+  sent: boolean
+  approved: boolean
+  live: boolean
+  liveCheckedOn: string | null
+  note: string | null
+}
+
+export interface PremierLink { id: string; kind: PremierKind; name: string; pageOrRoute: string | null; nextAction: string | null; nextActionOn: string | null }
+export interface Sponsorship { id: string; cause: string; tierCost: string | null; why: string | null; pagePublic: boolean | null; onMainSite: boolean | null; staysUp: string | null; shows: ('name' | 'logo' | 'profile' | 'link')[]; status: 'considering' | 'committed' | 'done' }
+export interface SerpSearch { id: string; search: string; style: 'customer' | 'lister'; runOn: string | null; found: string | null }
+export interface AuthorityCheck { id: string; checkedOn: string; monthMark: 3 | 6 | 9 | 12 | null; authorityScore: number | null; referringDomains: number | null; backlinks: number | null; note: string | null }
+
+export interface LinksState {
+  clientName: string
+  city: string | null
+  settings: LinkSettings
+  citations: Citation[]
+  /** Backlink Gap competitors C1–C4 (Sam's Guide) */
+  competitors: { code: string; name: string }[]
+  gap: GapRow[]
+  opportunities: LinkOpportunity[]
+  premier: PremierLink[]
+  sponsorships: Sponsorship[]
+  serp: SerpSearch[]
+  authority: AuthorityCheck[]
+  /** Links ticked Live (opportunities with a checked date in the last 7 days, + citations Live) */
+  liveThisWeek: number
+}
+
+/** A pasted list, before it's saved: what each line became, and lines that were skipped (with why). */
+export interface PastePlan<T> {
+  rows: T[]
+  skipped: { line: string; why: string }[]
+}
