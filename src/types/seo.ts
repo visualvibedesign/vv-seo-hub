@@ -1187,3 +1187,81 @@ export interface PageBrief {
   brandFilled: number
   brandConfirmed: boolean
 }
+
+// ---- Phase 4a · GBP check (Sam Day 4): map pack per service, Whitespark factors, business details (migration 0022) ----
+
+export type MapServiceCode = 'S1' | 'S2' | 'S3'
+
+/** The Maps search used for one service (Chrome guest profile, ads skipped) */
+export interface MapSearch {
+  category: MapServiceCode
+  search: string | null
+  checkedOn: string | null
+  /** Unpaid results counted (0–20) */
+  resultsCounted: number | null
+}
+
+/** One map-pack row. isClient = the client's own row (pinned at the bottom). Missing = null, never 0. */
+export interface MapCompetitor {
+  id: string
+  category: MapServiceCode
+  isClient: boolean
+  rank: number | null
+  name: string
+  primaryCategory: string | null
+  additionalCategories: string[]
+  reviews: number | null
+  rating: number | null
+  newestReviewOn: string | null
+  note: string | null
+}
+
+export type MapCompetitorInput = Omit<MapCompetitor, 'id'> & { id?: string | null }
+
+export type GbpFactorKey = 'primary_category' | 'name_keywords' | 'open_hours' | 'address_shown' | 'additional_categories' | 'reviews_text' | 'review_recency' | 'website_match'
+export type GbpFactorStatus = 'to_check' | 'ok' | 'needs_work' | 'na'
+
+export interface GbpFactor {
+  key: GbpFactorKey
+  status: GbpFactorStatus
+  note: string | null
+}
+
+export type ProfileCheckKey = 'name_hours' | 'categories' | 'description' | 'attributes' | 'main_services' | 'contact_tested' | 'photos'
+
+/** GBP business details: PUBLIC fields only (must match the website). There is no address field, by design. */
+export interface GbpProfile {
+  businessName: string | null
+  website: string | null
+  phone: string | null
+  email: string | null
+  primaryCategory: string | null
+  additionalCategories: string[]
+  serviceAreas: string | null
+  hours: string | null
+  holidayHours: string | null
+  socials: string[]
+  bookingUrl: string | null
+  reviewUrl: string | null
+  /** Up to 750 characters, no em dashes, ends with a call to action */
+  description: string | null
+  /** Address shown on GBP? yes / no only (null = not checked) */
+  addressShown: boolean | null
+  profileChecks: Partial<Record<ProfileCheckKey, { done: boolean; note: string | null }>>
+  checkedOn: string | null
+  waitingOnGoogle: string | null
+  checkAgainOn: string | null
+}
+
+export interface GbpCheckState {
+  clientName: string
+  /** Service names for the S1–S3 tabs (null = not named yet) */
+  services: Record<MapServiceCode, string | null>
+  searches: MapSearch[]
+  competitors: MapCompetitor[]
+  /** All 8 factors (missing rows come back as "to_check") */
+  factors: GbpFactor[]
+  profile: GbpProfile
+  /** The client's own reviews from the newest typed GBP period with reviews (for the pinned row when not typed here) */
+  fromGbp: { reviews: number | null; rating: number | null; newestReviewOn: string | null; periodTo: string } | null
+}
