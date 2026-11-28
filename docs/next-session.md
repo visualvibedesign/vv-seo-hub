@@ -9,7 +9,8 @@ waiting on Angel. Updated after every step.
 - **Skipped for now:** Whitespark (map grid from a screenshot / CSV): no Whitespark account yet. The map grid stays
   optional and typed in by hand.
 - **Phase 3 · Pages is finished and live in Production** (merge `39009e7`): migration 0021, Sitemap + hotspots (`c0b4097`), Site plan (`b376d6e`), Claude hotspot drafts (`49336fb`), BrandScript (`4daa2cd`), page brief + page copy (`b5ca921`). All tested by Claude; the reviewer can still run the checklists below on Production. ClickUp sync is "later". Work continues on branch `phase-3` (same as `main` now) until Phase 4 gets its own branch.
-- **Next: Phase 4 · GBP check, GBP care, links** (Sam Days 4, 7, 8–9). **Plan written** (`docs/phase-4-plan.md`, branch **`phase-4`**): three parts 4a GBP check → 4b GBP care → 4c Links, one migration each (0022–0024, none written yet). **Waiting for Angel** to approve it and answer 4 decisions (order, CSV samples for BrightLocal + Backlink Gap, Maps screenshot reading in 4a, review target 5). No Phase 4 code yet.
+- **Now: Phase 4 · GBP check, GBP care, links** (Sam Days 4, 7, 8–9), branch **`phase-4`**. Plan `docs/phase-4-plan.md` **approved by Angel** with decisions: order 4a → 4b → 4c; paste / type citation + Backlink Gap rows until CSV samples come; Maps / Pleper screenshot reading built in 4a (last step); review target 5, editable per client.
+- **4a step 1: migration 0022 written** (`supabase/migrations/0022_seo_phase4a_gbp_check.sql`: 4 new tables, no address column, autofill kind `map_competitors`). Read-only check: none of the 4 tables exist yet, trigger helper exists. **Waiting for Angel to run 0022** in the Supabase SQL Editor. No 4a server / screen code until he confirms.
 - Test client: **Visual Vibe Design** (`5c939f2631d6b31bdf4523e5d2f79a2c`): "Day 3" baseline (Nov 28) + the
   November 2026 report (Sent).
 - 12 Vercel functions (Hobby cap). Migrations 0001–0021 run and checked.
