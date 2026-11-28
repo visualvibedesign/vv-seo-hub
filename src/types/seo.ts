@@ -1401,3 +1401,97 @@ export interface CareEstimate {
   outputTokens: number
   costUsd: number
 }
+
+// ---- Phase 4c · Links (Sam Days 8–9, migration 0024) ----
+
+export type CitationOwner = 'brightlocal' | 'me'
+export type CitationStatus = 'planned' | 'submitted' | 'live'
+export type FoundVia = 'R' | 'S' | 'C' | 'Cit' | 'Sp'
+export type OpportunityHow = 'claim' | 'apply' | 'contact' | 'join' | 'other'
+export type PremierKind = 'chamber' | 'trade_group' | 'certification' | 'referral_partner' | 'vendor' | 'organization' | 'editorial'
+
+export interface LinkSettings {
+  weeklyPace: number | null
+  citationStartWeek: number
+  waveStarted: [string | null, string | null, string | null]
+  sponsorBudget: string | null
+}
+
+export interface Citation {
+  id: string
+  /** List order (null = aggregator row like the YP network, one per wave) */
+  rowNo: number | null
+  wave: 1 | 2 | 3
+  name: string
+  domain: string | null
+  /** As exported (BrightLocal) */
+  domainAuthority: number | null
+  verification: string | null
+  owner: CitationOwner
+  status: CitationStatus
+  liveUrl: string | null
+  note: string | null
+}
+
+export interface GapRow {
+  id: string
+  domain: string
+  authorityScore: number | null
+  matches: number | null
+  matchesOf: number | null
+  competitors: string[]
+  skipped: boolean
+  /** Already on the citation waves (wave number), or null */
+  onWave: number | null
+  /** Already on the opportunity list (row #), or null */
+  onList: number | null
+}
+
+export interface LinkOpportunity {
+  id: string
+  rowNo: number
+  pageUrl: string | null
+  domain: string
+  foundVia: FoundVia[]
+  authorityScore: number | null
+  competitorMatches: number | null
+  why: string | null
+  how: OpportunityHow | null
+  cost: string | null
+  nextAction: string | null
+  nextActionOn: string | null
+  thisWeek: boolean
+  sent: boolean
+  approved: boolean
+  live: boolean
+  liveCheckedOn: string | null
+  note: string | null
+}
+
+export interface PremierLink { id: string; kind: PremierKind; name: string; pageOrRoute: string | null; nextAction: string | null; nextActionOn: string | null }
+export interface Sponsorship { id: string; cause: string; tierCost: string | null; why: string | null; pagePublic: boolean | null; onMainSite: boolean | null; staysUp: string | null; shows: ('name' | 'logo' | 'profile' | 'link')[]; status: 'considering' | 'committed' | 'done' }
+export interface SerpSearch { id: string; search: string; style: 'customer' | 'lister'; runOn: string | null; found: string | null }
+export interface AuthorityCheck { id: string; checkedOn: string; monthMark: 3 | 6 | 9 | 12 | null; authorityScore: number | null; referringDomains: number | null; backlinks: number | null; note: string | null }
+
+export interface LinksState {
+  clientName: string
+  city: string | null
+  settings: LinkSettings
+  citations: Citation[]
+  /** Backlink Gap competitors C1–C4 (Sam's Guide) */
+  competitors: { code: string; name: string }[]
+  gap: GapRow[]
+  opportunities: LinkOpportunity[]
+  premier: PremierLink[]
+  sponsorships: Sponsorship[]
+  serp: SerpSearch[]
+  authority: AuthorityCheck[]
+  /** Links ticked Live (opportunities with a checked date in the last 7 days, + citations Live) */
+  liveThisWeek: number
+}
+
+/** A pasted list, before it's saved: what each line became, and lines that were skipped (with why). */
+export interface PastePlan<T> {
+  rows: T[]
+  skipped: { line: string; why: string }[]
+}

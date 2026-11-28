@@ -16,6 +16,8 @@
 //   GET  /api/metrics/gbp-care?site=<site id>           -> GbpCareState (4b: products, reviews, 13-week posts)
 //   POST /api/metrics/gbp-care-save | gbp-product-save | gbp-product-delete | review-request-save | review-request-delete |
 //        gbp-post-save | gbp-post-clear | gbp-products-approve | gbp-posts-approve | gbp-draft-skip { siteId, ... } -> GbpCareState
+//   GET  /api/metrics/links?site=<site id>              -> LinksState (4c: citations, Backlink Gap, opportunities, premier, …)
+//   POST /api/metrics/links-write { siteId, op, ... }  -> LinksState (pastes: { rows, skipped, state? }; dry run unless apply)
 //   GET  /api/metrics/cron                              -> daily pull for every linked client. Vercel Cron only:
 //        Authorization: Bearer <CRON_SECRET> (no login cookie); without CRON_SECRET set it always refuses.
 // (One file for every phase 2 action: the app stays within Vercel Hobby's 12 server functions.)
@@ -34,6 +36,7 @@ import { clearPost, deleteProduct, deleteRequest, GbpCareInputError, gbpCareStat
 import { approvePosts, approveProducts, skipCareDraft } from '../../server/services/gbpCareAiService.js'
 import { AiCallError } from '../../server/services/aiService.js'
 import { AiConfigError } from '../../server/clients/anthropic.js'
+import { linksState, linksWrite, LinksInputError } from '../../server/services/linksService.js'
 import { requireSession } from '../../server/utils/auth.js'
 import { timingSafeEqual } from 'node:crypto'
 import type { MetricRange } from '../../src/types/seo.js'
@@ -136,6 +139,12 @@ async function handle(request: Request, method: 'GET' | 'POST') {
       if (action === 'gbp-draft-skip') return Response.json(await skipCareDraft(site, body))
       return Response.json(await savePost(site, body))
     }
+    // Phase 4c · Links (Days 8–9): one read, one write with an op (still within the 12 functions)
+    if (method === 'GET' && action === 'links') return Response.json(await linksState(params.get('site') ?? ''))
+    if (method === 'POST' && action === 'links-write') {
+      const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
+      return Response.json(await linksWrite(String(body.siteId ?? ''), body))
+    }
     // Phase 2e · Baseline: state (current + live + history), one past baseline, save (new / fill missing)
     if (method === 'GET' && action === 'baseline') return Response.json(await baselineState(params.get('site') ?? ''))
     if (method === 'GET' && action === 'baseline-history') return Response.json(await baselineById(params.get('site') ?? '', params.get('id')))
@@ -174,7 +183,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
-    if (err instanceof GoogleInputError || err instanceof GoogleConfigError || err instanceof RankInputError || err instanceof LocalInputError || err instanceof BaselineInputError || err instanceof ReportInputError || err instanceof ScreenshotInputError || err instanceof GbpCheckInputError || err instanceof GbpCareInputError || err instanceof AiConfigError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
+    if (err instanceof GoogleInputError || err instanceof GoogleConfigError || err instanceof RankInputError || err instanceof LocalInputError || err instanceof BaselineInputError || err instanceof ReportInputError || err instanceof ScreenshotInputError || err instanceof GbpCheckInputError || err instanceof GbpCareInputError || err instanceof AiConfigError || err instanceof LinksInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof AiCallError) return Response.json({ error: 'ai', detail: err.message }, { status: 502 })
     if (err instanceof DatabaseError) return Response.json({ error: 'database', detail: err.message }, { status: 500 })
     throw err
