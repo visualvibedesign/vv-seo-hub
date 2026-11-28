@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus, HotspotDraft, HotspotsEstimate } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus, HotspotDraft, HotspotsEstimate, BrandKey, BrandScript } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -543,4 +543,32 @@ export function draftHotspots(siteId: string, pageIds: string[]): Promise<{ draf
 /** Drops Claude's draft for one page (nothing on the page changes). */
 export function skipHotspotDraft(siteId: string, pageId: string): Promise<PagesState> {
   return call('/api/clusters/hotspots-skip', json({ siteId, pageId }))
+}
+
+// ---- Phase 3 step 5 · BrandScript --------------------------------------------------------------------------------
+
+export function getBrandScript(siteId: string): Promise<BrandScript> {
+  return call('/api/clusters/brandscript?site=' + encodeURIComponent(siteId))
+}
+
+/** Saves the A–P answers (a changed answer clears "confirmed"); also approves Claude's open draft. */
+export function saveBrandScript(siteId: string, answers: Partial<Record<BrandKey, string>>): Promise<BrandScript> {
+  return call('/api/clusters/brandscript-save', json({ siteId, answers }))
+}
+
+export function confirmBrandScript(siteId: string, confirmed: boolean): Promise<BrandScript> {
+  return call('/api/clusters/brandscript-confirm', json({ siteId, confirmed }))
+}
+
+export function skipBrandDraft(siteId: string): Promise<BrandScript> {
+  return call('/api/clusters/brandscript-skip', json({ siteId }))
+}
+
+export function estimateBrandScript(siteId: string): Promise<{ model: string; inputTokens: number; outputTokens: number; costUsd: number }> {
+  return call('/api/autofill/brandscript-estimate', json({ siteId }))
+}
+
+/** One Claude call; the draft is "Ready to review". */
+export function draftBrandScript(siteId: string): Promise<BrandScript> {
+  return call('/api/autofill/brandscript-draft', json({ siteId }))
 }

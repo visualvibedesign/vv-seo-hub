@@ -133,7 +133,7 @@ export const STRATEGY_GROUPS: ClientGroup[] = [
       { key: 'plan', label: 'Site plan', path: 'strategy/plan', live: true, tag: '' },
     ],
   },
-  { key: 'day6', label: 'Day 6 · Page briefs', step: 5, items: [{ key: 'briefs', label: 'Page briefs', path: 'strategy/briefs', live: false, tag: 'P3' }] },
+  { key: 'day6', label: 'Day 6 · Page briefs', step: 5, items: [{ key: 'briefs', label: 'Page briefs', path: 'strategy/briefs', live: true, tag: '' }] },
   { key: 'day7', label: 'Day 7 · GBP care', step: 6, items: [{ key: 'gbp-care', label: 'GBP care', path: 'strategy/gbp-care', live: false, tag: 'P4' }] },
   { key: 'day89', label: 'Days 8–9 · Links', step: 7, items: [{ key: 'links', label: 'Link database', path: 'strategy/links', live: false, tag: 'P4' }] },
 ]

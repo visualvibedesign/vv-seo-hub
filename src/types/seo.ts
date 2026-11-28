@@ -1144,3 +1144,17 @@ export interface HotspotsEstimate {
   outputTokens: number
   costUsd: number
 }
+
+// ---- Phase 3 step 5 · BrandScript (StoryBrand A–P, once per client; seo_brandscripts, migration 0021) ------------
+
+export type BrandKey = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P'
+
+export interface BrandScript {
+  /** Answers as written (missing key = empty) */
+  answers: Partial<Record<BrandKey, string>>
+  /** "Read aloud and confirmed"; cleared when an answer changes */
+  confirmedAt: string | null
+  updatedAt: string | null
+  /** Claude's open draft (Ready to review) or null */
+  draft: { answers: Partial<Record<BrandKey, string>>; notes: string | null; createdAt: string } | null
+}

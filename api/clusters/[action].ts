@@ -8,10 +8,15 @@
 //   POST /api/clusters/page-parent {siteId, pageId, parentId|null} -> PagesState (Site plan)
 //   POST /api/clusters/redirect-status {siteId, id, status}  -> PagesState (Queued / Sent to site / Live)
 //   POST /api/clusters/hotspots-skip {siteId, pageId}       -> PagesState (drops Claude's draft for one page)
+//   GET  /api/clusters/brandscript?site=<site id>           -> BrandScript (A–P + Claude's open draft)
+//   POST /api/clusters/brandscript-save {siteId, answers}   -> BrandScript (a changed answer clears "confirmed")
+//   POST /api/clusters/brandscript-confirm {siteId, confirmed} -> BrandScript
+//   POST /api/clusters/brandscript-skip {siteId}            -> BrandScript (drops Claude's draft)
 // (Importing a Sheet Clusters CSV is a script for now: scripts/import-clusters.ts.)
 import { DatabaseError } from '../../server/clients/supabase.js'
 import { ClusterInputError, listClusters } from '../../server/services/clusterService.js'
 import { addPage, backfillPages, pagesState, PagesInputError, saveHotspots, setParent, setRedirectStatus, setStructure, skipHotspotDraft } from '../../server/services/pagesService.js'
+import { brandScript, BrandScriptInputError, confirmBrandScript, saveBrandScript, skipBrandDraft } from '../../server/services/brandscriptService.js'
 import { requireSession } from '../../server/utils/auth.js'
 
 export async function GET(request: Request) {
@@ -30,6 +35,14 @@ async function handle(request: Request, method: 'GET' | 'POST') {
   try {
     if (method === 'GET' && action === 'list') return Response.json({ pages: await listClusters(url.searchParams.get('site') ?? '') })
     if (method === 'GET' && action === 'pages') return Response.json(await pagesState(url.searchParams.get('site') ?? ''))
+    if (method === 'GET' && action === 'brandscript') return Response.json(await brandScript(url.searchParams.get('site') ?? ''))
+    if (method === 'POST' && ['brandscript-save', 'brandscript-confirm', 'brandscript-skip'].includes(action ?? '')) {
+      const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown }
+      const site = String(body.siteId ?? '')
+      if (action === 'brandscript-save') return Response.json(await saveBrandScript(site, body))
+      if (action === 'brandscript-confirm') return Response.json(await confirmBrandScript(site, body))
+      return Response.json(await skipBrandDraft(site))
+    }
     if (method === 'POST' && ['pages-backfill', 'hotspots-save', 'page-add', 'structure', 'page-parent', 'redirect-status', 'hotspots-skip'].includes(action ?? '')) {
       const body = ((await request.json().catch(() => null)) ?? {}) as { siteId?: unknown; apply?: unknown }
       const site = String(body.siteId ?? '')
@@ -43,7 +56,7 @@ async function handle(request: Request, method: 'GET' | 'POST') {
     }
     return Response.json({ error: 'Not found' }, { status: 404 })
   } catch (err) {
-    if (err instanceof ClusterInputError || err instanceof PagesInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
+    if (err instanceof ClusterInputError || err instanceof PagesInputError || err instanceof BrandScriptInputError) return Response.json({ error: 'invalid', detail: err.message }, { status: 400 })
     if (err instanceof DatabaseError) return Response.json({ error: 'database', detail: err.message }, { status: 500 })
     throw err
   }
