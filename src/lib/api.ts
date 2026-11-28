@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus, HotspotDraft, HotspotsEstimate, BrandKey, BrandScript, BriefVersion, PageBrief, SectionKey, SectionStatus, WorksheetKey } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus, HotspotDraft, HotspotsEstimate, BrandKey, BrandScript, BriefVersion, PageBrief, SectionKey, SectionStatus, WorksheetKey, GbpCheckState, GbpFactorKey, GbpFactorStatus, GbpProfile, MapCompetitorInput, MapSearch } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -597,4 +597,30 @@ export function estimatePageCopy(siteId: string, pageId: string, version: BriefV
 /** One Claude call: page copy (V1 / V2) + brief; "Ready to review". */
 export function draftPageCopy(siteId: string, pageId: string, version: BriefVersion): Promise<PageBrief> {
   return call('/api/autofill/brief-draft', json({ siteId, pageId, version }))
+}
+
+// ---- Phase 4a · GBP check (map pack per service, Whitespark factors, business details) ------------------------
+
+export function getGbpCheck(siteId: string): Promise<GbpCheckState> {
+  return call('/api/metrics/gbp-check?site=' + encodeURIComponent(siteId))
+}
+
+export function saveMapSearch(siteId: string, input: MapSearch): Promise<GbpCheckState> {
+  return call('/api/metrics/gbp-search-save', json({ siteId, ...input }))
+}
+
+export function saveMapCompetitor(siteId: string, input: MapCompetitorInput): Promise<GbpCheckState> {
+  return call('/api/metrics/gbp-competitor-save', json({ siteId, ...input }))
+}
+
+export function deleteMapCompetitor(siteId: string, id: string): Promise<GbpCheckState> {
+  return call('/api/metrics/gbp-competitor-delete', json({ siteId, id }))
+}
+
+export function saveGbpFactor(siteId: string, input: { factor: GbpFactorKey; status: GbpFactorStatus; note: string | null }): Promise<GbpCheckState> {
+  return call('/api/metrics/gbp-factor-save', json({ siteId, ...input }))
+}
+
+export function saveGbpProfile(siteId: string, profile: GbpProfile): Promise<GbpCheckState> {
+  return call('/api/metrics/gbp-profile-save', json({ siteId, ...profile }))
 }

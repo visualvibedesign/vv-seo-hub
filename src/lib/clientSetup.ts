@@ -123,7 +123,7 @@ export const STRATEGY_GROUPS: ClientGroup[] = [
       { key: 'import', label: 'Import', path: 'strategy/keywords/import', live: true, tag: '' },
     ],
   },
-  { key: 'day4', label: 'Day 4 · GBP check', step: 3, items: [{ key: 'gbp', label: 'GBP check', path: 'strategy/gbp', live: false, tag: 'P4' }] },
+  { key: 'day4', label: 'Day 4 · GBP check', step: 3, items: [{ key: 'gbp', label: 'GBP check', path: 'strategy/gbp', live: true, tag: '' }] },
   {
     key: 'day5',
     label: 'Day 5 · Sitemap',
