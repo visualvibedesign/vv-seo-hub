@@ -1,6 +1,6 @@
 // Every call from the browser to /api lives here (same pattern as HQ's src/lib/api.ts).
 // The browser never talks to Supabase directly.
-import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate } from '../types/seo'
+import type { AutofillDecision, AutofillRow, BulkClientCheck, BulkClientRow, ClientLink, ClientNote, Industry, NoteKind, NotesState, SamsGuidePlan, SheetApplyResult, SheetPlan, AiUsage, ClientDeleteCheck, GoogleLink, GoogleSetup, GoogleTestResult, MetricRange, MetricsOverview, MetricsSyncResult, RankPlan, RankingsOverview, GbpInput, GbpSnapshot, LocalState, MapGrid, MapGridInput, BaselineSnapshot, BaselineSource, BaselineState, BaselineSummary, Report, ReportAction, ReportNotesEstimate, ReportNumbers, ReportsState, GbpScreenshotRead, ScreenshotEstimate, HotspotsInput, PagesBackfillPlan, PagesState, PageType, SiteStructure, CategoryCode, RedirectStatus, HotspotDraft, HotspotsEstimate, BrandKey, BrandScript, BriefVersion, PageBrief, SectionKey, SectionStatus, WorksheetKey } from '../types/seo'
 import type { AiTask } from './aiModels'
 import type { AccountKind, AccountStatus, ClientAccount, ClientDetail, ClientInput, ClientSummary, ClusterPage, DeleteImportCheck, GuideState, ImportPayload, MatrixCellInput, MatrixState, Template, TemplateInput, ImportPreview, ImportRecord, KeywordItem, KeywordUpdateRequest, KeywordUpdateResult, SiteIdCheck } from '../types/seo'
 
@@ -494,4 +494,107 @@ export function approveGbpShot(siteId: string, id: string, input: GbpInput): Pro
 
 export function discardGbpShot(siteId: string, id: string): Promise<{ ok: true }> {
   return call('/api/metrics/shot-discard', json({ siteId, id }))
+}
+
+// ---- Phase 3 · Pages: sitemap + hotspots ------------------------------------------------------------------------
+
+export function getPages(siteId: string): Promise<PagesState> {
+  return call('/api/clusters/pages?site=' + encodeURIComponent(siteId))
+}
+
+/** Fills empty code / type / keep-improve-new from what each page says. Dry run unless apply. */
+export function backfillPages(siteId: string, apply: boolean): Promise<PagesBackfillPlan> {
+  return call('/api/clusters/pages-backfill', json({ siteId, apply }))
+}
+
+export function saveHotspots(siteId: string, input: HotspotsInput): Promise<PagesState> {
+  return call('/api/clusters/hotspots-save', json({ siteId, ...input }))
+}
+
+export function addPage(siteId: string, input: { name: string; category: CategoryCode; type?: PageType; keywordId?: string }): Promise<PagesState> {
+  return call('/api/clusters/page-add', json({ siteId, ...input }))
+}
+
+export function setSiteStructure(siteId: string, structure: SiteStructure): Promise<PagesState> {
+  return call('/api/clusters/structure', json({ siteId, structure }))
+}
+
+/** Site plan: a page under another one (parentId null = top level). */
+export function setPageParent(siteId: string, pageId: string, parentId: string | null): Promise<PagesState> {
+  return call('/api/clusters/page-parent', json({ siteId, pageId, parentId }))
+}
+
+/** Site plan: Queued → Sent to site → Live. */
+export function setRedirectStatus(siteId: string, id: string, status: RedirectStatus): Promise<PagesState> {
+  return call('/api/clusters/redirect-status', json({ siteId, id, status }))
+}
+
+// ---- Phase 3 step 4 · Claude hotspot drafts ---------------------------------------------------------------------
+
+export function estimateHotspots(siteId: string, pageIds: string[]): Promise<HotspotsEstimate> {
+  return call('/api/autofill/hotspots-estimate', json({ siteId, pageIds }))
+}
+
+/** One Claude call for the picked pages; drafts saved as "Ready to review". */
+export function draftHotspots(siteId: string, pageIds: string[]): Promise<{ drafts: HotspotDraft[] }> {
+  return call('/api/autofill/hotspots-draft', json({ siteId, pageIds }))
+}
+
+/** Drops Claude's draft for one page (nothing on the page changes). */
+export function skipHotspotDraft(siteId: string, pageId: string): Promise<PagesState> {
+  return call('/api/clusters/hotspots-skip', json({ siteId, pageId }))
+}
+
+// ---- Phase 3 step 5 · BrandScript --------------------------------------------------------------------------------
+
+export function getBrandScript(siteId: string): Promise<BrandScript> {
+  return call('/api/clusters/brandscript?site=' + encodeURIComponent(siteId))
+}
+
+/** Saves the A–P answers (a changed answer clears "confirmed"); also approves Claude's open draft. */
+export function saveBrandScript(siteId: string, answers: Partial<Record<BrandKey, string>>): Promise<BrandScript> {
+  return call('/api/clusters/brandscript-save', json({ siteId, answers }))
+}
+
+export function confirmBrandScript(siteId: string, confirmed: boolean): Promise<BrandScript> {
+  return call('/api/clusters/brandscript-confirm', json({ siteId, confirmed }))
+}
+
+export function skipBrandDraft(siteId: string): Promise<BrandScript> {
+  return call('/api/clusters/brandscript-skip', json({ siteId }))
+}
+
+export function estimateBrandScript(siteId: string): Promise<{ model: string; inputTokens: number; outputTokens: number; costUsd: number }> {
+  return call('/api/autofill/brandscript-estimate', json({ siteId }))
+}
+
+/** One Claude call; the draft is "Ready to review". */
+export function draftBrandScript(siteId: string): Promise<BrandScript> {
+  return call('/api/autofill/brandscript-draft', json({ siteId }))
+}
+
+// ---- Phase 3 step 6 · Page brief -------------------------------------------------------------------------------
+
+export function getPageBrief(siteId: string, pageId: string): Promise<PageBrief> {
+  return call('/api/clusters/brief?site=' + encodeURIComponent(siteId) + '&page=' + encodeURIComponent(pageId))
+}
+
+export type BriefInput = { pageId: string; version: BriefVersion; worksheet: Partial<Record<WorksheetKey, string>>; sections: Partial<Record<SectionKey, { text: string; status: SectionStatus }>> }
+
+/** Saves the brief; also approves Claude's open draft for the page. */
+export function savePageBrief(siteId: string, input: BriefInput): Promise<PageBrief> {
+  return call('/api/clusters/brief-save', json({ siteId, ...input }))
+}
+
+export function skipBriefDraft(siteId: string, pageId: string): Promise<PageBrief> {
+  return call('/api/clusters/brief-skip', json({ siteId, pageId }))
+}
+
+export function estimatePageCopy(siteId: string, pageId: string, version: BriefVersion): Promise<{ model: string; inputTokens: number; outputTokens: number; costUsd: number }> {
+  return call('/api/autofill/brief-estimate', json({ siteId, pageId, version }))
+}
+
+/** One Claude call: page copy (V1 / V2) + brief; "Ready to review". */
+export function draftPageCopy(siteId: string, pageId: string, version: BriefVersion): Promise<PageBrief> {
+  return call('/api/autofill/brief-draft', json({ siteId, pageId, version }))
 }

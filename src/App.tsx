@@ -55,6 +55,9 @@ const router = createBrowserRouter([
               { path: 'strategy/keywords/import', lazy: page(() => import('./pages/client/ImportPage')) },
               { path: 'strategy/keywords/database', lazy: page(() => import('./pages/client/DatabasePage')) },
               { path: 'strategy/keywords/clusters', lazy: page(() => import('./pages/client/ClustersPage')) },
+              { path: 'strategy/pages', lazy: page(() => import('./pages/client/SitemapPage')) },
+              { path: 'strategy/plan', lazy: page(() => import('./pages/client/SitePlanPage')) },
+              { path: 'strategy/briefs', lazy: page(() => import('./pages/client/BriefsPage')) },
               { path: 'strategy/*', lazy: page(() => import('./pages/client/ComingSoonPage')) },
               // Old addresses (edit, guide, uploads, keywords…, reports, review…) → their new place, query kept.
               { path: '*', lazy: page(() => import('./pages/client/LegacyRedirect')) },

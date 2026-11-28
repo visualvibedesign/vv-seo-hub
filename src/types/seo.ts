@@ -1052,3 +1052,138 @@ export interface ReportNotesEstimate {
   outputTokens: number
   costUsd: number
 }
+
+// ---- Phase 3 · Pages: sitemap + hotspots, site plan (migration 0021) --------------------------------------------
+
+export type PageType = 'home' | 'service' | 'location' | 'supporting'
+export type PageAction = 'keep' | 'improve' | 'new'
+export type SiteStructure = 'service_first' | 'location_first' | 'flat'
+
+/** A page of the ideal sitemap: the Clusters page + its code, type, parent, keep / improve / new and hotspots. */
+export interface SitePage extends ClusterPage {
+  /** "P1", "P2"… (null until set) */
+  code: string | null
+  type: PageType | null
+  parentId: string | null
+  action: PageAction | null
+  seoTitle: string | null
+  metaDescription: string | null
+  h1: string | null
+  /** The target permalink (where the page should live); `url` stays the current live URL */
+  urlTarget: string | null
+  hotspotsAt: string | null
+  /** Google ranks another URL for this page's keyword (latest Position Tracking CSV), or null */
+  swappedUrl: string | null
+}
+
+export interface PagesState {
+  structure: SiteStructure
+  siteUrl: string
+  /** The client's state abbreviation (for the "full state name in the title / abbreviation in the URL" checks) */
+  state: string | null
+  pages: SitePage[]
+  /** Pages missing a code, type or keep / improve / new (the backfill can fill them) */
+  needsBackfill: number
+  /** The redirects queue, newest first */
+  redirects: SiteRedirect[]
+  /** Claude's open hotspot drafts (Ready to review), one per page; empty when none */
+  drafts: HotspotDraft[]
+  /** When those drafts were made */
+  draftsAt: string | null
+}
+
+export interface PagesBackfillPlan {
+  changes: { pageId: string; name: string; code: string | null; type: PageType | null; action: PageAction | null }[]
+  applied: boolean
+}
+
+export interface HotspotsInput {
+  pageId: string
+  code: string | null
+  type: PageType | null
+  action: PageAction | null
+  seoTitle: string | null
+  metaDescription: string | null
+  h1: string | null
+  urlTarget: string | null
+}
+
+export type RedirectStatus = 'queued' | 'sent' | 'live'
+
+/** A redirect old → new, queued when a live page's URL changes (sent to the site later, phase 5). */
+export interface SiteRedirect {
+  id: string
+  pageId: string | null
+  pageCode: string | null
+  pageName: string | null
+  oldUrl: string
+  newUrl: string
+  why: string | null
+  status: RedirectStatus
+  updatedAt: string
+}
+
+/** Phase 3 step 4 · Claude's hotspots for one page ("Ready to review" until saved or skipped). */
+export interface HotspotDraft {
+  pageId: string
+  seoTitle: string | null
+  metaDescription: string | null
+  h1: string | null
+  url: string | null
+  /** Suggested opening / closing lines for the page copy (used later in the page brief) */
+  opening: string | null
+  closing: string | null
+  /** What Claude flagged (gaps, unknown facts) */
+  notes: string | null
+}
+
+export interface HotspotsEstimate {
+  model: string
+  pages: number
+  inputTokens: number
+  outputTokens: number
+  costUsd: number
+}
+
+// ---- Phase 3 step 5 · BrandScript (StoryBrand A–P, once per client; seo_brandscripts, migration 0021) ------------
+
+export type BrandKey = 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' | 'N' | 'O' | 'P'
+
+export interface BrandScript {
+  /** Answers as written (missing key = empty) */
+  answers: Partial<Record<BrandKey, string>>
+  /** "Read aloud and confirmed"; cleared when an answer changes */
+  confirmedAt: string | null
+  updatedAt: string | null
+  /** Claude's open draft (Ready to review) or null */
+  draft: { answers: Partial<Record<BrandKey, string>>; notes: string | null; createdAt: string } | null
+}
+
+// ---- Phase 3 step 6 · Page brief (Day 5 worksheet + StoryBrand copy V1 / V2; seo_page_briefs, migration 0021) ----
+
+export type BriefVersion = 'v1' | 'v2'
+export type SectionStatus = 'to_write' | 'drafted' | 'done'
+/** "1".."11" */
+export type SectionKey = '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | '11'
+export type WorksheetKey = 'opportunity' | 'whyFirst' | 'customerNeed' | 'buyingQuestions' | 'proof' | 'desiredAction' | 'linksFrom' | 'linksTo' | 'missingInputs'
+
+export interface PageBriefDraft {
+  sections: Partial<Record<SectionKey, string>>
+  worksheet: Partial<Record<WorksheetKey, string>>
+  notes: string | null
+  version: BriefVersion
+  createdAt: string
+}
+
+export interface PageBrief {
+  page: { id: string; code: string | null; name: string; type: PageType | null; seoTitle: string | null; metaDescription: string | null; h1: string | null; url: string | null; primary: string | null }
+  version: BriefVersion
+  worksheet: Partial<Record<WorksheetKey, string>>
+  sections: Partial<Record<SectionKey, { text: string; status: SectionStatus }>>
+  updatedAt: string | null
+  /** Claude's open draft for this page (Ready to review) */
+  draft: PageBriefDraft | null
+  /** BrandScript answers filled (of 16) and whether confirmed: Claude writes from it */
+  brandFilled: number
+  brandConfirmed: boolean
+}
